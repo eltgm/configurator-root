@@ -1,0 +1,1519 @@
+openapi: 3.1.0
+info:
+  title: Configurator Backend API
+  version: 1.0.0
+  description: API спецификация для MVP приложения Configurator
+
+servers:
+  - url: http://localhost:8080/api/v1
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        path:
+          type: string
+      required:
+        - timestamp
+        - status
+        - error
+        - message
+        - path
+
+    ### Pagination ###
+    DomainPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Domain'
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        totalItems:
+          type: integer
+          minimum: 0
+      required: [items, page, size, totalItems]
+
+    ComponentPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Component'
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        totalItems:
+          type: integer
+          minimum: 0
+      required: [items, page, size, totalItems]
+
+    ConfigurationPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Configuration'
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        totalItems:
+          type: integer
+          minimum: 0
+      required: [items, page, size, totalItems]
+
+    ### AUTH ###
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+          nullable: true
+      required:
+        - id
+        - email
+
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        displayName:
+          type: string
+          nullable: true
+      required:
+        - email
+        - password
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+      required:
+        - token
+        - user
+
+    ### DOMAIN ###
+    Domain:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - createdAt
+
+    CreateDomainRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+      required:
+        - name
+
+    UpdateDomainRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+      required:
+        - name
+
+    ### COMPONENT TYPE ###
+    ComponentType:
+      type: object
+      properties:
+        id:
+          type: integer
+        domainId:
+          type: integer
+        name:
+          type: string
+        code:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        orderIndex:
+          type: integer
+          nullable: true
+      required:
+        - id
+        - domainId
+        - name
+
+    CreateComponentTypeRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        orderIndex:
+          type: integer
+          nullable: true
+      required:
+        - name
+
+    ### ATTRIBUTE DEFINITION ###
+    AttributeDefinition:
+      type: object
+      properties:
+        id:
+          type: integer
+        componentTypeId:
+          type: integer
+        name:
+          type: string
+        label:
+          type: string
+        dataType:
+          type: string
+          enum: [STRING, NUMBER, BOOLEAN, ENUM]
+        enumValues:
+          type: array
+          items:
+            type: string
+          nullable: true
+        isRequired:
+          type: boolean
+        orderIndex:
+          type: integer
+          nullable: true
+      required:
+        - id
+        - componentTypeId
+        - name
+        - label
+        - dataType
+        - isRequired
+
+    CreateAttributeDefinitionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        label:
+          type: string
+        dataType:
+          type: string
+          enum: [STRING, NUMBER, BOOLEAN, ENUM]
+        enumValues:
+          type: array
+          items:
+            type: string
+          nullable: true
+        isRequired:
+          type: boolean
+          default: false
+        orderIndex:
+          type: integer
+          nullable: true
+      required:
+        - name
+        - label
+        - dataType
+
+    ### ATTRIBUTE VALUE ###
+    AttributeValueInput:
+      type: object
+      properties:
+        attributeDefinitionId:
+          type: integer
+        value:
+          type: string
+      required:
+        - attributeDefinitionId
+        - value
+
+    AttributeValue:
+      type: object
+      properties:
+        attributeDefinitionId:
+          type: integer
+        name:
+          type: string
+        label:
+          type: string
+        dataType:
+          type: string
+          enum: [STRING, NUMBER, BOOLEAN, ENUM]
+        value:
+          type: string
+          nullable: true
+      required:
+        - attributeDefinitionId
+        - name
+        - label
+        - dataType
+
+    ### COMPONENT IMAGE ###
+    ComponentImage:
+      type: object
+      properties:
+        id:
+          type: integer
+        url:
+          type: string
+        orderIndex:
+          type: integer
+          nullable: true
+      required:
+        - id
+        - url
+
+    ### COMPONENT ###
+    Component:
+      type: object
+      properties:
+        id:
+          type: integer
+        componentTypeId:
+          type: integer
+        name:
+          type: string
+        brand:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        archived:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        attributes:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttributeValue'
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComponentImage'
+      required:
+        - id
+        - componentTypeId
+        - name
+        - archived
+        - createdAt
+
+    CreateComponentRequest:
+      type: object
+      properties:
+        componentTypeId:
+          type: integer
+        name:
+          type: string
+        brand:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        attributes:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttributeValueInput'
+          nullable: true
+      required:
+        - componentTypeId
+        - name
+
+    ### COMPATIBILITY ###
+    CompatibilityLink:
+      type: object
+      properties:
+        id:
+          type: integer
+        domainId:
+          type: integer
+        componentAId:
+          type: integer
+        componentBId:
+          type: integer
+        comment:
+          type: string
+          nullable: true
+      required:
+        - id
+        - domainId
+        - componentAId
+        - componentBId
+
+    CreateCompatibilityLinkRequest:
+      type: object
+      properties:
+        componentAId:
+          type: integer
+        componentBId:
+          type: integer
+        comment:
+          type: string
+          nullable: true
+      required:
+        - componentAId
+        - componentBId
+
+    ### GRAPH ###
+    GraphNode:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        componentTypeId:
+          type: integer
+        componentTypeName:
+          type: string
+        brand:
+          type: string
+          nullable: true
+      required:
+        - id
+        - name
+        - componentTypeId
+        - componentTypeName
+
+    GraphEdge:
+      type: object
+      properties:
+        id:
+          type: integer
+        source:
+          type: integer
+        target:
+          type: integer
+      required:
+        - id
+        - source
+        - target
+
+    GraphResponse:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphEdge'
+      required:
+        - nodes
+        - edges
+
+    ### CONFIGURATOR ###
+    ComponentShort:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        brand:
+          type: string
+          nullable: true
+        componentTypeId:
+          type: integer
+      required:
+        - id
+        - name
+        - componentTypeId
+
+    ConfiguratorTypeGroup:
+      type: object
+      properties:
+        componentTypeId:
+          type: integer
+        componentTypeName:
+          type: string
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComponentShort'
+      required:
+        - componentTypeId
+        - componentTypeName
+        - components
+
+    ConfiguratorResponse:
+      type: object
+      properties:
+        baseComponentId:
+          type: integer
+        compatibleByType:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfiguratorTypeGroup'
+      required:
+        - baseComponentId
+        - compatibleByType
+
+    ### CONFIGURATION ###
+    Configuration:
+      type: object
+      properties:
+        id:
+          type: integer
+        domainId:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComponentShort'
+      required:
+        - id
+        - domainId
+        - name
+
+    CreateConfigurationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        componentIds:
+          type: array
+          items:
+            type: integer
+      required:
+        - name
+        - componentIds
+
+paths:
+
+  ###################################
+  # AUTH
+  ###################################
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register user
+      security: []   # публичный эндпоинт
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Successful registration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  ###################################
+  # DOMAINS
+  ###################################
+
+  /domains:
+    get:
+      tags: [Domains]
+      summary: List domains (paged)
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainPage'
+
+    post:
+      tags: [Domains]
+      summary: Create domain
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDomainRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Domain'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Domain name conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /domains/{id}:
+    get:
+      tags: [Domains]
+      summary: Get domain
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Domain found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Domain'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags: [Domains]
+      summary: Update domain
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDomainRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Domain'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags: [Domains]
+      summary: Delete domain
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Domain has dependent entities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  ###################################
+  # COMPONENT TYPES
+  ###################################
+
+  /domains/{id}/component-types:
+    get:
+      tags: [Component Types]
+      summary: List component types of a domain
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ComponentType'
+        '404':
+          description: Domain not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags: [Component Types]
+      summary: Create component type in domain
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateComponentTypeRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComponentType'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Domain not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: ComponentType name conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /component-types/{id}:
+    get:
+      tags: [Component Types]
+      summary: Get component type
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComponentType'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags: [Component Types]
+      summary: Update component type
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateComponentTypeRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComponentType'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags: [Component Types]
+      summary: Delete component type
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  ###################################
+  # ATTRIBUTE DEFINITIONS
+  ###################################
+
+  /component-types/{id}/attributes:
+    get:
+      tags: [Attributes]
+      summary: List attribute definitions of a component type
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AttributeDefinition'
+        '404':
+          description: ComponentType not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags: [Attributes]
+      summary: Create attribute definition for a component type
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAttributeDefinitionRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttributeDefinition'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: ComponentType not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Attribute name conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /attributes/{id}:
+    put:
+      tags: [Attributes]
+      summary: Update attribute definition
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAttributeDefinitionRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttributeDefinition'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  ###################################
+  # COMPONENTS
+  ###################################
+
+  /domains/{domainId}/components:
+    get:
+      tags: [Components]
+      summary: List components of domain (paged)
+      parameters:
+        - name: domainId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: componentTypeId
+          in: query
+          schema:
+            type: integer
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComponentPage'
+        '404':
+          description: Domain not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /components:
+    post:
+      tags: [Components]
+      summary: Create component
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateComponentRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Component'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: ComponentType not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /components/{id}:
+    get:
+      tags: [Components]
+      summary: Get component details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Component'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags: [Components]
+      summary: Update component
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateComponentRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Component'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags: [Components]
+      summary: Delete component
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  ###################################
+  # COMPONENT IMAGES
+  ###################################
+
+  /components/{id}/images:
+    post:
+      tags: [Components]
+      summary: Upload image for component
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                orderIndex:
+                  type: integer
+                  nullable: true
+              required:
+                - file
+      responses:
+        '201':
+          description: Image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComponentImage'
+        '400':
+          description: Invalid file or request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Component not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags: [Components]
+      summary: Get images of component
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ComponentImage'
+        '404':
+          description: Component not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  ###################################
+  # COMPATIBILITY
+  ###################################
+
+  /domains/{id}/compatibility:
+    post:
+      tags: [Compatibility]
+      summary: Create compatibility link
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCompatibilityLinkRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompatibilityLink'
+        '400':
+          description: Invalid input or different domains
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Domain or component not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Duplicate compatibility link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /domains/{id}/compatibility/{linkId}:
+    delete:
+      tags: [Compatibility]
+      summary: Delete compatibility link
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: linkId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  ###################################
+  # GRAPH
+  ###################################
+
+  /domains/{id}/compatibility/graph:
+    get:
+      tags: [Compatibility]
+      summary: Get compatibility graph of domain
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GraphResponse'
+        '404':
+          description: Domain not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  ###################################
+  # CONFIGURATOR
+  ###################################
+
+  /domains/{id}/configurator/compatible:
+    get:
+      tags: [Configurator]
+      summary: Get compatible components for selected component
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: componentId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfiguratorResponse'
+        '400':
+          description: Missing componentId
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Domain or component not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  ###################################
+  # CONFIGURATIONS (SAVED BUILDS)
+  ###################################
+
+  /domains/{id}/configurations:
+    get:
+      tags: [Configurations]
+      summary: List configurations of domain (paged)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationPage'
+        '404':
+          description: Domain not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags: [Configurations]
+      summary: Create configuration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateConfigurationRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Configuration'
+        '400':
+          description: Invalid input or components from different domains
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Domain or component not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /configurations/{id}:
+    get:
+      tags: [Configurations]
+      summary: Get configuration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Configuration'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /configurations/{id}/export/json:
+    get:
+      tags: [Configurations]
+      summary: Export configuration as JSON
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Exported JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Configuration'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

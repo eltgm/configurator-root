@@ -1,0 +1,4 @@
+rootProject.name = 'configurator-root'
+
+include 'configurator'
+include 'configurator-integration-tests'
