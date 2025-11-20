@@ -1,21 +1,29 @@
 plugins {
     id 'java'
+    id 'io.spring.dependency-management' version '1.1.7' apply false
 }
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
 subprojects {
     apply plugin: 'java'
+    apply plugin: 'io.spring.dependency-management'
 
     group = 'ru.sultanyarov'
     version = '0.0.1-SNAPSHOT'
 
     repositories {
         mavenCentral()
+    }
+
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.boot:spring-boot-dependencies:3.4.11"
+        }
     }
 
     tasks.withType(JavaCompile).configureEach {
