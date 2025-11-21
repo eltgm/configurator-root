@@ -8,7 +8,7 @@ servers:
   - url: http://localhost:8080/api/v1
 
 security:
-  - BearerAuth: []
+  - BearerAuth: [ ]
 
 components:
   securitySchemes:
@@ -57,7 +57,7 @@ components:
         totalItems:
           type: integer
           minimum: 0
-      required: [items, page, size, totalItems]
+      required: [ items, page, size, totalItems ]
 
     ComponentPage:
       type: object
@@ -75,7 +75,7 @@ components:
         totalItems:
           type: integer
           minimum: 0
-      required: [items, page, size, totalItems]
+      required: [ items, page, size, totalItems ]
 
     ConfigurationPage:
       type: object
@@ -93,7 +93,7 @@ components:
         totalItems:
           type: integer
           minimum: 0
-      required: [items, page, size, totalItems]
+      required: [ items, page, size, totalItems ]
 
     ### AUTH ###
     User:
@@ -156,6 +156,7 @@ components:
       properties:
         id:
           type: integer
+          format: int64
         name:
           type: string
         description:
@@ -246,7 +247,7 @@ components:
           type: string
         dataType:
           type: string
-          enum: [STRING, NUMBER, BOOLEAN, ENUM]
+          enum: [ STRING, NUMBER, BOOLEAN, ENUM ]
         enumValues:
           type: array
           items:
@@ -274,7 +275,7 @@ components:
           type: string
         dataType:
           type: string
-          enum: [STRING, NUMBER, BOOLEAN, ENUM]
+          enum: [ STRING, NUMBER, BOOLEAN, ENUM ]
         enumValues:
           type: array
           items:
@@ -314,7 +315,7 @@ components:
           type: string
         dataType:
           type: string
-          enum: [STRING, NUMBER, BOOLEAN, ENUM]
+          enum: [ STRING, NUMBER, BOOLEAN, ENUM ]
         value:
           type: string
           nullable: true
@@ -575,9 +576,9 @@ paths:
 
   /auth/register:
     post:
-      tags: [Auth]
+      tags: [ Auth ]
       summary: Register user
-      security: []   # публичный эндпоинт
+      security: [ ]   # публичный эндпоинт
       requestBody:
         required: true
         content:
@@ -606,9 +607,9 @@ paths:
 
   /auth/login:
     post:
-      tags: [Auth]
+      tags: [ Auth ]
       summary: Login user
-      security: []
+      security: [ ]
       requestBody:
         required: true
         content:
@@ -641,7 +642,7 @@ paths:
 
   /domains:
     get:
-      tags: [Domains]
+      tags: [ Domains ]
       summary: List domains (paged)
       parameters:
         - name: page
@@ -649,11 +650,13 @@ paths:
           schema:
             type: integer
             minimum: 0
+            default: 0
         - name: size
           in: query
           schema:
             type: integer
             minimum: 1
+            default: 10
       responses:
         '200':
           description: Success
@@ -663,7 +666,7 @@ paths:
                 $ref: '#/components/schemas/DomainPage'
 
     post:
-      tags: [Domains]
+      tags: [ Domains ]
       summary: Create domain
       requestBody:
         required: true
@@ -693,7 +696,7 @@ paths:
 
   /domains/{id}:
     get:
-      tags: [Domains]
+      tags: [ Domains ]
       summary: Get domain
       parameters:
         - name: id
@@ -701,6 +704,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         '200':
           description: Domain found
@@ -716,7 +720,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
     put:
-      tags: [Domains]
+      tags: [ Domains ]
       summary: Update domain
       parameters:
         - name: id
@@ -724,6 +728,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       requestBody:
         required: true
         content:
@@ -751,7 +756,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
     delete:
-      tags: [Domains]
+      tags: [ Domains ]
       summary: Delete domain
       parameters:
         - name: id
@@ -759,6 +764,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         '204':
           description: Deleted
@@ -781,7 +787,7 @@ paths:
 
   /domains/{id}/component-types:
     get:
-      tags: [Component Types]
+      tags: [ Component Types ]
       summary: List component types of a domain
       parameters:
         - name: id
@@ -806,7 +812,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
     post:
-      tags: [Component Types]
+      tags: [ Component Types ]
       summary: Create component type in domain
       parameters:
         - name: id
@@ -848,7 +854,7 @@ paths:
 
   /component-types/{id}:
     get:
-      tags: [Component Types]
+      tags: [ Component Types ]
       summary: Get component type
       parameters:
         - name: id
@@ -871,7 +877,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
     put:
-      tags: [Component Types]
+      tags: [ Component Types ]
       summary: Update component type
       parameters:
         - name: id
@@ -906,7 +912,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
     delete:
-      tags: [Component Types]
+      tags: [ Component Types ]
       summary: Delete component type
       parameters:
         - name: id
@@ -930,7 +936,7 @@ paths:
 
   /component-types/{id}/attributes:
     get:
-      tags: [Attributes]
+      tags: [ Attributes ]
       summary: List attribute definitions of a component type
       parameters:
         - name: id
@@ -955,7 +961,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
     post:
-      tags: [Attributes]
+      tags: [ Attributes ]
       summary: Create attribute definition for a component type
       parameters:
         - name: id
@@ -997,7 +1003,7 @@ paths:
 
   /attributes/{id}:
     put:
-      tags: [Attributes]
+      tags: [ Attributes ]
       summary: Update attribute definition
       parameters:
         - name: id
@@ -1037,7 +1043,7 @@ paths:
 
   /domains/{domainId}/components:
     get:
-      tags: [Components]
+      tags: [ Components ]
       summary: List components of domain (paged)
       parameters:
         - name: domainId
@@ -1079,7 +1085,7 @@ paths:
 
   /components:
     post:
-      tags: [Components]
+      tags: [ Components ]
       summary: Create component
       requestBody:
         required: true
@@ -1109,7 +1115,7 @@ paths:
 
   /components/{id}:
     get:
-      tags: [Components]
+      tags: [ Components ]
       summary: Get component details
       parameters:
         - name: id
@@ -1132,7 +1138,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
     put:
-      tags: [Components]
+      tags: [ Components ]
       summary: Update component
       parameters:
         - name: id
@@ -1167,7 +1173,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
     delete:
-      tags: [Components]
+      tags: [ Components ]
       summary: Delete component
       parameters:
         - name: id
@@ -1191,7 +1197,7 @@ paths:
 
   /components/{id}/images:
     post:
-      tags: [Components]
+      tags: [ Components ]
       summary: Upload image for component
       parameters:
         - name: id
@@ -1235,7 +1241,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
     get:
-      tags: [Components]
+      tags: [ Components ]
       summary: Get images of component
       parameters:
         - name: id
@@ -1265,7 +1271,7 @@ paths:
 
   /domains/{id}/compatibility:
     post:
-      tags: [Compatibility]
+      tags: [ Compatibility ]
       summary: Create compatibility link
       parameters:
         - name: id
@@ -1307,7 +1313,7 @@ paths:
 
   /domains/{id}/compatibility/{linkId}:
     delete:
-      tags: [Compatibility]
+      tags: [ Compatibility ]
       summary: Delete compatibility link
       parameters:
         - name: id
@@ -1336,7 +1342,7 @@ paths:
 
   /domains/{id}/compatibility/graph:
     get:
-      tags: [Compatibility]
+      tags: [ Compatibility ]
       summary: Get compatibility graph of domain
       parameters:
         - name: id
@@ -1364,7 +1370,7 @@ paths:
 
   /domains/{id}/configurator/compatible:
     get:
-      tags: [Configurator]
+      tags: [ Configurator ]
       summary: Get compatible components for selected component
       parameters:
         - name: id
@@ -1403,7 +1409,7 @@ paths:
 
   /domains/{id}/configurations:
     get:
-      tags: [Configurations]
+      tags: [ Configurations ]
       summary: List configurations of domain (paged)
       parameters:
         - name: id
@@ -1436,7 +1442,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
     post:
-      tags: [Configurations]
+      tags: [ Configurations ]
       summary: Create configuration
       parameters:
         - name: id
@@ -1472,7 +1478,7 @@ paths:
 
   /configurations/{id}:
     get:
-      tags: [Configurations]
+      tags: [ Configurations ]
       summary: Get configuration
       parameters:
         - name: id
@@ -1496,7 +1502,7 @@ paths:
 
   /configurations/{id}/export/json:
     get:
-      tags: [Configurations]
+      tags: [ Configurations ]
       summary: Export configuration as JSON
       parameters:
         - name: id
