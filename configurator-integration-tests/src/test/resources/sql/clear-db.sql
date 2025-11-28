@@ -1,0 +1,10 @@
+DELETE FROM domain;
+DELETE FROM attribute_definition;
+DELETE FROM app_user;
+DELETE FROM attribute_value;
+DELETE FROM compatibility_link;
+DELETE FROM component;
+DELETE FROM component_image;
+DELETE FROM component_type;
+DELETE FROM configuration;
+DELETE FROM configuration_component;
