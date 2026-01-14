@@ -12,7 +12,7 @@ CREATE TABLE app_user
     email         VARCHAR(255) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     display_name  VARCHAR(255),
-    created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 -- Уникальный email
@@ -26,7 +26,7 @@ CREATE TABLE domain
     name               VARCHAR(255) NOT NULL,
     description        TEXT,
     created_by_user_id BIGINT       NOT NULL,
-    created_at         TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 
     CONSTRAINT fk_domain_created_by
         FOREIGN KEY (created_by_user_id)
@@ -50,7 +50,7 @@ CREATE TABLE component_type
     code        VARCHAR(100),
     description TEXT,
     order_index INT,
-    created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 
     CONSTRAINT fk_component_type_domain
         FOREIGN KEY (domain_id)
@@ -78,7 +78,7 @@ CREATE TABLE attribute_definition
     enum_values_json  TEXT,
     is_required       BOOLEAN      NOT NULL DEFAULT FALSE,
     order_index       INT,
-    created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 
     CONSTRAINT fk_attribute_definition_component_type
         FOREIGN KEY (component_type_id)
@@ -108,7 +108,7 @@ CREATE TABLE component
     brand             VARCHAR(255),
     description       TEXT,
     archived          BOOLEAN      NOT NULL DEFAULT FALSE,
-    created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 
     CONSTRAINT fk_component_component_type
         FOREIGN KEY (component_type_id)
@@ -189,7 +189,7 @@ CREATE TABLE compatibility_link
     component_b_id BIGINT      NOT NULL,
     relation_type  VARCHAR(50) NOT NULL DEFAULT 'COMPATIBLE',
     comment        TEXT,
-    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 
     CONSTRAINT fk_compatibility_link_domain
         FOREIGN KEY (domain_id)
@@ -239,7 +239,7 @@ CREATE TABLE configuration
     name               VARCHAR(255) NOT NULL,
     description        TEXT,
     created_by_user_id BIGINT       NOT NULL,
-    created_at         TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 
     CONSTRAINT fk_configuration_domain
         FOREIGN KEY (domain_id)

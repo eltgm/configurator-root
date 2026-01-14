@@ -8,7 +8,8 @@ import ru.sultanyarov.configurator.domain.dto.UpdateDomainRequest;
 import ru.sultanyarov.configurator.domain.model.Domain;
 import ru.sultanyarov.configurator.domain.model.Page;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 
 import static java.time.temporal.ChronoUnit.SECONDS;
@@ -156,7 +157,8 @@ class DomainMapperTest {
                 name,
                 description,
                 100L,
-                OffsetDateTime.now().truncatedTo(SECONDS)
+                Collections.emptyList(),
+                LocalDateTime.now().truncatedTo(SECONDS)
         );
     }
 

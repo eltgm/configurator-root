@@ -1,6 +1,11 @@
 package ru.sultanyarov.configurator.domain.model;
 
-import java.time.OffsetDateTime;
+import lombok.Builder;
 
-public record Domain(Long id, String name, String description, Long createdByUserId, OffsetDateTime createdAt) {
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Builder
+public record Domain(Long id, String name, String description, Long createdByUserId, List<ComponentType> componentTypes,
+                     LocalDateTime createdAt) {
 }

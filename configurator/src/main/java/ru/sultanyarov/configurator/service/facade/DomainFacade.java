@@ -7,13 +7,11 @@ import ru.sultanyarov.configurator.domain.dto.UpdateDomainRequest;
 
 /**
  * Facade interface for domain management operations.
- * Provides a simplified API for clients to interact with domain entities,
- * handling DTO conversions and request validation.
+ * Provides a simplified API for clients to interact with domain entities.
  */
 public interface DomainFacade {
     /**
      * Creates a new domain based on the provided request.
-     * Validates that the request contains a name.
      *
      * @param createDomainRequest the request containing domain details
      * @return the created domain DTO
@@ -41,7 +39,6 @@ public interface DomainFacade {
 
     /**
      * Updates an existing domain based on the provided request.
-     * Validates that the request contains a name.
      *
      * @param id                  the unique identifier of the domain to update
      * @param updateDomainRequest the request containing updated domain details

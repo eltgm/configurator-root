@@ -13,6 +13,7 @@ import ru.sultanyarov.configurator.domain.repository.DomainRepository;
 import ru.sultanyarov.configurator.test.data.DomainTestData;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -55,15 +56,13 @@ class DomainServiceImplTest {
         Long id = 1L;
         Domain expectedDomain = DomainTestData.domainWithId(id);
 
-        when(domainRepository.existsById(id)).thenReturn(true);
-        when(domainRepository.getDomainById(id)).thenReturn(expectedDomain);
+        when(domainRepository.getDomainById(id)).thenReturn(Optional.of(expectedDomain));
 
         // Act
         Domain result = domainService.getById(id);
 
         // Assert
         assertThat(result).isEqualTo(expectedDomain);
-        verify(domainRepository).existsById(id);
         verify(domainRepository).getDomainById(id);
     }
 
@@ -72,14 +71,13 @@ class DomainServiceImplTest {
         // Arrange
         Long id = 1L;
 
-        when(domainRepository.existsById(id)).thenReturn(false);
+        when(domainRepository.getDomainById(id)).thenReturn(Optional.empty());
 
         // Act & Assert
         assertThatThrownBy(() -> domainService.getById(id))
                 .isInstanceOf(NotFoundException.class);
 
-        verify(domainRepository).existsById(id);
-        verify(domainRepository, never()).getDomainById(anyLong());
+        verify(domainRepository).getDomainById(anyLong());
     }
 
     @Test
@@ -87,13 +85,13 @@ class DomainServiceImplTest {
         // Arrange
         Long id = 1L;
 
-        when(domainRepository.existsById(id)).thenReturn(true);
+        when(domainRepository.getDomainById(id)).thenReturn(Optional.of(DomainTestData.domain()));
 
         // Act
         domainService.deleteById(id);
 
         // Assert
-        verify(domainRepository).existsById(id);
+        verify(domainRepository).getDomainById(id);
         verify(domainRepository).deleteDomainById(id);
     }
 
@@ -102,13 +100,13 @@ class DomainServiceImplTest {
         // Arrange
         Long id = 1L;
 
-        when(domainRepository.existsById(id)).thenReturn(false);
+        when(domainRepository.getDomainById(id)).thenReturn(Optional.empty());
 
         // Act & Assert
         assertThatThrownBy(() -> domainService.deleteById(id))
                 .isInstanceOf(NotFoundException.class);
 
-        verify(domainRepository).existsById(id);
+        verify(domainRepository).getDomainById(id);
         verify(domainRepository, never()).deleteDomainById(anyLong());
     }
 
@@ -118,7 +116,7 @@ class DomainServiceImplTest {
         Domain domain = DomainTestData.domain();
 
         when(domainRepository.existsByName(domain.name())).thenReturn(false);
-        when(domainRepository.createDomain(domain)).thenReturn(domain);
+        when(domainRepository.createDomain(domain)).thenReturn(Optional.of(domain));
 
         // Act
         Domain result = domainService.create(domain);
@@ -150,16 +148,16 @@ class DomainServiceImplTest {
         Long id = 1L;
         Domain domain = DomainTestData.domain();
 
-        when(domainRepository.existsById(id)).thenReturn(true);
         when(domainRepository.existsByName(domain.name())).thenReturn(false);
-        when(domainRepository.updateDomain(id, domain)).thenReturn(domain);
+        when(domainRepository.getDomainById(anyLong())).thenReturn(Optional.of(new Domain(2L, "new name", domain.description(), domain.createdByUserId(), domain.componentTypes(), domain.createdAt())));
+        when(domainRepository.updateDomain(id, domain)).thenReturn(Optional.of(domain));
 
         // Act
         Domain result = domainService.update(id, domain);
 
         // Assert
         assertThat(result).isEqualTo(domain);
-        verify(domainRepository).existsById(id);
+        verify(domainRepository).getDomainById(id);
         verify(domainRepository).existsByName(domain.name());
         verify(domainRepository).updateDomain(id, domain);
     }
@@ -170,13 +168,12 @@ class DomainServiceImplTest {
         Long id = 1L;
         Domain domain = DomainTestData.domain();
 
-        when(domainRepository.existsById(id)).thenReturn(false);
+        when(domainRepository.getDomainById(anyLong())).thenReturn(Optional.empty());
 
         // Act & Assert
         assertThatThrownBy(() -> domainService.update(id, domain))
                 .isInstanceOf(NotFoundException.class);
 
-        verify(domainRepository).existsById(id);
         verify(domainRepository, never()).existsByName(anyString());
         verify(domainRepository, never()).updateDomain(anyLong(), any());
     }
@@ -187,14 +184,13 @@ class DomainServiceImplTest {
         Long id = 1L;
         Domain domain = DomainTestData.domain();
 
-        when(domainRepository.existsById(id)).thenReturn(true);
         when(domainRepository.existsByName(domain.name())).thenReturn(true);
+        when(domainRepository.getDomainById(anyLong())).thenReturn(Optional.of(new Domain(2L, "new name", domain.description(), domain.createdByUserId(), domain.componentTypes(), domain.createdAt())));
 
         // Act & Assert
         assertThatThrownBy(() -> domainService.update(id, domain))
                 .isInstanceOf(EntityAlreadyExistsException.class);
 
-        verify(domainRepository).existsById(id);
         verify(domainRepository).existsByName(domain.name());
         verify(domainRepository, never()).updateDomain(anyLong(), any());
     }

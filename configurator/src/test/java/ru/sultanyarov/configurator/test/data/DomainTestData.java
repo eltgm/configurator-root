@@ -2,7 +2,8 @@ package ru.sultanyarov.configurator.test.data;
 
 import ru.sultanyarov.configurator.domain.model.Domain;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class DomainTestData {
@@ -14,7 +15,8 @@ public class DomainTestData {
                 "Test Domain",
                 "Test Description",
                 1L,
-                OffsetDateTime.now()
+                Collections.emptyList(),
+                LocalDateTime.now()
         );
     }
 
@@ -24,7 +26,8 @@ public class DomainTestData {
                 name,
                 "Test Description",
                 1L,
-                OffsetDateTime.now()
+                Collections.emptyList(),
+                LocalDateTime.now()
         );
     }
 
@@ -34,7 +37,8 @@ public class DomainTestData {
                 "Test Domain",
                 "Test Description",
                 1L,
-                OffsetDateTime.now()
+                Collections.emptyList(),
+                LocalDateTime.now()
         );
     }
 
@@ -44,7 +48,8 @@ public class DomainTestData {
                 name,
                 "Test Description",
                 1L,
-                OffsetDateTime.now()
+                Collections.emptyList(),
+                LocalDateTime.now()
         );
     }
 }
