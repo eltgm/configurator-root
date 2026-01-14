@@ -198,8 +198,10 @@ components:
       properties:
         id:
           type: integer
+          format: int64
         domainId:
           type: integer
+          format: int64
         name:
           type: string
         code:
@@ -239,8 +241,10 @@ components:
       properties:
         id:
           type: integer
+          format: int64
         componentTypeId:
           type: integer
+          format: int64
         name:
           type: string
         label:
@@ -298,6 +302,7 @@ components:
       properties:
         attributeDefinitionId:
           type: integer
+          format: int64
         value:
           type: string
       required:
@@ -309,6 +314,7 @@ components:
       properties:
         attributeDefinitionId:
           type: integer
+          format: int64
         name:
           type: string
         label:
@@ -331,6 +337,7 @@ components:
       properties:
         id:
           type: integer
+          format: int64
         url:
           type: string
         orderIndex:
@@ -346,8 +353,10 @@ components:
       properties:
         id:
           type: integer
+          format: int64
         componentTypeId:
           type: integer
+          format: int64
         name:
           type: string
         brand:
@@ -381,6 +390,7 @@ components:
       properties:
         componentTypeId:
           type: integer
+          format: int64
         name:
           type: string
         brand:
@@ -404,12 +414,16 @@ components:
       properties:
         id:
           type: integer
+          format: int64
         domainId:
           type: integer
+          format: int64
         componentAId:
           type: integer
+          format: int64
         componentBId:
           type: integer
+          format: int64
         comment:
           type: string
           nullable: true
@@ -424,8 +438,10 @@ components:
       properties:
         componentAId:
           type: integer
+          format: int64
         componentBId:
           type: integer
+          format: int64
         comment:
           type: string
           nullable: true
@@ -439,10 +455,12 @@ components:
       properties:
         id:
           type: integer
+          format: int64
         name:
           type: string
         componentTypeId:
           type: integer
+          format: int64
         componentTypeName:
           type: string
         brand:
@@ -459,10 +477,13 @@ components:
       properties:
         id:
           type: integer
+          format: int64
         source:
           type: integer
+          format: int64
         target:
           type: integer
+          format: int64
       required:
         - id
         - source
@@ -489,6 +510,7 @@ components:
       properties:
         id:
           type: integer
+          format: int64
         name:
           type: string
         brand:
@@ -496,6 +518,7 @@ components:
           nullable: true
         componentTypeId:
           type: integer
+          format: int64
       required:
         - id
         - name
@@ -506,6 +529,7 @@ components:
       properties:
         componentTypeId:
           type: integer
+          format: int64
         componentTypeName:
           type: string
         components:
@@ -522,6 +546,7 @@ components:
       properties:
         baseComponentId:
           type: integer
+          format: int64
         compatibleByType:
           type: array
           items:
@@ -536,8 +561,10 @@ components:
       properties:
         id:
           type: integer
+          format: int64
         domainId:
           type: integer
+          format: int64
         name:
           type: string
         description:
@@ -564,6 +591,7 @@ components:
           type: array
           items:
             type: integer
+            format: int64
       required:
         - name
         - componentIds
@@ -795,6 +823,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         '200':
           description: Success
@@ -820,6 +849,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       requestBody:
         required: true
         content:
@@ -862,6 +892,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         '200':
           description: Success
@@ -885,6 +916,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       requestBody:
         required: true
         content:
@@ -920,6 +952,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         '204':
           description: Deleted
@@ -944,6 +977,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         '200':
           description: Success
@@ -969,6 +1003,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       requestBody:
         required: true
         content:
@@ -1011,6 +1046,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       requestBody:
         required: true
         content:
@@ -1051,10 +1087,12 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
         - name: componentTypeId
           in: query
           schema:
             type: integer
+            format: int64
         - name: name
           in: query
           schema:
@@ -1123,6 +1161,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         '200':
           description: Success
@@ -1146,6 +1185,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       requestBody:
         required: true
         content:
@@ -1181,6 +1221,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         '204':
           description: Deleted
@@ -1205,6 +1246,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       requestBody:
         required: true
         content:
@@ -1249,6 +1291,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         '200':
           description: Success
@@ -1279,6 +1322,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       requestBody:
         required: true
         content:
@@ -1321,6 +1365,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
         - name: linkId
           in: path
           required: true
@@ -1350,6 +1395,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         '200':
           description: Success
@@ -1378,11 +1424,13 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
         - name: componentId
           in: query
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         '200':
           description: Success
@@ -1417,6 +1465,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
         - name: page
           in: query
           schema:
@@ -1450,6 +1499,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       requestBody:
         required: true
         content:
@@ -1486,6 +1536,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         '200':
           description: Success
@@ -1510,6 +1561,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         '200':
           description: Exported JSON

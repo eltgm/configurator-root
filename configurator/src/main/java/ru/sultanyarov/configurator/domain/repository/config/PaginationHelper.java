@@ -2,6 +2,8 @@ package ru.sultanyarov.configurator.domain.repository.config;
 
 import lombok.experimental.UtilityClass;
 import org.jooq.DSLContext;
+import org.jooq.Record;
+import org.jooq.RecordMapper;
 import org.jooq.SelectSeekStepN;
 import org.jooq.Table;
 import ru.sultanyarov.configurator.domain.model.Page;
@@ -14,11 +16,11 @@ public class PaginationHelper {
             Table<?> table,
             int page,
             int size,
-            Class<T> type
+            RecordMapper<? super Record, T> mapper
     ) {
         var items = query.limit(size)
                 .offset(page * size)
-                .fetchInto(type);
+                .fetch(mapper);
         var count = dsl.selectCount()
                 .from(table)
                 .fetchOptional(0, long.class)

@@ -8,10 +8,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import ru.sultanyarov.configurator.domain.dto.ErrorResponse;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
 import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
+import ru.sultanyarov.configurator.domain.exception.EntityHasRelatedEntitiesException;
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.CONFLICT;
@@ -30,8 +31,8 @@ public class ControllerExceptionHandler {
         return getBody(NOT_FOUND, exception);
     }
 
-    @ExceptionHandler(EntityAlreadyExistsException.class)
-    public ResponseEntity<?> handleEntityAlreadyExistsException(EntityAlreadyExistsException exception) {
+    @ExceptionHandler({EntityAlreadyExistsException.class, EntityHasRelatedEntitiesException.class})
+    public ResponseEntity<?> handleEntityAlreadyExistsException(Exception exception) {
         return getBody(CONFLICT, exception);
     }
 
@@ -45,7 +46,7 @@ public class ControllerExceptionHandler {
         return ResponseEntity.status(httpStatus)
                 .body(
                         new ErrorResponse(
-                                OffsetDateTime.now(),
+                                LocalDateTime.now(),
                                 httpStatus.value(),
                                 httpStatus.getReasonPhrase(),
                                 exception.getLocalizedMessage(),

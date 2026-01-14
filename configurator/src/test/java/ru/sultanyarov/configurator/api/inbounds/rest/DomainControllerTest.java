@@ -13,7 +13,7 @@ import ru.sultanyarov.configurator.domain.dto.DomainPage;
 import ru.sultanyarov.configurator.domain.dto.UpdateDomainRequest;
 import ru.sultanyarov.configurator.service.facade.DomainFacade;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,13 +41,13 @@ class DomainControllerTest {
         domainDto1.setId(1L);
         domainDto1.setName("Test Domain 1");
         domainDto1.setDescription("Test Description 1");
-        domainDto1.setCreatedAt(OffsetDateTime.now());
+        domainDto1.setCreatedAt(LocalDateTime.now());
 
         Domain domainDto2 = new Domain();
         domainDto2.setId(2L);
         domainDto2.setName("Test Domain 2");
         domainDto2.setDescription("Test Description 2");
-        domainDto2.setCreatedAt(OffsetDateTime.now());
+        domainDto2.setCreatedAt(LocalDateTime.now());
 
         DomainPage expectedPage = new DomainPage();
         expectedPage.setItems(List.of(domainDto1, domainDto2));
@@ -88,7 +88,7 @@ class DomainControllerTest {
         expectedDomain.setId(1L);
         expectedDomain.setName("Test Domain");
         expectedDomain.setDescription("Test Description");
-        expectedDomain.setCreatedAt(OffsetDateTime.now());
+        expectedDomain.setCreatedAt(LocalDateTime.now());
 
         when(domainFacade.getDomainById(id)).thenReturn(expectedDomain);
 
@@ -113,7 +113,7 @@ class DomainControllerTest {
         expectedDomain.setId(1L);
         expectedDomain.setName("Updated Domain");
         expectedDomain.setDescription("Updated Description");
-        expectedDomain.setCreatedAt(OffsetDateTime.now());
+        expectedDomain.setCreatedAt(LocalDateTime.now());
 
         when(domainFacade.updateDomain(anyLong(), any(UpdateDomainRequest.class))).thenReturn(expectedDomain);
 
@@ -137,7 +137,7 @@ class DomainControllerTest {
         expectedDomain.setId(1L);
         expectedDomain.setName("New Domain");
         expectedDomain.setDescription("New Description");
-        expectedDomain.setCreatedAt(OffsetDateTime.now());
+        expectedDomain.setCreatedAt(LocalDateTime.now());
 
         when(domainFacade.createDomain(any(CreateDomainRequest.class))).thenReturn(expectedDomain);
 

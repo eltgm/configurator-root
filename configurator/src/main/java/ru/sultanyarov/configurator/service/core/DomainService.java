@@ -4,8 +4,8 @@ import ru.sultanyarov.configurator.domain.model.Domain;
 import ru.sultanyarov.configurator.domain.model.Page;
 
 /**
- * Service interface for managing Domain entities.
- * Provides business logic operations for domains including CRUD operations with validation.
+ * Service interface for managing {@link Domain} entities.
+ * Provides business logic operations for domains.
  */
 public interface DomainService {
     /**
@@ -19,7 +19,6 @@ public interface DomainService {
 
     /**
      * Retrieves a domain by its unique identifier.
-     * Validates that the domain exists before retrieval.
      *
      * @param id the unique identifier of the domain to retrieve
      * @return the domain with the specified ID
@@ -29,7 +28,6 @@ public interface DomainService {
 
     /**
      * Deletes a domain by its unique identifier.
-     * Validates that the domain exists before deletion.
      *
      * @param id the unique identifier of the domain to delete
      * @throws ru.sultanyarov.configurator.domain.exception.NotFoundException if no domain found with the given ID
@@ -38,7 +36,6 @@ public interface DomainService {
 
     /**
      * Creates a new domain.
-     * Validates that no domain with the same name already exists.
      *
      * @param domain the domain entity to create
      * @return the created domain with generated ID and timestamps
@@ -48,7 +45,6 @@ public interface DomainService {
 
     /**
      * Updates an existing domain.
-     * Validates that the domain exists and no other domain has the same name.
      *
      * @param id     the unique identifier of the domain to update
      * @param domain the domain entity with updated values
