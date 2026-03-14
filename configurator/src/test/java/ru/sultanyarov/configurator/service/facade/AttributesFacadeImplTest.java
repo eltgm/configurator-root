@@ -8,7 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ru.sultanyarov.configurator.domain.dto.AttributeDefinition;
 import ru.sultanyarov.configurator.domain.dto.CreateAttributeDefinitionRequest;
 import ru.sultanyarov.configurator.service.core.AttributeService;
-import ru.sultanyarov.configurator.service.mapper.AttributeMapper;
+import ru.sultanyarov.configurator.service.mapper.AttributeDefinitionMapper;
 import ru.sultanyarov.configurator.test.data.AttributeDefinitionTestData;
 
 import java.util.List;
@@ -24,7 +24,7 @@ class AttributesFacadeImplTest {
     private AttributeService attributeService;
 
     @Mock
-    private AttributeMapper attributeMapper;
+    private AttributeDefinitionMapper attributeDefinitionMapper;
 
     @InjectMocks
     private AttributesFacadeImpl attributesFacade;
@@ -38,18 +38,18 @@ class AttributesFacadeImplTest {
         ru.sultanyarov.configurator.domain.model.AttributeDefinition model = AttributeDefinitionTestData.attributeDefinitionWithComponentTypeId(componentTypeId);
         AttributeDefinition dto = new AttributeDefinition();
 
-        when(attributeMapper.toModel(componentTypeId, request)).thenReturn(model);
+        when(attributeDefinitionMapper.toModel(componentTypeId, request)).thenReturn(model);
         when(attributeService.create(model)).thenReturn(model);
-        when(attributeMapper.toDto(model)).thenReturn(dto);
+        when(attributeDefinitionMapper.toDto(model)).thenReturn(dto);
 
         // Act
         AttributeDefinition result = attributesFacade.createAttribute(componentTypeId, request);
 
         // Assert
         assertThat(result).isEqualTo(dto);
-        verify(attributeMapper).toModel(componentTypeId, request);
+        verify(attributeDefinitionMapper).toModel(componentTypeId, request);
         verify(attributeService).create(model);
-        verify(attributeMapper).toDto(model);
+        verify(attributeDefinitionMapper).toDto(model);
     }
 
     @Test
@@ -66,7 +66,7 @@ class AttributesFacadeImplTest {
         );
 
         when(attributeService.getByComponentTypeId(componentTypeId)).thenReturn(models);
-        when(attributeMapper.toDtoList(models)).thenReturn(dtos);
+        when(attributeDefinitionMapper.toDtoList(models)).thenReturn(dtos);
 
         // Act
         List<AttributeDefinition> result = attributesFacade.getAttributesByComponentTypeId(componentTypeId);
@@ -74,6 +74,6 @@ class AttributesFacadeImplTest {
         // Assert
         assertThat(result).isEqualTo(dtos);
         verify(attributeService).getByComponentTypeId(componentTypeId);
-        verify(attributeMapper).toDtoList(models);
+        verify(attributeDefinitionMapper).toDtoList(models);
     }
 }

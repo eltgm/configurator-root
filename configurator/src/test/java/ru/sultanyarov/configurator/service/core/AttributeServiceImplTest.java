@@ -12,7 +12,7 @@ import ru.sultanyarov.configurator.domain.exception.ValidationException;
 import ru.sultanyarov.configurator.domain.model.AttributeDefinition;
 import ru.sultanyarov.configurator.domain.repository.AttributeRepository;
 import ru.sultanyarov.configurator.domain.repository.ComponentTypeRepository;
-import ru.sultanyarov.configurator.service.mapper.AttributeMapper;
+import ru.sultanyarov.configurator.service.mapper.AttributeDefinitionMapper;
 import ru.sultanyarov.configurator.test.data.AttributeDefinitionTestData;
 
 import java.util.List;
@@ -36,7 +36,7 @@ class AttributeServiceImplTest {
     private ComponentTypeRepository componentTypeRepository;
 
     @Mock
-    private AttributeMapper attributeMapper;
+    private AttributeDefinitionMapper attributeDefinitionMapper;
 
     @InjectMocks
     private AttributeServiceImpl attributeService;
@@ -138,7 +138,7 @@ class AttributeServiceImplTest {
         CreateAttributeDefinitionRequest createAttributeDefinitionRequest = new CreateAttributeDefinitionRequest();
 
         when(attributeRepository.getById(id)).thenReturn(Optional.of(existingAttributeDefinition));
-        when(attributeMapper.updateModel(existingAttributeDefinition, createAttributeDefinitionRequest)).thenReturn(updatedAttributeDefinition);
+        when(attributeDefinitionMapper.updateModel(existingAttributeDefinition, createAttributeDefinitionRequest)).thenReturn(updatedAttributeDefinition);
         when(attributeRepository.hasByComponentTypeIdAndName(updatedAttributeDefinition.componentTypeId(), updatedAttributeDefinition.name())).thenReturn(false);
         when(attributeRepository.updateAttribute(id, updatedAttributeDefinition)).thenReturn(Optional.of(updatedAttributeDefinition));
 
@@ -176,7 +176,7 @@ class AttributeServiceImplTest {
         CreateAttributeDefinitionRequest createAttributeDefinitionRequest = new CreateAttributeDefinitionRequest();
 
         when(attributeRepository.getById(id)).thenReturn(Optional.of(existingAttributeDefinition));
-        when(attributeMapper.updateModel(existingAttributeDefinition, createAttributeDefinitionRequest)).thenReturn(updatedAttributeDefinition);
+        when(attributeDefinitionMapper.updateModel(existingAttributeDefinition, createAttributeDefinitionRequest)).thenReturn(updatedAttributeDefinition);
         when(attributeRepository.hasByComponentTypeIdAndName(updatedAttributeDefinition.componentTypeId(), updatedAttributeDefinition.name())).thenReturn(true);
 
         // Act & Assert

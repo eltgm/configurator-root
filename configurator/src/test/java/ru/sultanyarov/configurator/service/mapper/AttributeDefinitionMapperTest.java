@@ -12,9 +12,9 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 //TODO перед коммитом сделать рефакторинг
-class AttributeMapperTest {
+class AttributeDefinitionMapperTest {
 
-    private final AttributeMapper attributeMapper = Mappers.getMapper(AttributeMapper.class);
+    private final AttributeDefinitionMapper attributeDefinitionMapper = Mappers.getMapper(AttributeDefinitionMapper.class);
 
     @Test
     void toModel_withComponentTypeId_shouldMapCorrectly_whenRequestIsNotNull() {
@@ -24,7 +24,7 @@ class AttributeMapperTest {
                 "test_attribute", "Test Attribute", DataType.STRING, null, true, 1);
 
         // Act
-        AttributeDefinition result = attributeMapper.toModel(componentTypeId, request);
+        AttributeDefinition result = attributeDefinitionMapper.toModel(componentTypeId, request);
 
         // Assert
         assertThat(result)
@@ -47,7 +47,7 @@ class AttributeMapperTest {
                 "test_attribute", "Test Attribute", DataType.STRING, null, true, 1);
 
         // Act
-        AttributeDefinition result = attributeMapper.toModel(request);
+        AttributeDefinition result = attributeDefinitionMapper.toModel(request);
 
         // Assert
         assertThat(result)
@@ -69,7 +69,7 @@ class AttributeMapperTest {
         AttributeDefinition attributeDefinition = AttributeDefinitionTestData.attributeDefinitionWithId(1L);
 
         // Act
-        ru.sultanyarov.configurator.domain.dto.AttributeDefinition result = attributeMapper.toDto(attributeDefinition);
+        ru.sultanyarov.configurator.domain.dto.AttributeDefinition result = attributeDefinitionMapper.toDto(attributeDefinition);
 
         // Assert
         assertThat(result)
@@ -91,7 +91,7 @@ class AttributeMapperTest {
         AttributeDefinition attributeDefinition = null;
 
         // Act
-        ru.sultanyarov.configurator.domain.dto.AttributeDefinition result = attributeMapper.toDto(attributeDefinition);
+        ru.sultanyarov.configurator.domain.dto.AttributeDefinition result = attributeDefinitionMapper.toDto(attributeDefinition);
 
         // Assert
         assertThat(result).isNull();
@@ -106,7 +106,7 @@ class AttributeMapperTest {
         );
 
         // Act
-        List<ru.sultanyarov.configurator.domain.dto.AttributeDefinition> result = attributeMapper.toDtoList(attributeDefinitions);
+        List<ru.sultanyarov.configurator.domain.dto.AttributeDefinition> result = attributeDefinitionMapper.toDtoList(attributeDefinitions);
 
         // Assert
         assertThat(result)
@@ -128,7 +128,7 @@ class AttributeMapperTest {
         List<AttributeDefinition> attributeDefinitions = List.of();
 
         // Act
-        List<ru.sultanyarov.configurator.domain.dto.AttributeDefinition> result = attributeMapper.toDtoList(attributeDefinitions);
+        List<ru.sultanyarov.configurator.domain.dto.AttributeDefinition> result = attributeDefinitionMapper.toDtoList(attributeDefinitions);
 
         // Assert
         assertThat(result)
@@ -142,7 +142,7 @@ class AttributeMapperTest {
         List<AttributeDefinition> attributeDefinitions = null;
 
         // Act
-        List<ru.sultanyarov.configurator.domain.dto.AttributeDefinition> result = attributeMapper.toDtoList(attributeDefinitions);
+        List<ru.sultanyarov.configurator.domain.dto.AttributeDefinition> result = attributeDefinitionMapper.toDtoList(attributeDefinitions);
 
         // Assert
         assertThat(result).isNull();

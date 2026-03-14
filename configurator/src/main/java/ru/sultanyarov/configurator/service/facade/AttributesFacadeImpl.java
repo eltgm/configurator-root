@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 import ru.sultanyarov.configurator.domain.dto.CreateAttributeDefinitionRequest;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
 import ru.sultanyarov.configurator.service.core.AttributeService;
-import ru.sultanyarov.configurator.service.mapper.AttributeMapper;
+import ru.sultanyarov.configurator.service.mapper.AttributeDefinitionMapper;
 
 import java.util.List;
 
@@ -17,13 +17,13 @@ import static org.springframework.util.StringUtils.hasText;
 @RequiredArgsConstructor
 public class AttributesFacadeImpl implements AttributesFacade {
     private final AttributeService attributeService;
-    private final AttributeMapper attributeMapper;
+    private final AttributeDefinitionMapper attributeDefinitionMapper;
 
     @Override
     public ru.sultanyarov.configurator.domain.dto.AttributeDefinition updateAttribute(Long id, CreateAttributeDefinitionRequest createAttributeDefinitionRequest) {
         log.info("Start update attribute by id: {}", id);
         validateCreateAttributeDefinitionRequest(createAttributeDefinitionRequest);
-        return attributeMapper.toDto(
+        return attributeDefinitionMapper.toDto(
                 attributeService.update(id, createAttributeDefinitionRequest)
         );
     }
@@ -33,8 +33,8 @@ public class AttributesFacadeImpl implements AttributesFacade {
         log.info("Start create attribute");
         validateCreateAttributeDefinitionRequest(createAttributeDefinitionRequest);
 
-        return attributeMapper.toDto(
-                attributeService.create(attributeMapper.toModel(componentTypeId, createAttributeDefinitionRequest))
+        return attributeDefinitionMapper.toDto(
+                attributeService.create(attributeDefinitionMapper.toModel(componentTypeId, createAttributeDefinitionRequest))
         );
     }
 
@@ -52,7 +52,7 @@ public class AttributesFacadeImpl implements AttributesFacade {
     @Override
     public List<ru.sultanyarov.configurator.domain.dto.AttributeDefinition> getAttributesByComponentTypeId(Long componentTypeId) {
         log.info("Start get attributes by component type id: {}", componentTypeId);
-        return attributeMapper.toDtoList(
+        return attributeDefinitionMapper.toDtoList(
                 attributeService.getByComponentTypeId(componentTypeId)
         );
     }

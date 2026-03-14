@@ -65,7 +65,7 @@ public class ComponentTypeServiceImpl implements ComponentTypeService {
                 );
     }
 
-    private void ensureNotExists(Long id) {
+    private void validateIsNotExists(Long id) {
         if (!componentTypeRepository.existsById(id)) {
             throw new NotFoundException("ComponentType with id {} does not exist", id);
         }
@@ -74,13 +74,13 @@ public class ComponentTypeServiceImpl implements ComponentTypeService {
     @Override
     public void deleteById(Long id) {
         log.debug("Deleting component type with id: {}", id);
-        ensureNotExists(id);
-        ensureNoRelatedEntities(id);
+        validateIsNotExists(id);
+        validateHasNotRelatedEntities(id);
 
         componentTypeRepository.deleteComponentTypeById(id);
     }
 
-    private void ensureNoRelatedEntities(Long id) {
+    private void validateHasNotRelatedEntities(Long id) {
         if (attributesRepository.hasByComponentTypeId(id)) {//|| componentRepository.hasByComponentyTypeId(id)) { //TODO after resolving con1-36
             throw new EntityHasRelatedEntitiesException("Cannot delete component type with id {} because it has related entities", id);
         }

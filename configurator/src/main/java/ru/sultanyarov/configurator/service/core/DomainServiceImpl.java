@@ -36,7 +36,7 @@ public class DomainServiceImpl implements DomainService {
     public void deleteById(Long id) {
         log.debug("delete domain by id {}", id);
         Domain domain = getById(id);
-        ensureNoRelatedEntities(domain);
+        validateNoRelatedEntities(domain);
 
         domainRepository.deleteDomainById(id);
     }
@@ -45,7 +45,7 @@ public class DomainServiceImpl implements DomainService {
     @Transactional
     public Domain create(Domain newDomain) {
         log.debug("create domain {}", newDomain);
-        ensureNotExistsByName(newDomain);
+        validateIsNotExistsByName(newDomain);
 
         return domainRepository.createDomain(newDomain)
                 .orElseThrow(() -> new BusinessException("Failed to create domain"));
@@ -57,20 +57,20 @@ public class DomainServiceImpl implements DomainService {
         log.debug("update domain {} with id {}", updatedDomain, id);
         Domain existedDomain = getById(id);
         if (!Objects.equals(existedDomain.name(), updatedDomain.name())) {
-            ensureNotExistsByName(updatedDomain);
+            validateIsNotExistsByName(updatedDomain);
         }
 
         return domainRepository.updateDomain(id, updatedDomain)
                 .orElseThrow(() -> new BusinessException("Failed to update domain with id {}", id));
     }
 
-    private void ensureNotExistsByName(Domain domain) {
+    private void validateIsNotExistsByName(Domain domain) {
         if (domainRepository.existsByName(domain.name())) {
             throw new EntityAlreadyExistsException("Domain with name {} already exists", domain.name());
         }
     }
 
-    private void ensureNoRelatedEntities(Domain domain) {
+    private void validateNoRelatedEntities(Domain domain) {
         //TODO after resolving con1-36
     }
 }

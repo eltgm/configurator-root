@@ -11,11 +11,15 @@ import java.util.List;
 public interface ComponentTypeMapper {
     ComponentType toDto(ru.sultanyarov.configurator.domain.model.ComponentType componentType);
 
+    @Mapping(target = "components", ignore = true)
+    @Mapping(target = "attributeDefinitions", ignore = true)
     @Mapping(target = "domain", ignore = true)
     @Mapping(target = "createdAt", expression = "java(java.time.LocalDateTime.now())")
     @Mapping(target = "domainId", ignore = true)
     ru.sultanyarov.configurator.domain.model.ComponentType toEntity(Long id, CreateComponentTypeRequest createComponentTypeRequest);
 
+    @Mapping(target = "components", ignore = true)
+    @Mapping(target = "attributeDefinitions", ignore = true)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "domain", ignore = true)
     @Mapping(target = "createdAt", expression = "java(java.time.LocalDateTime.now())")

@@ -9,7 +9,7 @@ import ru.sultanyarov.configurator.domain.model.DataType;
 import java.util.List;
 
 @Mapper(componentModel = "spring")
-public interface AttributeMapper {
+public interface AttributeDefinitionMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     ru.sultanyarov.configurator.domain.model.AttributeDefinition toModel(Long componentTypeId, CreateAttributeDefinitionRequest createAttributeDefinitionRequest);
