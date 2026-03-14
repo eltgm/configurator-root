@@ -2,7 +2,8 @@ package ru.sultanyarov.configurator.service.mapper;
 
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
-import ru.sultanyarov.configurator.domain.dto.CreateAttributeDefinitionRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateAttributeDefinitionRequest;
+import ru.sultanyarov.configurator.application.mapper.AttributeDefinitionMapper;
 import ru.sultanyarov.configurator.domain.model.AttributeDefinition;
 import ru.sultanyarov.configurator.domain.model.DataType;
 import ru.sultanyarov.configurator.test.data.AttributeDefinitionTestData;
@@ -11,7 +12,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-//TODO перед коммитом сделать рефакторинг
 class AttributeDefinitionMapperTest {
 
     private final AttributeDefinitionMapper attributeDefinitionMapper = Mappers.getMapper(AttributeDefinitionMapper.class);
@@ -69,7 +69,7 @@ class AttributeDefinitionMapperTest {
         AttributeDefinition attributeDefinition = AttributeDefinitionTestData.attributeDefinitionWithId(1L);
 
         // Act
-        ru.sultanyarov.configurator.domain.dto.AttributeDefinition result = attributeDefinitionMapper.toDto(attributeDefinition);
+        ru.sultanyarov.configurator.api.inbounds.rest.dto.AttributeDefinition result = attributeDefinitionMapper.toDto(attributeDefinition);
 
         // Assert
         assertThat(result)
@@ -91,7 +91,7 @@ class AttributeDefinitionMapperTest {
         AttributeDefinition attributeDefinition = null;
 
         // Act
-        ru.sultanyarov.configurator.domain.dto.AttributeDefinition result = attributeDefinitionMapper.toDto(attributeDefinition);
+        ru.sultanyarov.configurator.api.inbounds.rest.dto.AttributeDefinition result = attributeDefinitionMapper.toDto(attributeDefinition);
 
         // Assert
         assertThat(result).isNull();
@@ -106,7 +106,7 @@ class AttributeDefinitionMapperTest {
         );
 
         // Act
-        List<ru.sultanyarov.configurator.domain.dto.AttributeDefinition> result = attributeDefinitionMapper.toDtoList(attributeDefinitions);
+        List<ru.sultanyarov.configurator.api.inbounds.rest.dto.AttributeDefinition> result = attributeDefinitionMapper.toDtoList(attributeDefinitions);
 
         // Assert
         assertThat(result)
@@ -128,7 +128,7 @@ class AttributeDefinitionMapperTest {
         List<AttributeDefinition> attributeDefinitions = List.of();
 
         // Act
-        List<ru.sultanyarov.configurator.domain.dto.AttributeDefinition> result = attributeDefinitionMapper.toDtoList(attributeDefinitions);
+        List<ru.sultanyarov.configurator.api.inbounds.rest.dto.AttributeDefinition> result = attributeDefinitionMapper.toDtoList(attributeDefinitions);
 
         // Assert
         assertThat(result)
@@ -142,10 +142,35 @@ class AttributeDefinitionMapperTest {
         List<AttributeDefinition> attributeDefinitions = null;
 
         // Act
-        List<ru.sultanyarov.configurator.domain.dto.AttributeDefinition> result = attributeDefinitionMapper.toDtoList(attributeDefinitions);
+        List<ru.sultanyarov.configurator.api.inbounds.rest.dto.AttributeDefinition> result = attributeDefinitionMapper.toDtoList(attributeDefinitions);
 
         // Assert
         assertThat(result).isNull();
+    }
+
+    @Test
+    void updateModel_shouldMapAllMutableFieldsAndPreserveIdentityFields() {
+        AttributeDefinition existing = AttributeDefinitionTestData.attributeDefinitionWithId(55L);
+        CreateAttributeDefinitionRequest request = createCreateAttributeDefinitionRequest(
+                "updated_attribute",
+                "Updated Attribute",
+                DataType.ENUM,
+                List.of("A", "B"),
+                false,
+                9
+        );
+
+        AttributeDefinition result = attributeDefinitionMapper.updateModel(existing, request);
+
+        assertThat(result.id()).isEqualTo(existing.id());
+        assertThat(result.componentTypeId()).isEqualTo(existing.componentTypeId());
+        assertThat(result.createdAt()).isEqualTo(existing.createdAt());
+        assertThat(result.name()).isEqualTo("updated_attribute");
+        assertThat(result.label()).isEqualTo("Updated Attribute");
+        assertThat(result.dataType()).isEqualTo(DataType.ENUM);
+        assertThat(result.enumValues()).containsExactlyInAnyOrder("A", "B");
+        assertThat(result.isRequired()).isFalse();
+        assertThat(result.orderIndex()).isEqualTo(9);
     }
 
     private CreateAttributeDefinitionRequest createCreateAttributeDefinitionRequest(

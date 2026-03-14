@@ -2,9 +2,10 @@ package ru.sultanyarov.configurator.service.mapper;
 
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
-import ru.sultanyarov.configurator.domain.dto.CreateDomainRequest;
-import ru.sultanyarov.configurator.domain.dto.DomainPage;
-import ru.sultanyarov.configurator.domain.dto.UpdateDomainRequest;
+import ru.sultanyarov.configurator.application.mapper.DomainMapper;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateDomainRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.DomainPage;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateDomainRequest;
 import ru.sultanyarov.configurator.domain.model.Domain;
 import ru.sultanyarov.configurator.domain.model.Page;
 
@@ -62,7 +63,7 @@ class DomainMapperTest {
         Domain domain = createDomain("test-domain", "test description");
 
         // Act
-        ru.sultanyarov.configurator.domain.dto.Domain result = domainMapper.toDomainDto(domain);
+        ru.sultanyarov.configurator.api.inbounds.rest.dto.Domain result = domainMapper.toDomainDto(domain);
 
         // Assert
         assertThat(result)
@@ -81,7 +82,7 @@ class DomainMapperTest {
         Domain domain = null;
 
         // Act
-        ru.sultanyarov.configurator.domain.dto.Domain result = domainMapper.toDomainDto(domain);
+        ru.sultanyarov.configurator.api.inbounds.rest.dto.Domain result = domainMapper.toDomainDto(domain);
 
         // Assert
         assertThat(result).isNull();

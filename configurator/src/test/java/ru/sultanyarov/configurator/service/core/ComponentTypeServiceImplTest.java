@@ -5,15 +5,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ru.sultanyarov.configurator.application.port.out.AttributeRepository;
+import ru.sultanyarov.configurator.application.port.out.ComponentRepository;
+import ru.sultanyarov.configurator.application.port.out.ComponentTypeRepository;
+import ru.sultanyarov.configurator.application.port.out.DomainRepository;
+import ru.sultanyarov.configurator.application.service.ComponentTypeServiceImpl;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
 import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
 import ru.sultanyarov.configurator.domain.exception.EntityHasRelatedEntitiesException;
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
 import ru.sultanyarov.configurator.domain.model.ComponentType;
 import ru.sultanyarov.configurator.domain.model.Domain;
-import ru.sultanyarov.configurator.domain.repository.AttributeRepository;
-import ru.sultanyarov.configurator.domain.repository.ComponentTypeRepository;
-import ru.sultanyarov.configurator.domain.repository.DomainRepository;
 import ru.sultanyarov.configurator.test.data.ComponentTypeTestData;
 import ru.sultanyarov.configurator.test.data.DomainTestData;
 
@@ -38,6 +40,9 @@ class ComponentTypeServiceImplTest {
 
     @Mock
     private AttributeRepository attributesRepository;
+
+    @Mock
+    private ComponentRepository componentRepository;
 
     @InjectMocks
     private ComponentTypeServiceImpl componentTypeService;

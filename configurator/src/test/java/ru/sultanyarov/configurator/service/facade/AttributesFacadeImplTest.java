@@ -5,10 +5,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ru.sultanyarov.configurator.domain.dto.AttributeDefinition;
-import ru.sultanyarov.configurator.domain.dto.CreateAttributeDefinitionRequest;
-import ru.sultanyarov.configurator.service.core.AttributeService;
-import ru.sultanyarov.configurator.service.mapper.AttributeDefinitionMapper;
+import ru.sultanyarov.configurator.application.facade.AttributesFacadeImpl;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.AttributeDefinition;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateAttributeDefinitionRequest;
+import ru.sultanyarov.configurator.application.service.AttributeService;
+import ru.sultanyarov.configurator.application.mapper.AttributeDefinitionMapper;
 import ru.sultanyarov.configurator.test.data.AttributeDefinitionTestData;
 
 import java.util.List;

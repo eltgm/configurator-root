@@ -1,0 +1,82 @@
+package ru.sultanyarov.configurator.application.service;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import ru.sultanyarov.configurator.application.port.out.ComponentTypeRepository;
+import ru.sultanyarov.configurator.application.port.out.DomainRepository;
+import ru.sultanyarov.configurator.domain.exception.BusinessException;
+import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
+import ru.sultanyarov.configurator.domain.exception.EntityHasRelatedEntitiesException;
+import ru.sultanyarov.configurator.domain.exception.NotFoundException;
+import ru.sultanyarov.configurator.domain.model.Domain;
+import ru.sultanyarov.configurator.domain.model.Page;
+
+import java.util.Objects;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class DomainServiceImpl implements DomainService {
+    private final DomainRepository domainRepository;
+    private final ComponentTypeRepository componentTypeRepository;
+
+    @Override
+    public Page<Domain> getPage(int page, int pageSize) {
+        log.debug("get domains page {} with page size {}", page, pageSize);
+        return domainRepository.getDomains(page, pageSize);
+    }
+
+    @Override
+    public Domain getById(Long id) {
+        log.debug("get domain by id {}", id);
+        return domainRepository.getDomainById(id)
+                .orElseThrow(() -> new NotFoundException("Domain with id {} not found", id));
+    }
+
+    @Override
+    public void deleteById(Long id) {
+        log.debug("delete domain by id {}", id);
+        Domain domain = getById(id);
+        validateNoRelatedEntities(domain);
+
+        domainRepository.deleteDomainById(id);
+    }
+
+    @Override
+    @Transactional
+    public Domain create(Domain newDomain) {
+        log.debug("create domain {}", newDomain);
+        validateIsNotExistsByName(newDomain);
+
+        return domainRepository.createDomain(newDomain)
+                .orElseThrow(() -> new BusinessException("Failed to create domain"));
+    }
+
+    @Override
+    @Transactional
+    public Domain update(Long id, Domain updatedDomain) {
+        log.debug("update domain {} with id {}", updatedDomain, id);
+        Domain existedDomain = getById(id);
+        if (!Objects.equals(existedDomain.name(), updatedDomain.name())) {
+            validateIsNotExistsByName(updatedDomain);
+        }
+
+        return domainRepository.updateDomain(id, updatedDomain)
+                .orElseThrow(() -> new BusinessException("Failed to update domain with id {}", id));
+    }
+
+    private void validateIsNotExistsByName(Domain domain) {
+        if (domainRepository.existsByName(domain.name())) {
+            throw new EntityAlreadyExistsException("Domain with name {} already exists", domain.name());
+        }
+    }
+
+    private void validateNoRelatedEntities(Domain domain) {
+        Long id = domain.id();
+        if (componentTypeRepository.hasByDomainId(id)) {
+            throw new EntityHasRelatedEntitiesException("Cannot delete domain with id {} because it has related entities", id);
+        }
+    }
+}

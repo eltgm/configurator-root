@@ -1,6 +1,6 @@
 package ru.sultanyarov.configurator.domain.model;
 
-import ru.sultanyarov.configurator.domain.dto.CreateAttributeDefinitionRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateAttributeDefinitionRequest;
 
 public enum DataType {
     STRING, NUMBER, BOOLEAN, ENUM;

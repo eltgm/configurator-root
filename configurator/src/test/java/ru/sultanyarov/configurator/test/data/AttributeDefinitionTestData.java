@@ -4,7 +4,7 @@ import ru.sultanyarov.configurator.domain.model.AttributeDefinition;
 import ru.sultanyarov.configurator.domain.model.DataType;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class AttributeDefinitionTestData {
@@ -87,7 +87,7 @@ public class AttributeDefinitionTestData {
                 "enum_attribute",
                 "Enum Attribute",
                 DataType.ENUM,
-                List.of("VALUE1", "VALUE2", "VALUE3"),
+                Set.of("VALUE1", "VALUE2", "VALUE3"),
                 true,
                 1,
                 LocalDateTime.now()

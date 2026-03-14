@@ -7,13 +7,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import ru.sultanyarov.configurator.domain.dto.ComponentType;
-import ru.sultanyarov.configurator.domain.dto.CreateComponentTypeRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.controller.ComponentTypeController;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentType;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateComponentTypeRequest;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
 import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
 import ru.sultanyarov.configurator.domain.exception.EntityHasRelatedEntitiesException;
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
-import ru.sultanyarov.configurator.service.facade.ComponentTypeFacade;
+import ru.sultanyarov.configurator.application.facade.ComponentTypeFacade;
 
 import java.util.List;
 

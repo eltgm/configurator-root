@@ -6,9 +6,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
-import ru.sultanyarov.configurator.domain.dto.AttributeDefinition;
-import ru.sultanyarov.configurator.domain.dto.CreateAttributeDefinitionRequest;
-import ru.sultanyarov.configurator.service.facade.AttributesFacade;
+import ru.sultanyarov.configurator.api.inbounds.rest.controller.AttributesController;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.AttributeDefinition;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateAttributeDefinitionRequest;
+import ru.sultanyarov.configurator.application.facade.AttributesFacade;
 
 import java.util.List;
 

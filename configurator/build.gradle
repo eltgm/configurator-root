@@ -8,6 +8,7 @@ plugins {
     id 'org.springframework.boot' version '3.4.11'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'java'
+    id 'jacoco'
     id 'org.openapi.generator' version '7.11.0'
     id 'org.jooq.jooq-codegen-gradle' version "3.19.28"
 }
@@ -34,6 +35,8 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.spockframework:spock-core:2.4-M4-groovy-4.0'
     testImplementation 'org.spockframework:spock-spring:2.4-M4-groovy-4.0'
+    testImplementation 'org.springframework:spring-jdbc'
+    testImplementation 'com.h2database:h2'
 
     testImplementation 'org.testcontainers:postgresql:1.20.2'
     testImplementation 'org.testcontainers:junit-jupiter:1.20.2'
@@ -47,4 +50,60 @@ java {
 
 tasks.named('compileJava') {
     dependsOn tasks.named('openApiGenerate'), tasks.named('jooqCodegen')
+}
+
+jacoco {
+    toolVersion = '0.8.12'
+}
+
+tasks.named('test') {
+    finalizedBy tasks.named('jacocoTestReport'), tasks.named('jacocoTestCoverageVerification')
+}
+
+tasks.named('jacocoTestReport') {
+    dependsOn tasks.named('test')
+    reports {
+        xml.required = true
+        html.required = true
+    }
+
+    def excludedCoveragePatterns = [
+            '**/build/**',
+            '**/common/util/**',
+            '**/domain/**',
+            '**/domain/entity/jooq/**',
+            '**/api/inbounds/rest/dto/**',
+            '**/api/inbounds/rest/*Api*',
+            '**/api/ApiUtil*',
+            '**/infrastructure/persistence/jooq/config/**'
+    ]
+    classDirectories.setFrom(sourceSets.main.output.asFileTree.matching {
+        exclude excludedCoveragePatterns
+    })
+}
+
+tasks.named('jacocoTestCoverageVerification') {
+    dependsOn tasks.named('jacocoTestReport')
+
+    def excludedCoveragePatterns = [
+            '**/build/**',
+            '**/common/util/**',
+            '**/domain/**',
+            '**/domain/entity/jooq/**',
+            '**/api/inbounds/rest/dto/**',
+            '**/api/inbounds/rest/*Api*',
+            '**/api/ApiUtil*',
+            '**/infrastructure/persistence/jooq/config/**'
+    ]
+    classDirectories.setFrom(sourceSets.main.output.asFileTree.matching {
+        exclude excludedCoveragePatterns
+    })
+
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.90
+            }
+        }
+    }
 }
