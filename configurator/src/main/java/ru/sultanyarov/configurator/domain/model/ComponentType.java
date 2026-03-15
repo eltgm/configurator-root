@@ -3,9 +3,10 @@ package ru.sultanyarov.configurator.domain.model;
 import lombok.Builder;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Builder
 public record ComponentType(Long id, Long domainId, String name, String code, String description, Integer orderIndex,
-                            Domain domain,
+                            Domain domain, List<AttributeDefinition> attributeDefinitions, List<Component> components,
                             LocalDateTime createdAt) {
 }

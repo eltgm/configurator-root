@@ -2,7 +2,8 @@ package ru.sultanyarov.configurator.service.mapper;
 
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
-import ru.sultanyarov.configurator.domain.dto.CreateComponentTypeRequest;
+import ru.sultanyarov.configurator.application.mapper.ComponentTypeMapper;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateComponentTypeRequest;
 import ru.sultanyarov.configurator.domain.model.ComponentType;
 import ru.sultanyarov.configurator.test.data.ComponentTypeTestData;
 
@@ -20,7 +21,7 @@ class ComponentTypeMapperTest {
         ComponentType componentType = ComponentTypeTestData.componentTypeWithId(1L);
 
         // Act
-        ru.sultanyarov.configurator.domain.dto.ComponentType result = componentTypeMapper.toDto(componentType);
+        ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentType result = componentTypeMapper.toDto(componentType);
 
         // Assert
         assertThat(result)
@@ -41,7 +42,7 @@ class ComponentTypeMapperTest {
         ComponentType componentType = null;
 
         // Act
-        ru.sultanyarov.configurator.domain.dto.ComponentType result = componentTypeMapper.toDto(componentType);
+        ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentType result = componentTypeMapper.toDto(componentType);
 
         // Assert
         assertThat(result).isNull();
@@ -56,7 +57,7 @@ class ComponentTypeMapperTest {
         );
 
         // Act
-        List<ru.sultanyarov.configurator.domain.dto.ComponentType> result = componentTypeMapper.toDtoList(componentTypes);
+        List<ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentType> result = componentTypeMapper.toDtoList(componentTypes);
 
         // Assert
         assertThat(result)
@@ -78,7 +79,7 @@ class ComponentTypeMapperTest {
         List<ComponentType> componentTypes = List.of();
 
         // Act
-        List<ru.sultanyarov.configurator.domain.dto.ComponentType> result = componentTypeMapper.toDtoList(componentTypes);
+        List<ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentType> result = componentTypeMapper.toDtoList(componentTypes);
 
         // Assert
         assertThat(result)
@@ -92,7 +93,7 @@ class ComponentTypeMapperTest {
         List<ComponentType> componentTypes = null;
 
         // Act
-        List<ru.sultanyarov.configurator.domain.dto.ComponentType> result = componentTypeMapper.toDtoList(componentTypes);
+        List<ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentType> result = componentTypeMapper.toDtoList(componentTypes);
 
         // Assert
         assertThat(result).isNull();

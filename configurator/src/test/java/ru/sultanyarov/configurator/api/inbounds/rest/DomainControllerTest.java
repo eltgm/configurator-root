@@ -7,11 +7,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import ru.sultanyarov.configurator.domain.dto.CreateDomainRequest;
-import ru.sultanyarov.configurator.domain.dto.Domain;
-import ru.sultanyarov.configurator.domain.dto.DomainPage;
-import ru.sultanyarov.configurator.domain.dto.UpdateDomainRequest;
-import ru.sultanyarov.configurator.service.facade.DomainFacade;
+import ru.sultanyarov.configurator.api.inbounds.rest.controller.DomainController;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateDomainRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.Domain;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.DomainPage;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateDomainRequest;
+import ru.sultanyarov.configurator.application.facade.DomainFacade;
 
 import java.time.LocalDateTime;
 import java.util.List;

@@ -8,7 +8,7 @@ openApiGenerate {
     inputSpec = "$rootDir/specs/configurator-api.yaml".toString()
     outputDir = "$buildDir/generated/openapi".toString()
     apiPackage = 'ru.sultanyarov.configurator.api.inbounds.rest'
-    modelPackage = 'ru.sultanyarov.configurator.domain.dto'
+    modelPackage = 'ru.sultanyarov.configurator.api.inbounds.rest.dto'
     invokerPackage = 'ru.sultanyarov.configurator.api'
     configOptions = [
             dateLibrary         : "java8-localdatetime",

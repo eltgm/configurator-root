@@ -5,11 +5,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ru.sultanyarov.configurator.application.port.out.ComponentTypeRepository;
+import ru.sultanyarov.configurator.application.port.out.DomainRepository;
+import ru.sultanyarov.configurator.application.service.DomainServiceImpl;
 import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
 import ru.sultanyarov.configurator.domain.model.Domain;
 import ru.sultanyarov.configurator.domain.model.Page;
-import ru.sultanyarov.configurator.domain.repository.DomainRepository;
 import ru.sultanyarov.configurator.test.data.DomainTestData;
 
 import java.util.List;
@@ -28,6 +30,9 @@ import static org.mockito.Mockito.when;
 class DomainServiceImplTest {
     @Mock
     private DomainRepository domainRepository;
+
+    @Mock
+    private ComponentTypeRepository componentTypeRepository;
 
     @InjectMocks
     private DomainServiceImpl domainService;

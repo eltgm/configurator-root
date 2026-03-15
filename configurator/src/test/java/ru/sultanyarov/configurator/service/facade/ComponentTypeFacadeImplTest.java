@@ -5,13 +5,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ru.sultanyarov.configurator.domain.dto.ComponentType;
-import ru.sultanyarov.configurator.domain.dto.CreateComponentTypeRequest;
+import ru.sultanyarov.configurator.application.facade.ComponentTypeFacadeImpl;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentType;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateComponentTypeRequest;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
 import ru.sultanyarov.configurator.domain.exception.EntityHasRelatedEntitiesException;
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
-import ru.sultanyarov.configurator.service.core.ComponentTypeService;
-import ru.sultanyarov.configurator.service.mapper.ComponentTypeMapper;
+import ru.sultanyarov.configurator.application.service.ComponentTypeService;
+import ru.sultanyarov.configurator.application.mapper.ComponentTypeMapper;
 import ru.sultanyarov.configurator.test.data.ComponentTypeTestData;
 
 import java.util.List;

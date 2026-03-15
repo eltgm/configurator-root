@@ -5,14 +5,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ru.sultanyarov.configurator.domain.dto.CreateAttributeDefinitionRequest;
+import ru.sultanyarov.configurator.application.service.AttributeServiceImpl;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateAttributeDefinitionRequest;
 import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
 import ru.sultanyarov.configurator.domain.model.AttributeDefinition;
-import ru.sultanyarov.configurator.domain.repository.AttributeRepository;
-import ru.sultanyarov.configurator.domain.repository.ComponentTypeRepository;
-import ru.sultanyarov.configurator.service.mapper.AttributeMapper;
+import ru.sultanyarov.configurator.application.port.out.AttributeRepository;
+import ru.sultanyarov.configurator.application.port.out.ComponentTypeRepository;
+import ru.sultanyarov.configurator.application.mapper.AttributeDefinitionMapper;
 import ru.sultanyarov.configurator.test.data.AttributeDefinitionTestData;
 
 import java.util.List;
@@ -36,7 +37,7 @@ class AttributeServiceImplTest {
     private ComponentTypeRepository componentTypeRepository;
 
     @Mock
-    private AttributeMapper attributeMapper;
+    private AttributeDefinitionMapper attributeDefinitionMapper;
 
     @InjectMocks
     private AttributeServiceImpl attributeService;
@@ -138,7 +139,7 @@ class AttributeServiceImplTest {
         CreateAttributeDefinitionRequest createAttributeDefinitionRequest = new CreateAttributeDefinitionRequest();
 
         when(attributeRepository.getById(id)).thenReturn(Optional.of(existingAttributeDefinition));
-        when(attributeMapper.updateModel(existingAttributeDefinition, createAttributeDefinitionRequest)).thenReturn(updatedAttributeDefinition);
+        when(attributeDefinitionMapper.updateModel(existingAttributeDefinition, createAttributeDefinitionRequest)).thenReturn(updatedAttributeDefinition);
         when(attributeRepository.hasByComponentTypeIdAndName(updatedAttributeDefinition.componentTypeId(), updatedAttributeDefinition.name())).thenReturn(false);
         when(attributeRepository.updateAttribute(id, updatedAttributeDefinition)).thenReturn(Optional.of(updatedAttributeDefinition));
 
@@ -176,7 +177,7 @@ class AttributeServiceImplTest {
         CreateAttributeDefinitionRequest createAttributeDefinitionRequest = new CreateAttributeDefinitionRequest();
 
         when(attributeRepository.getById(id)).thenReturn(Optional.of(existingAttributeDefinition));
-        when(attributeMapper.updateModel(existingAttributeDefinition, createAttributeDefinitionRequest)).thenReturn(updatedAttributeDefinition);
+        when(attributeDefinitionMapper.updateModel(existingAttributeDefinition, createAttributeDefinitionRequest)).thenReturn(updatedAttributeDefinition);
         when(attributeRepository.hasByComponentTypeIdAndName(updatedAttributeDefinition.componentTypeId(), updatedAttributeDefinition.name())).thenReturn(true);
 
         // Act & Assert
