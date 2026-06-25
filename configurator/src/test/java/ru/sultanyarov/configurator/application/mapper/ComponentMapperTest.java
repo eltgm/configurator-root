@@ -3,8 +3,10 @@ package ru.sultanyarov.configurator.application.mapper;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.AttributeValueInput;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateComponentRequest;
 import ru.sultanyarov.configurator.domain.model.Component;
+import ru.sultanyarov.configurator.domain.model.Page;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -73,5 +75,29 @@ class ComponentMapperTest {
         assertThat(dto.getAttributes().get(0).getName()).isEqualTo("force");
         assertThat(dto.getAttributes().get(0).getLabel()).isEqualTo("Force");
         assertThat(dto.getAttributes().get(0).getValue()).isEqualTo("42");
+    }
+
+    @Test
+    void toComponentPageDto_shouldMapComponentsAndPaginationInformation() {
+        Component component = Component.builder()
+                .id(1L)
+                .componentTypeId(10L)
+                .name("Switch")
+                .archived(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        Page<Component> page = new Page<>(List.of(component), 2, 5, 11);
+
+        ComponentPage result = mapper.toComponentPageDto(page);
+
+        assertThat(result.getPage()).isEqualTo(2);
+        assertThat(result.getSize()).isEqualTo(5);
+        assertThat(result.getTotalItems()).isEqualTo(11);
+        assertThat(result.getItems()).singleElement()
+                .satisfies(item -> {
+                    assertThat(item.getId()).isEqualTo(1L);
+                    assertThat(item.getComponentTypeId()).isEqualTo(10L);
+                    assertThat(item.getName()).isEqualTo("Switch");
+                });
     }
 }

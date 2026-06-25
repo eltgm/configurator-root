@@ -6,9 +6,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.Component;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateComponentRequest;
 import ru.sultanyarov.configurator.application.mapper.ComponentMapper;
 import ru.sultanyarov.configurator.application.service.ComponentService;
+import ru.sultanyarov.configurator.domain.model.Page;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
@@ -44,5 +48,22 @@ class ComponentFacadeImplTest {
         verify(componentMapper).toEntity(request);
         verify(componentService).create(entity);
         verify(componentMapper).toDto(createdEntity);
+    }
+
+    @Test
+    void getComponentsByDomainId_shouldDelegateSearchToServiceAndMapPageToDto() {
+        Page<ru.sultanyarov.configurator.domain.model.Component> page =
+                new Page<>(List.of(), 0, 10, 0);
+        ComponentPage pageDto = new ComponentPage();
+
+        when(componentService.getByPageByDomainId(1L, 2L, "name", 0, 10))
+                .thenReturn(page);
+        when(componentMapper.toComponentPageDto(page)).thenReturn(pageDto);
+
+        ComponentPage result = componentFacade.getComponentsByDomainId(1L, 2L, "name", 0, 10);
+
+        assertThat(result).isSameAs(pageDto);
+        verify(componentService).getByPageByDomainId(1L, 2L, "name", 0, 10);
+        verify(componentMapper).toComponentPageDto(page);
     }
 }
