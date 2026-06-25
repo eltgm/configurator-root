@@ -6,10 +6,12 @@ import org.springframework.stereotype.Service;
 import ru.sultanyarov.configurator.application.port.out.ComponentRepository;
 import ru.sultanyarov.configurator.application.validator.ComponentValidator;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
+import ru.sultanyarov.configurator.domain.exception.ValidationException;
 import ru.sultanyarov.configurator.domain.model.AttributeDefinition;
 import ru.sultanyarov.configurator.domain.model.AttributeValue;
 import ru.sultanyarov.configurator.domain.model.Component;
 import ru.sultanyarov.configurator.domain.model.ComponentType;
+import ru.sultanyarov.configurator.domain.model.Domain;
 import ru.sultanyarov.configurator.domain.model.Page;
 
 import java.util.List;
@@ -25,6 +27,7 @@ public class ComponentServiceImpl implements ComponentService {
     private final ComponentTypeService componentTypeService;
     private final AttributeValueService attributeValueService;
     private final ComponentValidator componentValidator;
+    private final DomainService domainService;
 
     @Override
     public Component create(Component componentToCreate) {
@@ -89,5 +92,26 @@ public class ComponentServiceImpl implements ComponentService {
     @Override
     public Page<Component> getPage(int page, int pageSize) {
         return null;
+    }
+
+    @Override
+    public Page<Component> getByPageByDomainId(Long domainId, Long componentTypeId, String name, Integer page, Integer size) {
+        log.debug("get component by domain id {}, component type id {}", domainId, componentTypeId);
+        Domain domain = domainService.getById(domainId);
+        validateComponentType(componentTypeId, domain);
+
+        return componentRepository.findPageByDomainIdComponentTypeIdName(domainId, componentTypeId, name, page, size);
+    }
+
+    private void validateComponentType(Long componentTypeId, Domain domain) {
+        if (componentTypeId != null) {
+            boolean isComponentTypeBelongsToDomain = domain.componentTypes()
+                    .stream()
+                    .anyMatch(componentType -> componentType.id().equals(componentTypeId));
+
+            if (!isComponentTypeBelongsToDomain) {
+                throw new ValidationException("Тип компонента не принадлежит указанному домену");
+            }
+        }
     }
 }

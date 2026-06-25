@@ -1,6 +1,7 @@
 package ru.sultanyarov.configurator.application.port.out;
 
 import ru.sultanyarov.configurator.domain.model.Component;
+import ru.sultanyarov.configurator.domain.model.Page;
 
 import java.util.Optional;
 
@@ -24,4 +25,16 @@ public interface ComponentRepository {
      * @return {@code true} if at least one component exists for the specified component type, {@code false} otherwise
      */
     boolean hasByComponentTypeId(Long id);
+
+    /**
+     * Retrieves a paginated list of components belonging to the specified domain.
+     *
+     * @param domainId        the unique identifier of the domain
+     * @param componentTypeId the optional unique identifier of the component type to filter by
+     * @param name            the optional component name to filter by
+     * @param page            the page number (0-based)
+     * @param size            the number of items per page
+     * @return a page containing components matching the specified filters and pagination information
+     */
+    Page<Component> findPageByDomainIdComponentTypeIdName(Long domainId, Long componentTypeId, String name, Integer page, Integer size);
 }

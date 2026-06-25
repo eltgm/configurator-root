@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.Component;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateComponentRequest;
 import ru.sultanyarov.configurator.application.mapper.ComponentMapper;
 import ru.sultanyarov.configurator.application.service.ComponentService;
@@ -22,6 +23,14 @@ public class ComponentFacadeImpl implements ComponentFacade {
                 componentService.create(
                         componentMapper.toEntity(createComponentRequest)
                 )
+        );
+    }
+
+    @Override
+    public ComponentPage getComponentsByDomainId(Long domainId, Long componentTypeId, String name, Integer page, Integer size) {
+        log.info("Getting components by domain");
+        return componentMapper.toComponentPageDto(
+                componentService.getByPageByDomainId(domainId, componentTypeId, name, page, size)
         );
     }
 }

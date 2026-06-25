@@ -8,7 +8,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ru.sultanyarov.configurator.application.port.out.ComponentRepository;
 import ru.sultanyarov.configurator.application.validator.ComponentValidator;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
-import ru.sultanyarov.configurator.domain.model.*;
+import ru.sultanyarov.configurator.domain.exception.ValidationException;
+import ru.sultanyarov.configurator.domain.model.AttributeDefinition;
+import ru.sultanyarov.configurator.domain.model.AttributeValue;
+import ru.sultanyarov.configurator.domain.model.Component;
+import ru.sultanyarov.configurator.domain.model.ComponentType;
+import ru.sultanyarov.configurator.domain.model.DataType;
+import ru.sultanyarov.configurator.domain.model.Domain;
+import ru.sultanyarov.configurator.domain.model.Page;
 
 import java.util.List;
 import java.util.Map;
@@ -16,8 +23,11 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,6 +44,9 @@ class ComponentServiceImplTest {
 
     @Mock
     private ComponentValidator componentValidator;
+
+    @Mock
+    private DomainService domainService;
 
     @InjectMocks
     private ComponentServiceImpl componentService;
@@ -90,6 +103,59 @@ class ComponentServiceImplTest {
         assertThatThrownBy(() -> componentService.create(componentToCreate))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Failed to create component");
+    }
+
+    @Test
+    void getByPageByDomainId_shouldDelegateSearchWithoutComponentTypeFilter() {
+        Domain domain = Domain.builder()
+                .id(1L)
+                .componentTypes(List.of())
+                .build();
+        Page<Component> page = new Page<>(List.of(), 0, 10, 0);
+
+        when(domainService.getById(1L)).thenReturn(domain);
+        when(componentRepository.findPageByDomainIdComponentTypeIdName(1L, null, "name", 0, 10))
+                .thenReturn(page);
+
+        Page<Component> result = componentService.getByPageByDomainId(1L, null, "name", 0, 10);
+
+        assertThat(result).isSameAs(page);
+        verify(domainService).getById(1L);
+        verify(componentRepository).findPageByDomainIdComponentTypeIdName(1L, null, "name", 0, 10);
+    }
+
+    @Test
+    void getByPageByDomainId_shouldDelegateSearchWhenComponentTypeBelongsToDomain() {
+        Domain domain = Domain.builder()
+                .id(1L)
+                .componentTypes(List.of(ComponentType.builder().id(2L).domainId(1L).build()))
+                .build();
+        Page<Component> page = new Page<>(List.of(), 1, 5, 0);
+
+        when(domainService.getById(1L)).thenReturn(domain);
+        when(componentRepository.findPageByDomainIdComponentTypeIdName(1L, 2L, null, 1, 5))
+                .thenReturn(page);
+
+        Page<Component> result = componentService.getByPageByDomainId(1L, 2L, null, 1, 5);
+
+        assertThat(result).isSameAs(page);
+        verify(componentRepository).findPageByDomainIdComponentTypeIdName(1L, 2L, null, 1, 5);
+    }
+
+    @Test
+    void getByPageByDomainId_shouldRejectComponentTypeFromAnotherDomain() {
+        Domain domain = Domain.builder()
+                .id(1L)
+                .componentTypes(List.of(ComponentType.builder().id(3L).domainId(1L).build()))
+                .build();
+
+        when(domainService.getById(1L)).thenReturn(domain);
+
+        assertThatThrownBy(() -> componentService.getByPageByDomainId(1L, 2L, null, 0, 10))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("Тип компонента не принадлежит указанному домену");
+
+        verifyNoInteractions(componentRepository);
     }
 
     @Test
