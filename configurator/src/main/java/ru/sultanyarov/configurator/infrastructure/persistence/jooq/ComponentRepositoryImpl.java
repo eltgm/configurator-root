@@ -71,6 +71,13 @@ public class ComponentRepositoryImpl implements ComponentRepository {
         );
     }
 
+    @Override
+    public Optional<Component> getById(Long id) {
+        return dslContext.selectFrom(COMPONENT)
+                .where(COMPONENT.ID.eq(id))
+                .fetchOptional(getComponentRecordMapper());
+    }
+
     private RecordMapper<org.jooq.Record, Component> getComponentRecordMapper() {
         return componentRecord -> Component.builder()
                 .id(componentRecord.get(COMPONENT.ID))

@@ -117,6 +117,24 @@ class ComponentRepositoryImplTest extends AbstractJooqRepositoryTest {
                 .containsExactly(3L);
     }
 
+    @Test
+    void shouldGetComponentById() {
+        insertComponent(1L, 1L, "Switch A");
+        insertComponent(2L, 2L, "Keycap");
+
+        assertThat(repository.getById(2L))
+                .hasValueSatisfying(component -> {
+                    assertThat(component.getId()).isEqualTo(2L);
+                    assertThat(component.getComponentTypeId()).isEqualTo(2L);
+                    assertThat(component.getName()).isEqualTo("Keycap");
+                });
+    }
+
+    @Test
+    void shouldReturnEmptyWhenComponentByIdDoesNotExist() {
+        assertThat(repository.getById(404L)).isEmpty();
+    }
+
     private void insertComponent(Long id, Long componentTypeId, String name) {
         dslContext.insertInto(Tables.COMPONENT)
                 .set(Tables.COMPONENT.ID, id)

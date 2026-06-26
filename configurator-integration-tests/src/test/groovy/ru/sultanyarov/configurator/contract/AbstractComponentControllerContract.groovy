@@ -1,9 +1,10 @@
 package ru.sultanyarov.configurator.contract
 
+
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.AttributeValueInput
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.Component
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentPage
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateComponentRequest
-import ru.sultanyarov.configurator.api.inbounds.rest.dto.AttributeValueInput
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ErrorResponse
 import spock.lang.Specification
 
@@ -213,6 +214,43 @@ abstract class AbstractComponentControllerContract extends Specification impleme
 
         then:
         result.status == 400
+    }
+
+    def "should get component by id successfully"() {
+        given:
+        runSqlScripts(
+                "/sql/clear-db.sql",
+                "/sql/insert-test-domain.sql",
+                "/sql/insert-test-component-type.sql",
+                "/sql/insert-test-component.sql"
+        )
+
+        when:
+        def result = get("/components/1")
+
+        then:
+        result.status == 200
+        def responseBody = objectMapper.readValue(result.body, Component)
+        responseBody.getId() == 1L
+        responseBody.getComponentTypeId() == 1L
+        responseBody.getName() == "Keychron Q1"
+        responseBody.getBrand() == "Keychron"
+        responseBody.getDescription() == "Existing component"
+        responseBody.getArchived() == false
+        responseBody.getCreatedAt() != null
+    }
+
+    def "should return not found when getting non-existent component"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        when:
+        def result = get("/components/999999")
+
+        then:
+        result.status == 404
+        def errorResponse = objectMapper.readValue(result.body, ErrorResponse)
+        errorResponse.getMessage() == "Component with id 999999 not found"
     }
 
     def "should get components by domain with pagination"() {
