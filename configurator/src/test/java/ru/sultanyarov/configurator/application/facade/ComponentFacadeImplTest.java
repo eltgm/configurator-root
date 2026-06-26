@@ -66,4 +66,20 @@ class ComponentFacadeImplTest {
         verify(componentService).getByPageByDomainId(1L, 2L, "name", 0, 10);
         verify(componentMapper).toComponentPageDto(page);
     }
+
+    @Test
+    void getComponentById_shouldDelegateRetrievalToServiceAndMapToDto() {
+        ru.sultanyarov.configurator.domain.model.Component entity =
+                ru.sultanyarov.configurator.domain.model.Component.builder().id(1L).build();
+        Component dto = new Component();
+
+        when(componentService.getById(1L)).thenReturn(entity);
+        when(componentMapper.toDto(entity)).thenReturn(dto);
+
+        Component result = componentFacade.getComponentById(1L);
+
+        assertThat(result).isSameAs(dto);
+        verify(componentService).getById(1L);
+        verify(componentMapper).toDto(entity);
+    }
 }

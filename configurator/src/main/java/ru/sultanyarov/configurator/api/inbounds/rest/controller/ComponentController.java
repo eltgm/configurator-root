@@ -27,7 +27,7 @@ public class ComponentController implements ComponentsApi {
 
     @Override
     public ResponseEntity<Component> componentsIdGet(Long id) {
-        return null;
+        return ResponseEntity.ok(componentFacade.getComponentById(id));
     }
 
     @Override
@@ -54,7 +54,7 @@ public class ComponentController implements ComponentsApi {
     @Override
     public ResponseEntity<ComponentPage> domainsDomainIdComponentsGet(Long domainId, Long componentTypeId, String name, Integer page, Integer size) {
         return ResponseEntity.ok(
-            componentFacade.getComponentsByDomainId(domainId, componentTypeId, name, page, size)
+                componentFacade.getComponentsByDomainId(domainId, componentTypeId, name, page, size)
         );
     }
 }

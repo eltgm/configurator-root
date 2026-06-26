@@ -37,4 +37,12 @@ public interface ComponentRepository {
      * @return a page containing components matching the specified filters and pagination information
      */
     Page<Component> findPageByDomainIdComponentTypeIdName(Long domainId, Long componentTypeId, String name, Integer page, Integer size);
+
+    /**
+     * Retrieves a component by its unique identifier.
+     *
+     * @param id the unique identifier of the component to retrieve
+     * @return the component with the specified ID, or empty if not found
+     */
+    Optional<Component> getById(Long id);
 }

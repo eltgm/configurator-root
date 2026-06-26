@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import ru.sultanyarov.configurator.application.port.out.ComponentRepository;
 import ru.sultanyarov.configurator.application.validator.ComponentValidator;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
+import ru.sultanyarov.configurator.domain.exception.NotFoundException;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
 import ru.sultanyarov.configurator.domain.model.AttributeDefinition;
 import ru.sultanyarov.configurator.domain.model.AttributeValue;
@@ -86,7 +87,10 @@ public class ComponentServiceImpl implements ComponentService {
 
     @Override
     public Component getById(Long id) {
-        return null;
+        log.debug("get component by id {}", id);
+
+        return componentRepository.getById(id)
+                .orElseThrow(() -> new NotFoundException("Component with id {} not found", id));
     }
 
     @Override
