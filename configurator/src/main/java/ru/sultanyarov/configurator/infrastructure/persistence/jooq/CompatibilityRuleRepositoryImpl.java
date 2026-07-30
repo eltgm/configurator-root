@@ -4,10 +4,12 @@ import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.jooq.SelectField;
+import org.jooq.exception.DataAccessException;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import ru.sultanyarov.configurator.application.port.out.CompatibilityRuleRepository;
 import ru.sultanyarov.configurator.common.util.JooqMapperUtils;
+import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
 import ru.sultanyarov.configurator.domain.model.CompatibilityRuleCondition;
 import ru.sultanyarov.configurator.domain.model.CompatibilityRuleOperator;
 import ru.sultanyarov.configurator.domain.model.CompatibilityRuleSet;
@@ -94,15 +96,23 @@ public class CompatibilityRuleRepositoryImpl implements CompatibilityRuleReposit
             Long domainId,
             CompatibilityRuleSet ruleSet
     ) {
-        Long updatedRuleSetId = dslContext.update(COMPATIBILITY_RULE_SET)
-                .set(COMPATIBILITY_RULE_SET.NAME, ruleSet.name())
-                .set(COMPATIBILITY_RULE_SET.COMPONENT_TYPE_A_ID, ruleSet.componentTypeAId())
-                .set(COMPATIBILITY_RULE_SET.COMPONENT_TYPE_B_ID, ruleSet.componentTypeBId())
-                .set(COMPATIBILITY_RULE_SET.ENABLED, ruleSet.enabled())
-                .where(COMPATIBILITY_RULE_SET.ID.eq(ruleSetId))
-                .and(COMPATIBILITY_RULE_SET.DOMAIN_ID.eq(domainId))
-                .returning(COMPATIBILITY_RULE_SET.ID)
-                .fetchOne(COMPATIBILITY_RULE_SET.ID);
+        Long updatedRuleSetId;
+        try {
+            updatedRuleSetId = dslContext.update(COMPATIBILITY_RULE_SET)
+                    .set(COMPATIBILITY_RULE_SET.NAME, ruleSet.name())
+                    .set(COMPATIBILITY_RULE_SET.COMPONENT_TYPE_A_ID, ruleSet.componentTypeAId())
+                    .set(COMPATIBILITY_RULE_SET.COMPONENT_TYPE_B_ID, ruleSet.componentTypeBId())
+                    .set(COMPATIBILITY_RULE_SET.ENABLED, ruleSet.enabled())
+                    .where(COMPATIBILITY_RULE_SET.ID.eq(ruleSetId))
+                    .and(COMPATIBILITY_RULE_SET.DOMAIN_ID.eq(domainId))
+                    .returning(COMPATIBILITY_RULE_SET.ID)
+                    .fetchOne(COMPATIBILITY_RULE_SET.ID);
+        } catch (DataAccessException exception) {
+            if ("23505".equals(exception.sqlState())) {
+                throw duplicateException(ruleSet);
+            }
+            throw exception;
+        }
 
         if (updatedRuleSetId == null) {
             return Optional.empty();
@@ -121,6 +131,26 @@ public class CompatibilityRuleRepositoryImpl implements CompatibilityRuleReposit
                 .where(COMPATIBILITY_RULE_SET.ID.eq(ruleSetId))
                 .and(COMPATIBILITY_RULE_SET.DOMAIN_ID.eq(domainId))
                 .execute() > 0;
+    }
+
+    @Override
+    public boolean existsByBusinessKey(
+            Long domainId,
+            Long componentTypeAId,
+            Long componentTypeBId,
+            String name,
+            Long excludedRuleSetId
+    ) {
+        var condition = COMPATIBILITY_RULE_SET.DOMAIN_ID.eq(domainId)
+                .and(COMPATIBILITY_RULE_SET.COMPONENT_TYPE_A_ID.eq(componentTypeAId))
+                .and(COMPATIBILITY_RULE_SET.COMPONENT_TYPE_B_ID.eq(componentTypeBId))
+                .and(COMPATIBILITY_RULE_SET.NAME.eq(name));
+        if (excludedRuleSetId != null) {
+            condition = condition.and(COMPATIBILITY_RULE_SET.ID.ne(excludedRuleSetId));
+        }
+        return dslContext.fetchExists(
+                dslContext.selectFrom(COMPATIBILITY_RULE_SET).where(condition)
+        );
     }
 
     @Override
@@ -206,5 +236,15 @@ public class CompatibilityRuleRepositoryImpl implements CompatibilityRuleReposit
                 .orderIndex(record.get(COMPATIBILITY_RULE_CONDITION.ORDER_INDEX))
                 .createdAt(record.get(COMPATIBILITY_RULE_CONDITION.CREATED_AT))
                 .build();
+    }
+
+    private static EntityAlreadyExistsException duplicateException(CompatibilityRuleSet ruleSet) {
+        return new EntityAlreadyExistsException(
+                "Compatibility rule set '{}' already exists for component types {} and {} in domain {}",
+                ruleSet.name(),
+                ruleSet.componentTypeAId(),
+                ruleSet.componentTypeBId(),
+                ruleSet.domainId()
+        );
     }
 }
