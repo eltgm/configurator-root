@@ -28,7 +28,9 @@ abstract class AbstractJooqRepositoryTest {
 
         ResourceDatabasePopulator populator = new ResourceDatabasePopulator(
                 new ClassPathResource("db/migration/V1__init.sql"),
-                new ClassPathResource("db/migration/V2__CON1-26-remove-constraint.sql")
+                new ClassPathResource("db/migration/V2__CON1-26-remove-constraint.sql"),
+                new ClassPathResource("db/migration/V3__CON1-68-enforce-component-name-uniqueness.sql"),
+                new ClassPathResource("db/migration/V4__CON1-75-create-compatibility-rules.sql")
         );
         populator.execute(dataSource);
         return dataSource;
