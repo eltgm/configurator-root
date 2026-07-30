@@ -204,6 +204,68 @@ class ComponentRepositoryImplTest extends AbstractJooqRepositoryTest {
         assertThat(repository.getById(404L)).isEmpty();
     }
 
+    @Test
+    void shouldArchiveComponentAndPreserveAllRelatedData() {
+        insertComponent(7L, 1L, "Switch");
+        insertComponent(8L, 2L, "Keycap");
+        dslContext.insertInto(Tables.ATTRIBUTE_DEFINITION)
+                .set(Tables.ATTRIBUTE_DEFINITION.ID, 11L)
+                .set(Tables.ATTRIBUTE_DEFINITION.COMPONENT_TYPE_ID, 1L)
+                .set(Tables.ATTRIBUTE_DEFINITION.NAME, "force")
+                .set(Tables.ATTRIBUTE_DEFINITION.LABEL, "Force")
+                .set(Tables.ATTRIBUTE_DEFINITION.DATA_TYPE, DataType.NUMBER.name())
+                .execute();
+        dslContext.insertInto(Tables.ATTRIBUTE_VALUE)
+                .set(Tables.ATTRIBUTE_VALUE.COMPONENT_ID, 7L)
+                .set(Tables.ATTRIBUTE_VALUE.ATTRIBUTE_DEFINITION_ID, 11L)
+                .set(Tables.ATTRIBUTE_VALUE.VALUE_NUMBER, java.math.BigInteger.valueOf(55))
+                .execute();
+        dslContext.insertInto(Tables.COMPONENT_IMAGE)
+                .set(Tables.COMPONENT_IMAGE.COMPONENT_ID, 7L)
+                .set(Tables.COMPONENT_IMAGE.FILE_PATH, "/files/components/7/main.jpg")
+                .execute();
+        dslContext.insertInto(Tables.COMPATIBILITY_LINK)
+                .set(Tables.COMPATIBILITY_LINK.DOMAIN_ID, 1L)
+                .set(Tables.COMPATIBILITY_LINK.COMPONENT_A_ID, 7L)
+                .set(Tables.COMPATIBILITY_LINK.COMPONENT_B_ID, 8L)
+                .execute();
+        dslContext.insertInto(Tables.APP_USER)
+                .set(Tables.APP_USER.ID, 1L)
+                .set(Tables.APP_USER.EMAIL, "user@example.com")
+                .set(Tables.APP_USER.PASSWORD_HASH, "hash")
+                .execute();
+        dslContext.insertInto(Tables.CONFIGURATION)
+                .set(Tables.CONFIGURATION.ID, 21L)
+                .set(Tables.CONFIGURATION.DOMAIN_ID, 1L)
+                .set(Tables.CONFIGURATION.NAME, "Configuration")
+                .set(Tables.CONFIGURATION.CREATED_BY_USER_ID, 1L)
+                .execute();
+        dslContext.insertInto(Tables.CONFIGURATION_COMPONENT)
+                .set(Tables.CONFIGURATION_COMPONENT.CONFIGURATION_ID, 21L)
+                .set(Tables.CONFIGURATION_COMPONENT.COMPONENT_ID, 7L)
+                .execute();
+
+        boolean archived = repository.archiveComponentById(7L);
+
+        assertThat(archived).isTrue();
+        assertThat(dslContext.select(Tables.COMPONENT.ARCHIVED)
+                .from(Tables.COMPONENT)
+                .where(Tables.COMPONENT.ID.eq(7L))
+                .fetchOne(Tables.COMPONENT.ARCHIVED)).isTrue();
+        assertThat(dslContext.fetchCount(Tables.ATTRIBUTE_VALUE, Tables.ATTRIBUTE_VALUE.COMPONENT_ID.eq(7L))).isOne();
+        assertThat(dslContext.fetchCount(Tables.COMPONENT_IMAGE, Tables.COMPONENT_IMAGE.COMPONENT_ID.eq(7L))).isOne();
+        assertThat(dslContext.fetchCount(Tables.COMPATIBILITY_LINK,
+                Tables.COMPATIBILITY_LINK.COMPONENT_A_ID.eq(7L)
+                        .or(Tables.COMPATIBILITY_LINK.COMPONENT_B_ID.eq(7L)))).isOne();
+        assertThat(dslContext.fetchCount(Tables.CONFIGURATION_COMPONENT,
+                Tables.CONFIGURATION_COMPONENT.COMPONENT_ID.eq(7L))).isOne();
+    }
+
+    @Test
+    void shouldReturnFalseWhenArchivingNonExistentComponent() {
+        assertThat(repository.archiveComponentById(404L)).isFalse();
+    }
+
     private void insertComponent(Long id, Long componentTypeId, String name) {
         dslContext.insertInto(Tables.COMPONENT)
                 .set(Tables.COMPONENT.ID, id)

@@ -30,11 +30,13 @@ public interface ComponentService {
     Component update(Long id, Component component);
 
     /**
-     * Deletes a component by its unique identifier.
+     * Archives a component without deleting its related data.
      *
-     * @param id the unique identifier of the component to delete
+     * @param id the unique identifier of the component to archive
+     * @throws ru.sultanyarov.configurator.domain.exception.NotFoundException if the component does not exist
+     * @throws ru.sultanyarov.configurator.domain.exception.BusinessException if the component could not be archived
      */
-    void deleteById(Long id);
+    void archiveById(Long id);
 
     /**
      * Retrieves a component by its unique identifier.

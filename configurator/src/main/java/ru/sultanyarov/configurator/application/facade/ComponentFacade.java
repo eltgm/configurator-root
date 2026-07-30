@@ -37,6 +37,15 @@ public interface ComponentFacade {
     Component updateComponent(Long componentId, UpdateComponentRequest updateComponentRequest);
 
     /**
+     * Archives an existing component.
+     *
+     * @param componentId the unique identifier of the component to archive
+     * @throws ru.sultanyarov.configurator.domain.exception.NotFoundException if the component does not exist
+     * @throws ru.sultanyarov.configurator.domain.exception.BusinessException if the component could not be archived
+     */
+    void archiveComponent(Long componentId);
+
+    /**
      * Retrieves a paginated list of components belonging to the specified domain.
      *
      * @param domainId        the unique identifier of the domain

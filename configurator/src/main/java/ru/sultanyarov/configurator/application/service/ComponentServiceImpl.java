@@ -101,8 +101,16 @@ public class ComponentServiceImpl implements ComponentService {
     }
 
     @Override
-    public void deleteById(Long id) {
+    public void archiveById(Long id) {
+        log.debug("archive component with id {}", id);
+        Component component = getById(id);
+        if (Boolean.TRUE.equals(component.getArchived())) {
+            return;
+        }
 
+        if (!componentRepository.archiveComponentById(id)) {
+            throw new BusinessException("Failed to archive component with id {}", id);
+        }
     }
 
     @Override

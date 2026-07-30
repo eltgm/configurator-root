@@ -35,6 +35,14 @@ public interface ComponentRepository {
     Optional<Component> updateComponent(Long id, Component component);
 
     /**
+     * Marks a component as archived.
+     *
+     * @param id the unique identifier of the component
+     * @return {@code true} when a component row was updated
+     */
+    boolean archiveComponentById(Long id);
+
+    /**
      * Checks whether at least one component exists for the specified component type.
      *
      * @param id the unique identifier of the component type

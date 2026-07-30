@@ -1,5 +1,6 @@
 package ru.sultanyarov.configurator.api.inbounds.rest;
 
+import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +12,8 @@ import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException
 import ru.sultanyarov.configurator.domain.exception.EntityHasRelatedEntitiesException;
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
+
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -41,6 +44,13 @@ class ControllerExceptionHandlerTest {
         assertErrorResponse(handler.handleValidationException(new ValidationException("bad")), HttpStatus.BAD_REQUEST, "bad");
         MethodArgumentNotValidException validationException = mock(MethodArgumentNotValidException.class);
         assertErrorResponse(handler.handleValidationException(validationException), HttpStatus.BAD_REQUEST, validationException.getLocalizedMessage());
+        ConstraintViolationException constraintViolationException =
+                new ConstraintViolationException("must be positive", Set.of());
+        assertErrorResponse(
+                handler.handleValidationException(constraintViolationException),
+                HttpStatus.BAD_REQUEST,
+                "must be positive"
+        );
     }
 
     private static void assertErrorResponse(ResponseEntity<?> response, HttpStatus expectedStatus, String expectedMessage) {

@@ -67,6 +67,14 @@ public class ComponentRepositoryImpl implements ComponentRepository {
     }
 
     @Override
+    public boolean archiveComponentById(Long id) {
+        return dslContext.update(COMPONENT)
+                .set(COMPONENT.ARCHIVED, true)
+                .where(COMPONENT.ID.eq(id))
+                .execute() > 0;
+    }
+
+    @Override
     public boolean hasByComponentTypeId(Long componentTypeId) {
         return dslContext.fetchExists(
                 dslContext.selectFrom(COMPONENT)
