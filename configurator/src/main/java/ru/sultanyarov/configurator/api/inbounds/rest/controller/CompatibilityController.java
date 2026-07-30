@@ -18,7 +18,7 @@ public class CompatibilityController implements CompatibilityApi {
 
     @Override
     public ResponseEntity<GraphResponse> domainsIdCompatibilityGraphGet(Long id) {
-        return null;
+        return ResponseEntity.ok(compatibilityFacade.getCompatibilityGraph(id));
     }
 
     @Override

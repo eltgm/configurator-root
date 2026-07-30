@@ -11,6 +11,7 @@ import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
 import ru.sultanyarov.configurator.domain.model.Component;
+import ru.sultanyarov.configurator.domain.model.CompatibilityGraph;
 import ru.sultanyarov.configurator.domain.model.CompatibilityLink;
 import ru.sultanyarov.configurator.domain.model.ComponentType;
 import ru.sultanyarov.configurator.domain.model.Domain;
@@ -39,6 +40,31 @@ class CompatibilityServiceImplTest {
 
     @InjectMocks
     private CompatibilityServiceImpl compatibilityService;
+
+    @Test
+    void getGraphByDomainId_shouldVerifyDomainAndLoadGraph() {
+        CompatibilityGraph graph = new CompatibilityGraph(List.of(), List.of());
+        when(domainService.getById(1L)).thenReturn(domain(1L));
+        when(compatibilityRepository.getGraphByDomainId(1L)).thenReturn(graph);
+
+        CompatibilityGraph result = compatibilityService.getGraphByDomainId(1L);
+
+        assertThat(result).isSameAs(graph);
+        verify(domainService).getById(1L);
+        verify(compatibilityRepository).getGraphByDomainId(1L);
+    }
+
+    @Test
+    void getGraphByDomainId_shouldNotAccessRepositoryWhenDomainDoesNotExist() {
+        when(domainService.getById(999L))
+                .thenThrow(new NotFoundException("Domain with id 999 not found"));
+
+        assertThatThrownBy(() -> compatibilityService.getGraphByDomainId(999L))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("Domain with id 999 not found");
+
+        verifyNoInteractions(compatibilityRepository);
+    }
 
     @Test
     void create_shouldAllowSameTypeAndPersistNormalizedUndirectedLink() {

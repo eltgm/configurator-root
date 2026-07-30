@@ -483,6 +483,7 @@ components:
     ### GRAPH ###
     GraphNode:
       type: object
+      description: Active component represented as a graph node
       properties:
         id:
           type: integer
@@ -505,6 +506,7 @@ components:
 
     GraphEdge:
       type: object
+      description: Compatibility link between two active components of the domain
       properties:
         id:
           type: integer
@@ -518,6 +520,7 @@ components:
         comment:
           type: string
           nullable: true
+          description: Compatibility link comment
       required:
         - id
         - source
@@ -525,6 +528,7 @@ components:
 
     GraphResponse:
       type: object
+      description: Compatibility graph containing all active domain components, including isolated nodes
       properties:
         nodes:
           type: array
@@ -1507,6 +1511,10 @@ paths:
     get:
       tags: [ Compatibility ]
       summary: Get compatibility graph of domain
+      description: >
+        Returns all non-archived components of the domain as nodes, including isolated components,
+        and compatibility links whose endpoints are both present in the graph.
+        Nodes and edges are sorted by identifier in ascending order.
       parameters:
         - name: id
           in: path
@@ -1514,13 +1522,20 @@ paths:
           schema:
             type: integer
             format: int64
+            minimum: 1
       responses:
         '200':
-          description: Success
+          description: Compatibility graph
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/GraphResponse'
+        '400':
+          description: Invalid domain identifier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Domain not found
           content:
