@@ -31,6 +31,12 @@ class ComponentServiceImplTest {
     private ComponentValidator componentValidator;
 
     @Mock
+    private ComponentImageValidator componentImageValidator;
+
+    @Mock
+    private ComponentImageStorage componentImageStorage;
+
+    @Mock
     private DomainService domainService;
 
     @InjectMocks
@@ -328,6 +334,108 @@ class ComponentServiceImplTest {
         assertThatThrownBy(() -> componentService.archiveById(7L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Failed to archive component");
+    }
+
+    @Test
+    void uploadImage_shouldStoreAndPersistImageWithNextOrderIndex() {
+        Component component = Component.builder().id(7L).archived(false).build();
+        ComponentImageUpload upload = new ComponentImageUpload(new byte[]{1, 2, 3}, "image/png");
+        StoredImage storedImage = new StoredImage(
+                "components/7/image.png",
+                "http://storage/configurator-components/components/7/image.png"
+        );
+        ComponentImage expectedMetadata = ComponentImage.builder()
+                .componentId(7L)
+                .url(storedImage.url())
+                .orderIndex(4)
+                .build();
+        ComponentImage createdImage = ComponentImage.builder()
+                .id(12L)
+                .componentId(7L)
+                .url(storedImage.url())
+                .orderIndex(4)
+                .build();
+
+        when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+        when(componentRepository.getNextImageOrderIndex(7L)).thenReturn(4);
+        when(componentImageStorage.store(7L, upload)).thenReturn(storedImage);
+        when(componentRepository.createImage(expectedMetadata)).thenReturn(Optional.of(createdImage));
+
+        ComponentImage result = componentService.uploadImage(7L, upload, null);
+
+        assertThat(result).isSameAs(createdImage);
+        verify(componentImageValidator).validate(upload, null);
+        verify(componentRepository).getNextImageOrderIndex(7L);
+        verify(componentImageStorage).store(7L, upload);
+        verify(componentRepository).createImage(expectedMetadata);
+    }
+
+    @Test
+    void uploadImage_shouldUseExplicitOrderIndex() {
+        Component component = Component.builder().id(7L).archived(false).build();
+        ComponentImageUpload upload = new ComponentImageUpload(new byte[]{1, 2, 3}, "image/png");
+        StoredImage storedImage = new StoredImage("components/7/image.png", "http://storage/image.png");
+        ComponentImage createdImage = ComponentImage.builder().id(12L).componentId(7L).orderIndex(9).build();
+
+        when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+        when(componentImageStorage.store(7L, upload)).thenReturn(storedImage);
+        when(componentRepository.createImage(any(ComponentImage.class))).thenReturn(Optional.of(createdImage));
+
+        assertThat(componentService.uploadImage(7L, upload, 9)).isSameAs(createdImage);
+
+        verify(componentRepository, never()).getNextImageOrderIndex(anyLong());
+        verify(componentRepository).createImage(ComponentImage.builder()
+                .componentId(7L)
+                .url(storedImage.url())
+                .orderIndex(9)
+                .build());
+    }
+
+    @Test
+    void uploadImage_shouldRejectArchivedComponentBeforeStorage() {
+        Component component = Component.builder().id(7L).archived(true).build();
+        ComponentImageUpload upload = new ComponentImageUpload(new byte[]{1, 2, 3}, "image/png");
+        when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+
+        assertThatThrownBy(() -> componentService.uploadImage(7L, upload, null))
+                .isInstanceOf(ComponentArchivedException.class)
+                .hasMessageContaining("7");
+
+        verifyNoInteractions(componentImageValidator, componentImageStorage);
+        verify(componentRepository, never()).createImage(any());
+    }
+
+    @Test
+    void uploadImage_shouldNotStoreImageWhenValidationFails() {
+        Component component = Component.builder().id(7L).archived(false).build();
+        ComponentImageUpload upload = new ComponentImageUpload(new byte[0], "image/png");
+        when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+        doThrow(new ValidationException("Image file must not be empty"))
+                .when(componentImageValidator)
+                .validate(upload, null);
+
+        assertThatThrownBy(() -> componentService.uploadImage(7L, upload, null))
+                .isInstanceOf(ValidationException.class);
+
+        verifyNoInteractions(componentImageStorage);
+        verify(componentRepository, never()).createImage(any());
+    }
+
+    @Test
+    void uploadImage_shouldDeleteStoredObjectWhenMetadataPersistenceFails() {
+        Component component = Component.builder().id(7L).archived(false).build();
+        ComponentImageUpload upload = new ComponentImageUpload(new byte[]{1, 2, 3}, "image/png");
+        StoredImage storedImage = new StoredImage("components/7/image.png", "http://storage/image.png");
+        when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+        when(componentRepository.getNextImageOrderIndex(7L)).thenReturn(0);
+        when(componentImageStorage.store(7L, upload)).thenReturn(storedImage);
+        when(componentRepository.createImage(any(ComponentImage.class))).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> componentService.uploadImage(7L, upload, null))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Failed to persist image metadata");
+
+        verify(componentImageStorage).delete(storedImage.objectKey());
     }
 
     @Test

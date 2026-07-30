@@ -61,4 +61,23 @@ class ComponentControllerExternalIntegrationSpec extends AbstractComponentContro
         def response = RestAssured.given().baseUri(baseUrl).accept(ContentType.JSON).when().delete(path).then().extract().response()
         return new TestResponse(response.statusCode(), response.asString())
     }
+
+    @Override
+    TestResponse postMultipart(
+            String path,
+            String filename,
+            String contentType,
+            byte[] content,
+            Integer orderIndex
+    ) {
+        def request = RestAssured.given().baseUri(baseUrl).accept(ContentType.JSON)
+        if (content != null) {
+            request.multiPart("file", filename, content, contentType)
+        }
+        if (orderIndex != null) {
+            request.multiPart("orderIndex", String.valueOf(orderIndex))
+        }
+        def response = request.when().post(path).then().extract().response()
+        return new TestResponse(response.statusCode(), response.asString())
+    }
 }

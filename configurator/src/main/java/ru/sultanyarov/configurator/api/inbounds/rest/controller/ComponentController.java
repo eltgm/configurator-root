@@ -39,7 +39,8 @@ public class ComponentController implements ComponentsApi {
 
     @Override
     public ResponseEntity<ComponentImage> componentsIdImagesPost(Long id, MultipartFile file, Integer orderIndex) {
-        return null;
+        return ResponseEntity.status(CREATED)
+                .body(componentFacade.uploadComponentImage(id, file, orderIndex));
     }
 
     @Override

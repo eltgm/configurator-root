@@ -1,6 +1,8 @@
 package ru.sultanyarov.configurator.application.service;
 
 import ru.sultanyarov.configurator.domain.model.Component;
+import ru.sultanyarov.configurator.domain.model.ComponentImage;
+import ru.sultanyarov.configurator.domain.model.ComponentImageUpload;
 import ru.sultanyarov.configurator.domain.model.Page;
 
 /**
@@ -37,6 +39,16 @@ public interface ComponentService {
      * @throws ru.sultanyarov.configurator.domain.exception.BusinessException if the component could not be archived
      */
     void archiveById(Long id);
+
+    /**
+     * Stores and attaches an image to an active component.
+     *
+     * @param id         the component identifier
+     * @param image      image binary and media type
+     * @param orderIndex optional non-negative display order
+     * @return the persisted component image
+     */
+    ComponentImage uploadImage(Long id, ComponentImageUpload image, Integer orderIndex);
 
     /**
      * Retrieves a component by its unique identifier.

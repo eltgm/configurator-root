@@ -16,5 +16,19 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
+
+app:
+  storage:
+    component-images:
+      endpoint: ${IMAGE_STORAGE_ENDPOINT:http://localhost:9000}
+      access-key: ${IMAGE_STORAGE_ACCESS_KEY:minioadmin}
+      secret-key: ${IMAGE_STORAGE_SECRET_KEY:minioadmin}
+      bucket: ${IMAGE_STORAGE_BUCKET:configurator-components}
+      public-url: ${IMAGE_STORAGE_PUBLIC_URL:http://localhost:9000}
+
 server:
   port: 8080

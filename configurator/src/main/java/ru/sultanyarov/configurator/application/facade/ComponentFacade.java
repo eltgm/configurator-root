@@ -1,6 +1,8 @@
 package ru.sultanyarov.configurator.application.facade;
 
+import org.springframework.web.multipart.MultipartFile;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.Component;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentImage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateComponentRequest;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateComponentRequest;
@@ -44,6 +46,16 @@ public interface ComponentFacade {
      * @throws ru.sultanyarov.configurator.domain.exception.BusinessException if the component could not be archived
      */
     void archiveComponent(Long componentId);
+
+    /**
+     * Uploads and attaches an image to an active component.
+     *
+     * @param componentId the unique identifier of the component
+     * @param file        multipart image file
+     * @param orderIndex  optional non-negative display order
+     * @return the created component image
+     */
+    ComponentImage uploadComponentImage(Long componentId, MultipartFile file, Integer orderIndex);
 
     /**
      * Retrieves a paginated list of components belonging to the specified domain.

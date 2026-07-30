@@ -5,12 +5,18 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import ru.sultanyarov.configurator.api.inbounds.rest.advice.ControllerExceptionHandler;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ErrorResponse;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
+import ru.sultanyarov.configurator.domain.exception.ComponentArchivedException;
 import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
 import ru.sultanyarov.configurator.domain.exception.EntityHasRelatedEntitiesException;
+import ru.sultanyarov.configurator.domain.exception.ExternalStorageException;
+import ru.sultanyarov.configurator.domain.exception.ImageTooLargeException;
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
+import ru.sultanyarov.configurator.domain.exception.UnsupportedImageFormatException;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
 
 import java.util.Set;
@@ -37,6 +43,7 @@ class ControllerExceptionHandlerTest {
     void handleEntityAlreadyExistsException_shouldReturnConflict() {
         assertErrorResponse(handler.handleEntityAlreadyExistsException(new EntityAlreadyExistsException("exists")), HttpStatus.CONFLICT, "exists");
         assertErrorResponse(handler.handleEntityAlreadyExistsException(new EntityHasRelatedEntitiesException("related")), HttpStatus.CONFLICT, "related");
+        assertErrorResponse(handler.handleEntityAlreadyExistsException(new ComponentArchivedException("archived")), HttpStatus.CONFLICT, "archived");
     }
 
     @Test
@@ -50,6 +57,51 @@ class ControllerExceptionHandlerTest {
                 handler.handleValidationException(constraintViolationException),
                 HttpStatus.BAD_REQUEST,
                 "must be positive"
+        );
+        MissingServletRequestPartException missingPartException =
+                new MissingServletRequestPartException("file");
+        assertErrorResponse(
+                handler.handleValidationException(missingPartException),
+                HttpStatus.BAD_REQUEST,
+                missingPartException.getLocalizedMessage()
+        );
+    }
+
+    @Test
+    void handlePayloadTooLargeException_shouldReturnPayloadTooLarge() {
+        assertErrorResponse(
+                handler.handlePayloadTooLargeException(new ImageTooLargeException("too large")),
+                HttpStatus.PAYLOAD_TOO_LARGE,
+                "too large"
+        );
+        MaxUploadSizeExceededException multipartException =
+                new MaxUploadSizeExceededException(10L);
+        assertErrorResponse(
+                handler.handlePayloadTooLargeException(multipartException),
+                HttpStatus.PAYLOAD_TOO_LARGE,
+                multipartException.getLocalizedMessage()
+        );
+    }
+
+    @Test
+    void handleUnsupportedImageFormatException_shouldReturnUnsupportedMediaType() {
+        assertErrorResponse(
+                handler.handleUnsupportedImageFormatException(
+                        new UnsupportedImageFormatException("unsupported")
+                ),
+                HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                "unsupported"
+        );
+    }
+
+    @Test
+    void handleExternalStorageException_shouldReturnServiceUnavailable() {
+        assertErrorResponse(
+                handler.handleExternalStorageException(
+                        new ExternalStorageException(new IllegalStateException(), "unavailable")
+                ),
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "unavailable"
         );
     }
 

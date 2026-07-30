@@ -1289,6 +1289,10 @@ paths:
     post:
       tags: [ Components ]
       summary: Upload image for component
+      description: |
+        Uploads a JPEG, PNG, or WebP image up to 10 MiB to external object storage
+        and attaches it to an active component. If orderIndex is omitted, the image
+        is placed after all existing component images.
       parameters:
         - name: id
           in: path
@@ -1296,6 +1300,7 @@ paths:
           schema:
             type: integer
             format: int64
+            minimum: 1
       requestBody:
         required: true
         content:
@@ -1306,9 +1311,13 @@ paths:
                 file:
                   type: string
                   format: binary
+                  maxLength: 10485760
+                  description: JPEG, PNG, or WebP image with a maximum size of 10 MiB
                 orderIndex:
                   type: integer
+                  minimum: 0
                   nullable: true
+                  description: Optional non-negative display order; defaults to the next available index
               required:
                 - file
       responses:
@@ -1320,6 +1329,30 @@ paths:
                 $ref: '#/components/schemas/ComponentImage'
         '400':
           description: Invalid file or request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Component is archived
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Image exceeds the 10 MiB size limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported image format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: External object storage is unavailable
           content:
             application/json:
               schema:

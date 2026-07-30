@@ -16,4 +16,14 @@ interface ApiTestSupport {
     TestResponse put(String path, Object body)
 
     TestResponse delete(String path)
+
+    default TestResponse postMultipart(
+            String path,
+            String filename,
+            String contentType,
+            byte[] content,
+            Integer orderIndex
+    ) {
+        throw new UnsupportedOperationException("Multipart requests are not supported by this transport")
+    }
 }
