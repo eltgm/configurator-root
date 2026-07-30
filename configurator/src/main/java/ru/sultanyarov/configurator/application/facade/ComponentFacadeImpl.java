@@ -39,6 +39,12 @@ public class ComponentFacadeImpl implements ComponentFacade {
     }
 
     @Override
+    public void archiveComponent(Long componentId) {
+        log.info("Archiving component with id {}", componentId);
+        componentService.archiveById(componentId);
+    }
+
+    @Override
     public ComponentPage getComponentsByDomainId(Long domainId, Long componentTypeId, String name, Integer page, Integer size) {
         log.info("Getting components by domain");
         return componentMapper.toComponentPageDto(

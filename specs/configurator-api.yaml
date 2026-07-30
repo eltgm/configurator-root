@@ -1255,7 +1255,8 @@ paths:
 
     delete:
       tags: [ Components ]
-      summary: Delete component
+      summary: Archive component
+      description: Archives a component without deleting its attributes, images, compatibility links, or configuration references.
       parameters:
         - name: id
           in: path
@@ -1263,9 +1264,16 @@ paths:
           schema:
             type: integer
             format: int64
+            minimum: 1
       responses:
         '204':
-          description: Deleted
+          description: Archived
+        '400':
+          description: Invalid component identifier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Not found
           content:

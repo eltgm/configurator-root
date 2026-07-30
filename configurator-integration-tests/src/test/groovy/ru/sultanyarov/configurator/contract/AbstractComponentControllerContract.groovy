@@ -432,6 +432,61 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         errorResponse.getMessage() == "Component with id 999999 not found"
     }
 
+    def "should archive component without deleting attributes or images"() {
+        given:
+        prepareComponentUpdateData()
+
+        when:
+        def deleteResult = delete("/components/1")
+
+        then:
+        deleteResult.status == 204
+        deleteResult.body.isEmpty()
+
+        when:
+        def getResult = get("/components/1")
+
+        then:
+        getResult.status == 200
+        def responseBody = objectMapper.readValue(getResult.body, Component)
+        responseBody.getArchived()
+        responseBody.getAttributes().size() == 3
+        responseBody.getAttributes()*.getAttributeDefinitionId().containsAll([101L, 102L, 103L])
+        responseBody.getImages().size() == 1
+        responseBody.getImages().first().getId() == 501L
+        responseBody.getImages().first().getUrl() == "/files/components/1/main.jpg"
+    }
+
+    def "should return no content when archiving component repeatedly"() {
+        given:
+        prepareComponentUpdateData()
+
+        expect:
+        delete("/components/1").status == 204
+        delete("/components/1").status == 204
+    }
+
+    def "should return not found when archiving non-existent component"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        when:
+        def result = delete("/components/999999")
+
+        then:
+        result.status == 404
+        def errorResponse = objectMapper.readValue(result.body, ErrorResponse)
+        errorResponse.getMessage() == "Component with id 999999 not found"
+    }
+
+    def "should return bad request when component id for archiving is not positive"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        expect:
+        delete("/components/0").status == 400
+    }
+
     def "should get components by domain with pagination"() {
         given:
         prepareComponentSearchData()

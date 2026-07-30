@@ -1,5 +1,6 @@
 package ru.sultanyarov.configurator.api.inbounds.rest.advice;
 
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -36,7 +37,11 @@ public class ControllerExceptionHandler {
         return getBody(CONFLICT, exception);
     }
 
-    @ExceptionHandler({ValidationException.class, MethodArgumentNotValidException.class})
+    @ExceptionHandler({
+            ValidationException.class,
+            MethodArgumentNotValidException.class,
+            ConstraintViolationException.class
+    })
     public ResponseEntity<?> handleValidationException(Exception exception) {
         return getBody(BAD_REQUEST, exception);
     }

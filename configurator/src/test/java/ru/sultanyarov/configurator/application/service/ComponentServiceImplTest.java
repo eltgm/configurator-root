@@ -288,8 +288,50 @@ class ComponentServiceImplTest {
     }
 
     @Test
-    void unimplementedMethods_shouldReturnNullOrDoNothing() {
-        componentService.deleteById(1L);
+    void archiveById_shouldArchiveExistingActiveComponent() {
+        Component component = Component.builder().id(7L).archived(false).build();
+        when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+        when(componentRepository.archiveComponentById(7L)).thenReturn(true);
+
+        componentService.archiveById(7L);
+
+        verify(componentRepository).archiveComponentById(7L);
+    }
+
+    @Test
+    void archiveById_shouldBeIdempotentForAlreadyArchivedComponent() {
+        Component component = Component.builder().id(7L).archived(true).build();
+        when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+
+        componentService.archiveById(7L);
+
+        verify(componentRepository, never()).archiveComponentById(anyLong());
+    }
+
+    @Test
+    void archiveById_shouldThrowNotFoundExceptionWhenComponentDoesNotExist() {
+        when(componentRepository.getById(7L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> componentService.archiveById(7L))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessageContaining("7");
+
+        verify(componentRepository, never()).archiveComponentById(anyLong());
+    }
+
+    @Test
+    void archiveById_shouldThrowBusinessExceptionWhenRepositoryDidNotArchiveComponent() {
+        Component component = Component.builder().id(7L).archived(false).build();
+        when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+        when(componentRepository.archiveComponentById(7L)).thenReturn(false);
+
+        assertThatThrownBy(() -> componentService.archiveById(7L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Failed to archive component");
+    }
+
+    @Test
+    void unimplementedMethods_shouldReturnNull() {
         assertThat(componentService.getPage(0, 10)).isNull();
     }
 }

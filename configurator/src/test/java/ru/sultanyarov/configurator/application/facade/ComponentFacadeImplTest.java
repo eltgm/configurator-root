@@ -102,4 +102,11 @@ class ComponentFacadeImplTest {
         verify(componentService).getById(1L);
         verify(componentMapper).toDto(entity);
     }
+
+    @Test
+    void archiveComponent_shouldDelegateToService() {
+        componentFacade.archiveComponent(7L);
+
+        verify(componentService).archiveById(7L);
+    }
 }

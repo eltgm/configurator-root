@@ -86,8 +86,16 @@ class ComponentControllerTest {
     }
 
     @Test
+    void componentsIdDelete_shouldDelegateArchivingToFacade() {
+        ResponseEntity<Void> response = componentController.componentsIdDelete(7L);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(response.getBody()).isNull();
+        verify(componentFacade).archiveComponent(7L);
+    }
+
+    @Test
     void stubbedEndpoints_shouldReturnNullUntilImplemented() {
-        assertThat(componentController.componentsIdDelete(1L)).isNull();
         assertThat(componentController.componentsIdImagesGet(1L)).isNull();
         assertThat(componentController.componentsIdImagesPost(1L, null, 1)).isNull();
     }

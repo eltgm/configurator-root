@@ -23,7 +23,8 @@ public class ComponentController implements ComponentsApi {
 
     @Override
     public ResponseEntity<Void> componentsIdDelete(Long id) {
-        return null;
+        componentFacade.archiveComponent(id);
+        return ResponseEntity.noContent().build();
     }
 
     @Override
