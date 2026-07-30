@@ -5,6 +5,7 @@ import org.mapstruct.factory.Mappers;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.AttributeValueInput;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateComponentRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateComponentRequest;
 import ru.sultanyarov.configurator.domain.model.Component;
 import ru.sultanyarov.configurator.domain.model.Page;
 
@@ -39,6 +40,31 @@ class ComponentMapperTest {
         assertThat(result.getAttributes()).hasSize(1);
         assertThat(result.getAttributes().get(0).attributeDefinitionId()).isEqualTo(1L);
         assertThat(result.getAttributes().get(0).value()).isEqualTo("42");
+    }
+
+    @Test
+    void toEntity_shouldMapUpdateRequestToDomainEntity() {
+        UpdateComponentRequest request = new UpdateComponentRequest(10L, "Switch Pro", List.of(
+                new AttributeValueInput(1L, "55")
+        ));
+        request.setBrand("Gateron");
+        request.setDescription("Updated");
+
+        Component result = mapper.toEntity(request);
+
+        assertThat(result.getId()).isNull();
+        assertThat(result.getComponentTypeId()).isEqualTo(10L);
+        assertThat(result.getName()).isEqualTo("Switch Pro");
+        assertThat(result.getBrand()).isEqualTo("Gateron");
+        assertThat(result.getDescription()).isEqualTo("Updated");
+        assertThat(result.getArchived()).isNull();
+        assertThat(result.getCreatedAt()).isNull();
+        assertThat(result.getImages()).isNull();
+        assertThat(result.getAttributes()).singleElement()
+                .satisfies(attribute -> {
+                    assertThat(attribute.attributeDefinitionId()).isEqualTo(1L);
+                    assertThat(attribute.value()).isEqualTo("55");
+                });
     }
 
     @Test

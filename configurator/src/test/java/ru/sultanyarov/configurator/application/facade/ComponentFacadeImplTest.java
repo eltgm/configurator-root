@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.Component;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateComponentRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateComponentRequest;
 import ru.sultanyarov.configurator.application.mapper.ComponentMapper;
 import ru.sultanyarov.configurator.application.service.ComponentService;
 import ru.sultanyarov.configurator.domain.model.Page;
@@ -48,6 +49,25 @@ class ComponentFacadeImplTest {
         verify(componentMapper).toEntity(request);
         verify(componentService).create(entity);
         verify(componentMapper).toDto(createdEntity);
+    }
+
+    @Test
+    void updateComponent_shouldMapRequestToEntityAndBackToDto() {
+        UpdateComponentRequest request = new UpdateComponentRequest(1L, "Updated", List.of());
+        ru.sultanyarov.configurator.domain.model.Component entity = new ru.sultanyarov.configurator.domain.model.Component();
+        ru.sultanyarov.configurator.domain.model.Component updatedEntity = new ru.sultanyarov.configurator.domain.model.Component();
+        Component dto = new Component();
+
+        when(componentMapper.toEntity(request)).thenReturn(entity);
+        when(componentService.update(7L, entity)).thenReturn(updatedEntity);
+        when(componentMapper.toDto(updatedEntity)).thenReturn(dto);
+
+        Component result = componentFacade.updateComponent(7L, request);
+
+        assertThat(result).isSameAs(dto);
+        verify(componentMapper).toEntity(request);
+        verify(componentService).update(7L, entity);
+        verify(componentMapper).toDto(updatedEntity);
     }
 
     @Test

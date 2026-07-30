@@ -1,9 +1,8 @@
 package ru.sultanyarov.configurator.application.port.out;
 
-import ru.sultanyarov.configurator.domain.model.Component;
-import ru.sultanyarov.configurator.domain.model.Page;
+import ru.sultanyarov.configurator.domain.model.*;
 
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Outbound port for persisting and retrieving {@link Component} entities.
@@ -17,6 +16,23 @@ public interface ComponentRepository {
      * @return the created component with generated ID and technical fields, or empty if creation failed
      */
     Optional<Component> createComponent(Component componentToCreate);
+
+    /**
+     * Retrieves a component with its attribute values and images.
+     *
+     * @param id the unique identifier of the component
+     * @return the component, or empty when it does not exist
+     */
+    Optional<Component> getById(Long id);
+
+    /**
+     * Updates editable fields of an existing component.
+     *
+     * @param id        the unique identifier of the component
+     * @param component the target editable state
+     * @return the updated component, or empty when the update did not affect a row
+     */
+    Optional<Component> updateComponent(Long id, Component component);
 
     /**
      * Checks whether at least one component exists for the specified component type.
@@ -37,12 +53,4 @@ public interface ComponentRepository {
      * @return a page containing components matching the specified filters and pagination information
      */
     Page<Component> findPageByDomainIdComponentTypeIdName(Long domainId, Long componentTypeId, String name, Integer page, Integer size);
-
-    /**
-     * Retrieves a component by its unique identifier.
-     *
-     * @param id the unique identifier of the component to retrieve
-     * @return the component with the specified ID, or empty if not found
-     */
-    Optional<Component> getById(Long id);
 }

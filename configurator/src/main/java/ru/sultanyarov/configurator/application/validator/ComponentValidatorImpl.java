@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.springframework.util.ObjectUtils.isEmpty;
 
@@ -25,27 +26,51 @@ public class ComponentValidatorImpl implements ComponentValidator {
     @Override
     public void validateCreation(Component componentToCreate, ComponentType componentType, Map<Long, AttributeDefinition> componentTypeAttributesMap) {
         List<Component> existedComponents = componentType.components() == null ? List.of() : componentType.components();
-        validateIsNameUnique(componentToCreate, existedComponents);
-
-        List<AttributeValue> newComponentAttributes = componentToCreate.getAttributes() == null ? List.of() : componentToCreate.getAttributes();
-        Map<Long, AttributeValue> newComponentAttributesMap = HashMap.newHashMap(newComponentAttributes.size());
-        for (AttributeValue createdAttribute : newComponentAttributes) {
-            newComponentAttributesMap.put(createdAttribute.attributeDefinitionId(), createdAttribute);
-        }
-
-        validateIsNoDuplicate(newComponentAttributesMap, newComponentAttributes);
-
-        List<AttributeDefinition> attributeDefinitions = componentType.attributeDefinitions() == null ? List.of() : componentType.attributeDefinitions();
-        validateIsNoInvalidAttributesForComponent(newComponentAttributesMap, componentTypeAttributesMap, componentType);
-        validateHasRequiredAttributes(attributeDefinitions, newComponentAttributesMap);
-        validateAttributes(newComponentAttributes, componentTypeAttributesMap);
+        validateIsNameUnique(componentToCreate, existedComponents, null);
+        validateAttributes(componentToCreate, componentType, componentTypeAttributesMap);
     }
 
-    private void validateIsNameUnique(Component componentToCreate, List<Component> existedComponents) {
+    @Override
+    public void validateUpdate(
+            Component componentToUpdate,
+            Component existingComponent,
+            ComponentType componentType,
+            Map<Long, AttributeDefinition> componentTypeAttributesMap
+    ) {
+        if (!Objects.equals(existingComponent.getComponentTypeId(), componentToUpdate.getComponentTypeId())) {
+            throw new ValidationException("Changing component type is not supported");
+        }
+
+        List<Component> existedComponents = componentType.components() == null ? List.of() : componentType.components();
+        validateIsNameUnique(componentToUpdate, existedComponents, existingComponent.getId());
+        validateAttributes(componentToUpdate, componentType, componentTypeAttributesMap);
+    }
+
+    private void validateAttributes(
+            Component component,
+            ComponentType componentType,
+            Map<Long, AttributeDefinition> componentTypeAttributesMap
+    ) {
+        List<AttributeValue> componentAttributes = component.getAttributes() == null ? List.of() : component.getAttributes();
+        Map<Long, AttributeValue> componentAttributesMap = HashMap.newHashMap(componentAttributes.size());
+        for (AttributeValue componentAttribute : componentAttributes) {
+            componentAttributesMap.put(componentAttribute.attributeDefinitionId(), componentAttribute);
+        }
+
+        validateIsNoDuplicate(componentAttributesMap, componentAttributes);
+        List<AttributeDefinition> attributeDefinitions = componentType.attributeDefinitions() == null ? List.of() : componentType.attributeDefinitions();
+        validateIsNoInvalidAttributesForComponent(componentAttributesMap, componentTypeAttributesMap, componentType);
+        validateHasRequiredAttributes(attributeDefinitions, componentAttributesMap);
+        validateAttributeValues(componentAttributes, componentTypeAttributesMap);
+    }
+
+    private void validateIsNameUnique(Component component, List<Component> existedComponents, Long ignoredComponentId) {
         boolean isNameNotUnique = existedComponents
                 .stream()
+                .filter(existedComponent -> ignoredComponentId == null
+                        || !Objects.equals(existedComponent.getId(), ignoredComponentId))
                 .map(Component::getName)
-                .anyMatch(componentToCreate.getName()::equals);
+                .anyMatch(component.getName()::equals);
         if (isNameNotUnique) {
             throw new EntityAlreadyExistsException("Component name must be unique");
         }
@@ -79,7 +104,7 @@ public class ComponentValidatorImpl implements ComponentValidator {
         }
     }
 
-    private void validateAttributes(List<AttributeValue> newComponentAttributes, Map<Long, AttributeDefinition> componentTypeAttributesMap) {
+    private void validateAttributeValues(List<AttributeValue> newComponentAttributes, Map<Long, AttributeDefinition> componentTypeAttributesMap) {
         newComponentAttributes.forEach(attributeValue -> {
             AttributeDefinition attributeDefinition = componentTypeAttributesMap.get(attributeValue.attributeDefinitionId());
 

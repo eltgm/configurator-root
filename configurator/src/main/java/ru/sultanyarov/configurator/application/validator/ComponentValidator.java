@@ -21,4 +21,21 @@ public interface ComponentValidator {
      * @throws ru.sultanyarov.configurator.domain.exception.ValidationException if component attributes or values are invalid
      */
     void validateCreation(Component componentToCreate, ComponentType componentType, Map<Long, AttributeDefinition> componentTypeAttributesMap);
+
+    /**
+     * Validates a component before a full update.
+     *
+     * @param componentToUpdate the target editable state
+     * @param existingComponent the currently persisted component
+     * @param componentType the immutable component type
+     * @param componentTypeAttributesMap a lookup map of attribute definitions belonging to the component type
+     * @throws ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException if another component with the same name exists within the component type
+     * @throws ru.sultanyarov.configurator.domain.exception.ValidationException if the component type is changed or component attributes are invalid
+     */
+    void validateUpdate(
+            Component componentToUpdate,
+            Component existingComponent,
+            ComponentType componentType,
+            Map<Long, AttributeDefinition> componentTypeAttributesMap
+    );
 }

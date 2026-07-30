@@ -3,6 +3,7 @@ package ru.sultanyarov.configurator.application.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.sultanyarov.configurator.application.port.out.ComponentRepository;
 import ru.sultanyarov.configurator.application.validator.ComponentValidator;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
@@ -76,8 +77,27 @@ public class ComponentServiceImpl implements ComponentService {
     }
 
     @Override
+    @Transactional
     public Component update(Long id, Component component) {
-        return null;
+        log.debug("update component with id {}", id);
+
+        Component existingComponent = getById(id);
+        ComponentType componentType = componentTypeService.getById(existingComponent.getComponentTypeId());
+        Map<Long, AttributeDefinition> componentTypeAttributesMap = getComponentAttributesDefinitionsMap(componentType);
+
+        component.setName(component.getName().trim());
+        componentValidator.validateUpdate(component, existingComponent, componentType, componentTypeAttributesMap);
+
+        List<AttributeValue> targetAttributes = enrichAttributes(
+                component.getAttributes() == null ? List.of() : component.getAttributes(),
+                componentTypeAttributesMap
+        );
+
+        Component updatedComponent = componentRepository.updateComponent(id, component)
+                .orElseThrow(() -> new BusinessException("Failed to update component with id {}", id));
+        updatedComponent.setAttributes(attributeValueService.replaceAttributeValues(targetAttributes, id));
+        updatedComponent.setImages(existingComponent.getImages() == null ? List.of() : existingComponent.getImages());
+        return updatedComponent;
     }
 
     @Override

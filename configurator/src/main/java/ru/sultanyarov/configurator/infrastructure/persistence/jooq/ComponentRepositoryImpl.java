@@ -1,21 +1,23 @@
 package ru.sultanyarov.configurator.infrastructure.persistence.jooq;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.jooq.Condition;
-import org.jooq.DSLContext;
-import org.jooq.RecordMapper;
-import org.springframework.stereotype.Repository;
-import ru.sultanyarov.configurator.application.port.out.ComponentRepository;
-import ru.sultanyarov.configurator.domain.entity.jooq.Tables;
+import lombok.*;
+import lombok.extern.slf4j.*;
+import org.apache.commons.lang3.*;
+import org.jooq.*;
+import org.jooq.Record;
+import org.springframework.stereotype.*;
+import ru.sultanyarov.configurator.application.port.out.*;
+import ru.sultanyarov.configurator.common.util.*;
+import ru.sultanyarov.configurator.domain.entity.jooq.*;
+import ru.sultanyarov.configurator.domain.model.*;
 import ru.sultanyarov.configurator.domain.model.Component;
-import ru.sultanyarov.configurator.domain.model.Page;
+import ru.sultanyarov.configurator.domain.model.DataType;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
-import static ru.sultanyarov.configurator.common.util.PaginationHelper.jooqPage;
-import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.COMPONENT_TYPE;
+import static org.jooq.impl.DSL.multiset;
+import static ru.sultanyarov.configurator.common.util.PaginationHelper.*;
+import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.*;
 
 @Slf4j
 @Repository
@@ -29,6 +31,37 @@ public class ComponentRepositoryImpl implements ComponentRepository {
     public Optional<Component> createComponent(Component componentToCreate) {
         return dslContext.insertInto(COMPONENT)
                 .set(dslContext.newRecord(COMPONENT, componentToCreate))
+                .returning()
+                .fetchOptional(getComponentRecordMapper());
+    }
+
+    @Override
+    public Optional<Component> getById(Long id) {
+        List<SelectFieldOrAsterisk> fields = new ArrayList<>(List.of(
+                COMPONENT.ID,
+                COMPONENT.COMPONENT_TYPE_ID,
+                COMPONENT.NAME,
+                COMPONENT.BRAND,
+                COMPONENT.DESCRIPTION,
+                COMPONENT.ARCHIVED,
+                COMPONENT.CREATED_AT
+        ));
+        fields.add(attributeValuesField());
+        fields.add(imagesField());
+
+        return dslContext.select(fields)
+                .from(COMPONENT)
+                .where(COMPONENT.ID.eq(id))
+                .fetchOptional(getComponentRecordMapper());
+    }
+
+    @Override
+    public Optional<Component> updateComponent(Long id, Component component) {
+        return dslContext.update(COMPONENT)
+                .set(COMPONENT.NAME, component.getName())
+                .set(COMPONENT.BRAND, component.getBrand())
+                .set(COMPONENT.DESCRIPTION, component.getDescription())
+                .where(COMPONENT.ID.eq(id))
                 .returning()
                 .fetchOptional(getComponentRecordMapper());
     }
@@ -71,13 +104,6 @@ public class ComponentRepositoryImpl implements ComponentRepository {
         );
     }
 
-    @Override
-    public Optional<Component> getById(Long id) {
-        return dslContext.selectFrom(COMPONENT)
-                .where(COMPONENT.ID.eq(id))
-                .fetchOptional(getComponentRecordMapper());
-    }
-
     private RecordMapper<org.jooq.Record, Component> getComponentRecordMapper() {
         return componentRecord -> Component.builder()
                 .id(componentRecord.get(COMPONENT.ID))
@@ -87,6 +113,75 @@ public class ComponentRepositoryImpl implements ComponentRepository {
                 .description(componentRecord.get(COMPONENT.DESCRIPTION))
                 .archived(componentRecord.get(COMPONENT.ARCHIVED))
                 .createdAt(componentRecord.get(COMPONENT.CREATED_AT))
+                .attributes(JooqMapperUtils.getListOrNull(componentRecord, "attributes"))
+                .images(JooqMapperUtils.getListOrNull(componentRecord, "images"))
                 .build();
+    }
+
+    private SelectField<List<AttributeValue>> attributeValuesField() {
+        var attributeValue = Tables.ATTRIBUTE_VALUE;
+        var attributeDefinition = Tables.ATTRIBUTE_DEFINITION;
+
+        return multiset(
+                dslContext.select(
+                                attributeValue.ID,
+                                attributeValue.ATTRIBUTE_DEFINITION_ID,
+                                attributeDefinition.NAME,
+                                attributeDefinition.LABEL,
+                                attributeDefinition.DATA_TYPE,
+                                attributeValue.VALUE_STRING,
+                                attributeValue.VALUE_NUMBER,
+                                attributeValue.VALUE_BOOLEAN
+                        )
+                        .from(attributeValue)
+                        .join(attributeDefinition)
+                        .on(attributeDefinition.ID.eq(attributeValue.ATTRIBUTE_DEFINITION_ID))
+                        .where(attributeValue.COMPONENT_ID.eq(COMPONENT.ID))
+                        .orderBy(attributeDefinition.ORDER_INDEX, attributeValue.ID)
+        )
+                .convertFrom(result -> result.map(this::mapAttributeValue))
+                .as("attributes");
+    }
+
+    private AttributeValue mapAttributeValue(Record record) {
+        var attributeValue = Tables.ATTRIBUTE_VALUE;
+        var attributeDefinition = Tables.ATTRIBUTE_DEFINITION;
+        Object rawValue = ObjectUtils.firstNonNull(
+                record.get(attributeValue.VALUE_STRING),
+                record.get(attributeValue.VALUE_NUMBER),
+                record.get(attributeValue.VALUE_BOOLEAN)
+        );
+
+        return AttributeValue.builder()
+                .id(record.get(attributeValue.ID))
+                .attributeDefinitionId(record.get(attributeValue.ATTRIBUTE_DEFINITION_ID))
+                .name(record.get(attributeDefinition.NAME))
+                .label(record.get(attributeDefinition.LABEL))
+                .dataType(DataType.valueOf(record.get(attributeDefinition.DATA_TYPE)))
+                .value(rawValue == null ? null : String.valueOf(rawValue))
+                .build();
+    }
+
+    private SelectField<List<ComponentImage>> imagesField() {
+        var componentImage = Tables.COMPONENT_IMAGE;
+
+        return multiset(
+                dslContext.select(
+                                componentImage.ID,
+                                componentImage.COMPONENT_ID,
+                                componentImage.FILE_PATH,
+                                componentImage.ORDER_INDEX
+                        )
+                        .from(componentImage)
+                        .where(componentImage.COMPONENT_ID.eq(COMPONENT.ID))
+                        .orderBy(componentImage.ORDER_INDEX, componentImage.ID)
+        )
+                .convertFrom(result -> result.map(record -> ComponentImage.builder()
+                        .id(record.get(componentImage.ID))
+                        .componentId(record.get(componentImage.COMPONENT_ID))
+                        .url(record.get(componentImage.FILE_PATH))
+                        .orderIndex(record.get(componentImage.ORDER_INDEX))
+                        .build()))
+                .as("images");
     }
 }

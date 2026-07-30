@@ -21,4 +21,11 @@ public class AttributeValueServiceImpl implements AttributeValueService {
                 attributeValues, componentId
         );
     }
+
+    @Override
+    public List<AttributeValue> replaceAttributeValues(List<AttributeValue> attributeValues, Long componentId) {
+        log.debug("replaceAttributeValues for component {}", componentId);
+        attributeValueRepository.deleteByComponentId(componentId);
+        return attributeValueRepository.createAttributeValues(attributeValues, componentId);
+    }
 }

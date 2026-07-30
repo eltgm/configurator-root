@@ -35,4 +35,19 @@ class AttributeValueServiceImplTest {
         assertThat(result).isEqualTo(createdValues);
         verify(attributeValueRepository).createAttributeValues(values, 7L);
     }
+
+    @Test
+    void replaceAttributeValues_shouldDeleteExistingValuesBeforeCreatingTargetValues() {
+        List<AttributeValue> values = List.of(AttributeValue.builder().attributeDefinitionId(1L).value("updated").build());
+        List<AttributeValue> createdValues = List.of(AttributeValue.builder().id(11L).attributeDefinitionId(1L).value("updated").build());
+
+        when(attributeValueRepository.createAttributeValues(values, 7L)).thenReturn(createdValues);
+
+        List<AttributeValue> result = attributeValueService.replaceAttributeValues(values, 7L);
+
+        assertThat(result).isEqualTo(createdValues);
+        var inOrder = org.mockito.Mockito.inOrder(attributeValueRepository);
+        inOrder.verify(attributeValueRepository).deleteByComponentId(7L);
+        inOrder.verify(attributeValueRepository).createAttributeValues(values, 7L);
+    }
 }

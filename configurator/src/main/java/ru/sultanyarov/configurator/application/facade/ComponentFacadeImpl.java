@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.Component;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateComponentRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateComponentRequest;
 import ru.sultanyarov.configurator.application.mapper.ComponentMapper;
 import ru.sultanyarov.configurator.application.service.ComponentService;
 
@@ -22,6 +23,17 @@ public class ComponentFacadeImpl implements ComponentFacade {
         return componentMapper.toDto(
                 componentService.create(
                         componentMapper.toEntity(createComponentRequest)
+                )
+        );
+    }
+
+    @Override
+    public Component updateComponent(Long componentId, UpdateComponentRequest updateComponentRequest) {
+        log.info("Updating component with id {}", componentId);
+        return componentMapper.toDto(
+                componentService.update(
+                        componentId,
+                        componentMapper.toEntity(updateComponentRequest)
                 )
         );
     }

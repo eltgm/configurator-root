@@ -16,4 +16,13 @@ public interface AttributeValueService {
      * @return the created attribute values enriched with persisted metadata
      */
     List<AttributeValue> createAttributeValues(List<AttributeValue> attributeValues, Long componentId);
+
+    /**
+     * Replaces all attribute values belonging to the specified component.
+     *
+     * @param attributeValues the target attribute values
+     * @param componentId the unique identifier of the component
+     * @return the persisted target attribute values
+     */
+    List<AttributeValue> replaceAttributeValues(List<AttributeValue> attributeValues, Long componentId);
 }

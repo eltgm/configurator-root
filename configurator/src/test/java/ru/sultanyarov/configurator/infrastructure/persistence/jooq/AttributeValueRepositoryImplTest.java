@@ -76,4 +76,19 @@ class AttributeValueRepositoryImplTest extends AbstractJooqRepositoryTest {
         assertThat(created).extracting(AttributeValue::value).containsExactlyInAnyOrder("linear", "45", "true");
         assertThat(created).extracting(AttributeValue::name).containsExactlyInAnyOrder("name", "force", "clicky");
     }
+
+    @Test
+    void shouldDeleteAllAttributeValuesByComponentId() {
+        repository.createAttributeValues(List.of(
+                AttributeValue.builder().attributeDefinitionId(1L).dataType(DataType.STRING).value("linear").build(),
+                AttributeValue.builder().attributeDefinitionId(2L).dataType(DataType.NUMBER).value("45").build()
+        ), 1L);
+
+        repository.deleteByComponentId(1L);
+
+        assertThat(dslContext.fetchCount(
+                Tables.ATTRIBUTE_VALUE,
+                Tables.ATTRIBUTE_VALUE.COMPONENT_ID.eq(1L)
+        )).isZero();
+    }
 }

@@ -6,6 +6,7 @@ import ru.sultanyarov.configurator.api.inbounds.rest.dto.Component
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentPage
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateComponentRequest
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ErrorResponse
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateComponentRequest
 import spock.lang.Specification
 
 abstract class AbstractComponentControllerContract extends Specification implements ApiTestSupport {
@@ -216,6 +217,184 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         result.status == 400
     }
 
+    def "should fully update component and replace attribute values while preserving images"() {
+        given:
+        prepareComponentUpdateData()
+        def updateRequest = new UpdateComponentRequest(
+                1L,
+                "Keychron Q1 Pro",
+                [
+                        new AttributeValueInput(101L, "ISO"),
+                        new AttributeValueInput(102L, "TKL")
+                ]
+        )
+                .brand("Updated brand")
+                .description("Updated description")
+
+        when:
+        def result = put("/components/1", updateRequest)
+
+        then:
+        result.status == 200
+        def responseBody = objectMapper.readValue(result.body, Component)
+        responseBody.getId() == 1L
+        responseBody.getComponentTypeId() == 1L
+        responseBody.getName() == "Keychron Q1 Pro"
+        responseBody.getBrand() == "Updated brand"
+        responseBody.getDescription() == "Updated description"
+        responseBody.getArchived() == false
+        responseBody.getCreatedAt() != null
+        responseBody.getAttributes().size() == 2
+        responseBody.getAttributes()*.getAttributeDefinitionId().toSet() == [101L, 102L].toSet()
+        responseBody.getAttributes()*.getValue().toSet() == ["ISO", "TKL"].toSet()
+        responseBody.getImages().size() == 1
+        responseBody.getImages().first().getId() == 501L
+        responseBody.getImages().first().getUrl() == "/files/components/1/main.jpg"
+    }
+
+    def "should clear nullable fields when updating component"() {
+        given:
+        prepareComponentUpdateData()
+        def updateRequest = new UpdateComponentRequest(
+                1L,
+                "Keychron Q1",
+                [
+                        new AttributeValueInput(101L, "ANSI"),
+                        new AttributeValueInput(102L, "75%")
+                ]
+        )
+
+        when:
+        def result = put("/components/1", updateRequest)
+
+        then:
+        result.status == 200
+        def responseBody = objectMapper.readValue(result.body, Component)
+        responseBody.getBrand() == null
+        responseBody.getDescription() == null
+    }
+
+    def "should trim component name when updating"() {
+        given:
+        prepareComponentUpdateData()
+        def updateRequest = new UpdateComponentRequest(
+                1L,
+                "Updated component ",
+                [
+                        new AttributeValueInput(101L, "ANSI"),
+                        new AttributeValueInput(102L, "75%")
+                ]
+        )
+
+        when:
+        def result = put("/components/1", updateRequest)
+
+        then:
+        result.status == 200
+        objectMapper.readValue(result.body, Component).getName() == "Updated component"
+    }
+
+    def "should return not found when updating non-existent component"() {
+        given:
+        prepareComponentUpdateData()
+        def updateRequest = validUpdateRequest()
+
+        expect:
+        put("/components/999999", updateRequest).status == 404
+    }
+
+    def "should return bad request when changing component type"() {
+        given:
+        prepareComponentUpdateData()
+        def updateRequest = validUpdateRequest().componentTypeId(2L)
+
+        when:
+        def result = put("/components/1", updateRequest)
+
+        then:
+        result.status == 400
+        objectMapper.readValue(result.body, ErrorResponse).getMessage() != null
+    }
+
+    def "should return conflict when updated name belongs to another component of the same type"() {
+        given:
+        prepareComponentUpdateData()
+        def updateRequest = validUpdateRequest().name("Existing component name")
+
+        expect:
+        put("/components/1", updateRequest).status == 409
+    }
+
+    def "should return bad request when update contains duplicate attribute ids"() {
+        given:
+        prepareComponentUpdateData()
+        def updateRequest = validUpdateRequest().attributes([
+                new AttributeValueInput(101L, "ANSI"),
+                new AttributeValueInput(101L, "ISO"),
+                new AttributeValueInput(102L, "75%")
+        ])
+
+        expect:
+        put("/components/1", updateRequest).status == 400
+    }
+
+    def "should return bad request when update contains invalid attribute value"() {
+        given:
+        prepareComponentUpdateData()
+        def updateRequest = validUpdateRequest().attributes([
+                new AttributeValueInput(101L, "INVALID"),
+                new AttributeValueInput(102L, "75%")
+        ])
+
+        expect:
+        put("/components/1", updateRequest).status == 400
+    }
+
+    def "should return bad request when update misses required attributes"() {
+        given:
+        prepareComponentUpdateData()
+        def updateRequest = validUpdateRequest().attributes([
+                new AttributeValueInput(101L, "ANSI")
+        ])
+
+        expect:
+        put("/components/1", updateRequest).status == 400
+    }
+
+    def "should return bad request when update contains attribute of another component type"() {
+        given:
+        prepareComponentUpdateData()
+        def updateRequest = validUpdateRequest().attributes([
+                new AttributeValueInput(101L, "ANSI"),
+                new AttributeValueInput(102L, "75%"),
+                new AttributeValueInput(201L, "Linear")
+        ])
+
+        expect:
+        put("/components/1", updateRequest).status == 400
+    }
+
+    def "should return bad request when update attributes are omitted"() {
+        given:
+        prepareComponentUpdateData()
+        def updateRequest = [
+                componentTypeId: 1L,
+                name: "Updated component"
+        ]
+
+        expect:
+        put("/components/1", updateRequest).status == 400
+    }
+
+    def "should return bad request when updated name is blank"() {
+        given:
+        prepareComponentUpdateData()
+        def updateRequest = validUpdateRequest().name("   ")
+
+        expect:
+        put("/components/1", updateRequest).status == 400
+    }
+
     def "should get component by id successfully"() {
         given:
         runSqlScripts(
@@ -325,6 +504,30 @@ abstract class AbstractComponentControllerContract extends Specification impleme
                 "/sql/insert-second-test-component-type.sql",
                 "/sql/insert-test-component.sql",
                 "/sql/insert-component-search-data.sql"
+        )
+    }
+
+    private void prepareComponentUpdateData() {
+        runSqlScripts(
+                "/sql/clear-db.sql",
+                "/sql/insert-test-domain.sql",
+                "/sql/insert-test-component-type.sql",
+                "/sql/insert-second-test-component-type.sql",
+                "/sql/insert-test-component-creation-attributes.sql",
+                "/sql/insert-second-test-attribute-definition.sql",
+                "/sql/insert-test-component.sql",
+                "/sql/insert-test-component-update-data.sql"
+        )
+    }
+
+    private static UpdateComponentRequest validUpdateRequest() {
+        return new UpdateComponentRequest(
+                1L,
+                "Updated component",
+                [
+                        new AttributeValueInput(101L, "ANSI"),
+                        new AttributeValueInput(102L, "75%")
+                ]
         )
     }
 }

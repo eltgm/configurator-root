@@ -11,7 +11,10 @@ import ru.sultanyarov.configurator.api.inbounds.rest.controller.ComponentControl
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.Component;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateComponentRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateComponentRequest;
 import ru.sultanyarov.configurator.application.facade.ComponentFacade;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
@@ -56,6 +59,20 @@ class ComponentControllerTest {
     }
 
     @Test
+    void componentsIdPut_shouldDelegateUpdateToFacade() {
+        UpdateComponentRequest request = new UpdateComponentRequest(1L, "Updated", List.of());
+        Component component = new Component();
+
+        when(componentFacade.updateComponent(7L, request)).thenReturn(component);
+
+        ResponseEntity<Component> response = componentController.componentsIdPut(7L, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isSameAs(component);
+        verify(componentFacade).updateComponent(7L, request);
+    }
+
+    @Test
     void componentsIdGet_shouldDelegateRetrievalToFacade() {
         Component component = new Component();
 
@@ -73,6 +90,5 @@ class ComponentControllerTest {
         assertThat(componentController.componentsIdDelete(1L)).isNull();
         assertThat(componentController.componentsIdImagesGet(1L)).isNull();
         assertThat(componentController.componentsIdImagesPost(1L, null, 1)).isNull();
-        assertThat(componentController.componentsIdPut(1L, new CreateComponentRequest())).isNull();
     }
 }

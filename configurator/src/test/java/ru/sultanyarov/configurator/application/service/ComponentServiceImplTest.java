@@ -1,35 +1,19 @@
 package ru.sultanyarov.configurator.application.service;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import ru.sultanyarov.configurator.application.port.out.ComponentRepository;
-import ru.sultanyarov.configurator.application.validator.ComponentValidator;
-import ru.sultanyarov.configurator.domain.exception.BusinessException;
-import ru.sultanyarov.configurator.domain.exception.NotFoundException;
-import ru.sultanyarov.configurator.domain.exception.ValidationException;
-import ru.sultanyarov.configurator.domain.model.AttributeDefinition;
-import ru.sultanyarov.configurator.domain.model.AttributeValue;
-import ru.sultanyarov.configurator.domain.model.Component;
-import ru.sultanyarov.configurator.domain.model.ComponentType;
-import ru.sultanyarov.configurator.domain.model.DataType;
-import ru.sultanyarov.configurator.domain.model.Domain;
-import ru.sultanyarov.configurator.domain.model.Page;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.*;
+import org.mockito.*;
+import org.mockito.junit.jupiter.*;
+import ru.sultanyarov.configurator.application.port.out.*;
+import ru.sultanyarov.configurator.application.validator.*;
+import ru.sultanyarov.configurator.domain.exception.*;
+import ru.sultanyarov.configurator.domain.model.*;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ComponentServiceImplTest {
@@ -107,6 +91,138 @@ class ComponentServiceImplTest {
     }
 
     @Test
+    void update_shouldReplaceEditableStateAndAttributesWhilePreservingImages() {
+        ComponentImage image = ComponentImage.builder().id(30L).componentId(7L).url("/image.jpg").orderIndex(1).build();
+        Component existingComponent = Component.builder()
+                .id(7L)
+                .componentTypeId(5L)
+                .name("Existing")
+                .archived(false)
+                .images(List.of(image))
+                .build();
+        AttributeDefinition attributeDefinition = AttributeDefinition.builder()
+                .id(11L)
+                .componentTypeId(5L)
+                .name("force")
+                .label("Force")
+                .dataType(DataType.NUMBER)
+                .build();
+        ComponentType componentType = ComponentType.builder()
+                .id(5L)
+                .attributeDefinitions(List.of(attributeDefinition))
+                .components(List.of(existingComponent))
+                .build();
+        Component componentToUpdate = Component.builder()
+                .componentTypeId(5L)
+                .name(" Updated ")
+                .brand("Brand")
+                .description("Description")
+                .attributes(List.of(AttributeValue.builder().attributeDefinitionId(11L).value("55").build()))
+                .build();
+        Component persistedComponent = Component.builder()
+                .id(7L)
+                .componentTypeId(5L)
+                .name("Updated")
+                .brand("Brand")
+                .description("Description")
+                .archived(false)
+                .build();
+        List<AttributeValue> persistedAttributes = List.of(
+                AttributeValue.builder()
+                        .id(41L)
+                        .attributeDefinitionId(11L)
+                        .name("force")
+                        .label("Force")
+                        .dataType(DataType.NUMBER)
+                        .value("55")
+                        .build()
+        );
+
+        when(componentRepository.getById(7L)).thenReturn(Optional.of(existingComponent));
+        when(componentTypeService.getById(5L)).thenReturn(componentType);
+        when(componentRepository.updateComponent(7L, componentToUpdate)).thenReturn(Optional.of(persistedComponent));
+        when(attributeValueService.replaceAttributeValues(anyList(), eq(7L))).thenReturn(persistedAttributes);
+
+        Component result = componentService.update(7L, componentToUpdate);
+
+        assertThat(componentToUpdate.getName()).isEqualTo("Updated");
+        assertThat(result).isSameAs(persistedComponent);
+        assertThat(result.getAttributes()).isEqualTo(persistedAttributes);
+        assertThat(result.getImages()).containsExactly(image);
+        verify(componentValidator).validateUpdate(
+                eq(componentToUpdate),
+                eq(existingComponent),
+                eq(componentType),
+                eq(Map.of(11L, attributeDefinition))
+        );
+        verify(componentRepository).updateComponent(7L, componentToUpdate);
+        verify(attributeValueService).replaceAttributeValues(
+                eq(List.of(AttributeValue.builder()
+                        .attributeDefinitionId(11L)
+                        .name("force")
+                        .label("Force")
+                        .dataType(DataType.NUMBER)
+                        .value("55")
+                        .build())),
+                eq(7L)
+        );
+    }
+
+    @Test
+    void update_shouldRejectInvalidComponentBeforePersistence() {
+        Component existingComponent = Component.builder().id(7L).componentTypeId(5L).name("Existing").build();
+        Component componentToUpdate = Component.builder().componentTypeId(6L).name("Updated").attributes(List.of()).build();
+        ComponentType componentType = ComponentType.builder().id(5L).attributeDefinitions(List.of()).build();
+
+        when(componentRepository.getById(7L)).thenReturn(Optional.of(existingComponent));
+        when(componentTypeService.getById(5L)).thenReturn(componentType);
+        doThrow(new ValidationException("Changing component type is not supported"))
+                .when(componentValidator)
+                .validateUpdate(componentToUpdate, existingComponent, componentType, Map.of());
+
+        assertThatThrownBy(() -> componentService.update(7L, componentToUpdate))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Changing component type");
+
+        verify(componentRepository, never()).updateComponent(any(), any());
+        verifyNoInteractions(attributeValueService);
+    }
+
+    @Test
+    void update_shouldThrowBusinessExceptionWhenRepositoryDidNotUpdateComponent() {
+        Component existingComponent = Component.builder().id(7L).componentTypeId(5L).name("Existing").build();
+        Component componentToUpdate = Component.builder().componentTypeId(5L).name("Updated").attributes(List.of()).build();
+        ComponentType componentType = ComponentType.builder().id(5L).attributeDefinitions(List.of()).build();
+
+        when(componentRepository.getById(7L)).thenReturn(Optional.of(existingComponent));
+        when(componentTypeService.getById(5L)).thenReturn(componentType);
+        when(componentRepository.updateComponent(7L, componentToUpdate)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> componentService.update(7L, componentToUpdate))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Failed to update component");
+
+        verifyNoInteractions(attributeValueService);
+    }
+
+    @Test
+    void getById_shouldReturnComponentFromRepository() {
+        Component component = Component.builder().id(7L).build();
+        when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+
+        assertThat(componentService.getById(7L)).isSameAs(component);
+    }
+
+    @Test
+    void getById_shouldThrowNotFoundExceptionWhenComponentDoesNotExist() {
+        when(componentRepository.getById(7L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> componentService.getById(7L))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessageContaining("7");
+    }
+
+    @Test
     void getByPageByDomainId_shouldDelegateSearchWithoutComponentTypeFilter() {
         Domain domain = Domain.builder()
                 .id(1L)
@@ -172,19 +288,7 @@ class ComponentServiceImplTest {
     }
 
     @Test
-    void getById_shouldThrowNotFoundExceptionWhenComponentDoesNotExist() {
-        when(componentRepository.getById(1L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> componentService.getById(1L))
-                .isInstanceOf(NotFoundException.class)
-                .hasMessage("Component with id 1 not found");
-
-        verify(componentRepository).getById(1L);
-    }
-
-    @Test
     void unimplementedMethods_shouldReturnNullOrDoNothing() {
-        assertThat(componentService.update(1L, new Component())).isNull();
         componentService.deleteById(1L);
         assertThat(componentService.getPage(0, 10)).isNull();
     }

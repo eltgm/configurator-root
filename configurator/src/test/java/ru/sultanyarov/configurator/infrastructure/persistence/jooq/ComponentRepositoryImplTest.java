@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ru.sultanyarov.configurator.domain.entity.jooq.Tables;
 import ru.sultanyarov.configurator.domain.model.Component;
+import ru.sultanyarov.configurator.domain.model.DataType;
 import ru.sultanyarov.configurator.domain.model.Page;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -67,6 +68,74 @@ class ComponentRepositoryImplTest extends AbstractJooqRepositoryTest {
     }
 
     @Test
+    void shouldGetComponentWithAttributeValuesAndImages() {
+        insertComponent(7L, 1L, "Switch");
+        dslContext.insertInto(Tables.ATTRIBUTE_DEFINITION)
+                .set(Tables.ATTRIBUTE_DEFINITION.ID, 11L)
+                .set(Tables.ATTRIBUTE_DEFINITION.COMPONENT_TYPE_ID, 1L)
+                .set(Tables.ATTRIBUTE_DEFINITION.NAME, "force")
+                .set(Tables.ATTRIBUTE_DEFINITION.LABEL, "Force")
+                .set(Tables.ATTRIBUTE_DEFINITION.DATA_TYPE, DataType.NUMBER.name())
+                .set(Tables.ATTRIBUTE_DEFINITION.ORDER_INDEX, 1)
+                .execute();
+        dslContext.insertInto(Tables.ATTRIBUTE_VALUE)
+                .set(Tables.ATTRIBUTE_VALUE.COMPONENT_ID, 7L)
+                .set(Tables.ATTRIBUTE_VALUE.ATTRIBUTE_DEFINITION_ID, 11L)
+                .set(Tables.ATTRIBUTE_VALUE.VALUE_NUMBER, java.math.BigInteger.valueOf(55))
+                .execute();
+        dslContext.insertInto(Tables.COMPONENT_IMAGE)
+                .set(Tables.COMPONENT_IMAGE.COMPONENT_ID, 7L)
+                .set(Tables.COMPONENT_IMAGE.FILE_PATH, "/files/components/7/main.jpg")
+                .set(Tables.COMPONENT_IMAGE.ORDER_INDEX, 1)
+                .execute();
+
+        Component component = repository.getById(7L).orElseThrow();
+
+        assertThat(component.getAttributes()).singleElement()
+                .satisfies(attribute -> {
+                    assertThat(attribute.attributeDefinitionId()).isEqualTo(11L);
+                    assertThat(attribute.name()).isEqualTo("force");
+                    assertThat(attribute.label()).isEqualTo("Force");
+                    assertThat(attribute.dataType()).isEqualTo(DataType.NUMBER);
+                    assertThat(attribute.value()).isEqualTo("55");
+                });
+        assertThat(component.getImages()).singleElement()
+                .satisfies(image -> {
+                    assertThat(image.componentId()).isEqualTo(7L);
+                    assertThat(image.url()).isEqualTo("/files/components/7/main.jpg");
+                    assertThat(image.orderIndex()).isEqualTo(1);
+                });
+    }
+
+    @Test
+    void shouldUpdateOnlyEditableComponentFields() {
+        insertComponent(7L, 1L, "Switch");
+        Component beforeUpdate = repository.getById(7L).orElseThrow();
+
+        Component updated = repository.updateComponent(7L, Component.builder()
+                        .componentTypeId(2L)
+                        .name("Updated switch")
+                        .brand("Brand")
+                        .description("Description")
+                        .archived(true)
+                        .build())
+                .orElseThrow();
+
+        assertThat(updated.getName()).isEqualTo("Updated switch");
+        assertThat(updated.getBrand()).isEqualTo("Brand");
+        assertThat(updated.getDescription()).isEqualTo("Description");
+        assertThat(updated.getComponentTypeId()).isEqualTo(1L);
+        assertThat(updated.getArchived()).isEqualTo(beforeUpdate.getArchived());
+        assertThat(updated.getCreatedAt()).isEqualTo(beforeUpdate.getCreatedAt());
+    }
+
+    @Test
+    void shouldReturnEmptyWhenComponentDoesNotExist() {
+        assertThat(repository.getById(999L)).isEmpty();
+        assertThat(repository.updateComponent(999L, Component.builder().name("Missing").build())).isEmpty();
+    }
+
+    @Test
     void shouldFindOnlyDomainComponentsAndReturnFilteredTotalItems() {
         insertComponent(1L, 1L, "Switch A");
         insertComponent(2L, 1L, "Switch B");
@@ -118,7 +187,7 @@ class ComponentRepositoryImplTest extends AbstractJooqRepositoryTest {
     }
 
     @Test
-    void shouldGetComponentById() {
+    void shouldGetById() {
         insertComponent(1L, 1L, "Switch A");
         insertComponent(2L, 2L, "Keycap");
 
