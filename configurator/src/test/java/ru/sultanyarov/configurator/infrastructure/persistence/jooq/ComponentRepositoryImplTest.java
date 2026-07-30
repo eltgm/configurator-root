@@ -109,6 +109,21 @@ class ComponentRepositoryImplTest extends AbstractJooqRepositoryTest {
     }
 
     @Test
+    void shouldGetComponentImagesOrderedByOrderIndexWithNullLastAndIdAsTieBreaker() {
+        insertComponent(7L, 1L, "Switch");
+        insertImage(44L, 7L, "/second-two.png", 2);
+        insertImage(42L, 7L, "/zero.png", 0);
+        insertImage(41L, 7L, "/unordered.png", null);
+        insertImage(43L, 7L, "/first-two.png", 2);
+
+        Component component = repository.getById(7L).orElseThrow();
+
+        assertThat(component.getImages())
+                .extracting(ComponentImage::id)
+                .containsExactly(42L, 43L, 44L, 41L);
+    }
+
+    @Test
     void shouldUpdateOnlyEditableComponentFields() {
         insertComponent(7L, 1L, "Switch");
         Component beforeUpdate = repository.getById(7L).orElseThrow();
@@ -308,6 +323,15 @@ class ComponentRepositoryImplTest extends AbstractJooqRepositoryTest {
                 .set(Tables.COMPONENT.ID, id)
                 .set(Tables.COMPONENT.COMPONENT_TYPE_ID, componentTypeId)
                 .set(Tables.COMPONENT.NAME, name)
+                .execute();
+    }
+
+    private void insertImage(Long id, Long componentId, String path, Integer orderIndex) {
+        dslContext.insertInto(Tables.COMPONENT_IMAGE)
+                .set(Tables.COMPONENT_IMAGE.ID, id)
+                .set(Tables.COMPONENT_IMAGE.COMPONENT_ID, componentId)
+                .set(Tables.COMPONENT_IMAGE.FILE_PATH, path)
+                .set(Tables.COMPONENT_IMAGE.ORDER_INDEX, orderIndex)
                 .execute();
     }
 }

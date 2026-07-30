@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 import ru.sultanyarov.configurator.api.inbounds.rest.controller.ComponentController;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.Component;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentImage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateComponentRequest;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateComponentRequest;
@@ -116,7 +117,16 @@ class ComponentControllerTest {
     }
 
     @Test
-    void stubbedEndpoints_shouldReturnNullUntilImplemented() {
-        assertThat(componentController.componentsIdImagesGet(1L)).isNull();
+    void componentsIdImagesGet_shouldDelegateRetrievalToFacade() {
+        List<ComponentImage> images = List.of(
+                new ComponentImage(10L, "/image.png").orderIndex(2)
+        );
+        when(componentFacade.getComponentImages(7L)).thenReturn(images);
+
+        ResponseEntity<List<ComponentImage>> response = componentController.componentsIdImagesGet(7L);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isSameAs(images);
+        verify(componentFacade).getComponentImages(7L);
     }
 }

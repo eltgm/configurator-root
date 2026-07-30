@@ -34,7 +34,7 @@ public class ComponentController implements ComponentsApi {
 
     @Override
     public ResponseEntity<List<ComponentImage>> componentsIdImagesGet(Long id) {
-        return null;
+        return ResponseEntity.ok(componentFacade.getComponentImages(id));
     }
 
     @Override

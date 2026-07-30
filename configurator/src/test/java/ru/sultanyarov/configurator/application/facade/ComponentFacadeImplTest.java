@@ -161,4 +161,25 @@ class ComponentFacadeImplTest {
                 .hasMessage("Failed to read uploaded image")
                 .hasCauseInstanceOf(IOException.class);
     }
+
+    @Test
+    void getComponentImages_shouldDelegateToServiceAndMapEveryImage() {
+        ru.sultanyarov.configurator.domain.model.ComponentImage firstEntity =
+                new ru.sultanyarov.configurator.domain.model.ComponentImage(9L, 7L, "/first.png", 0);
+        ru.sultanyarov.configurator.domain.model.ComponentImage secondEntity =
+                new ru.sultanyarov.configurator.domain.model.ComponentImage(10L, 7L, "/second.png", 1);
+        ComponentImage firstDto = new ComponentImage(9L, "/first.png").orderIndex(0);
+        ComponentImage secondDto = new ComponentImage(10L, "/second.png").orderIndex(1);
+
+        when(componentService.getImagesByComponentId(7L)).thenReturn(List.of(firstEntity, secondEntity));
+        when(componentMapper.toDto(firstEntity)).thenReturn(firstDto);
+        when(componentMapper.toDto(secondEntity)).thenReturn(secondDto);
+
+        List<ComponentImage> result = componentFacade.getComponentImages(7L);
+
+        assertThat(result).containsExactly(firstDto, secondDto);
+        verify(componentService).getImagesByComponentId(7L);
+        verify(componentMapper).toDto(firstEntity);
+        verify(componentMapper).toDto(secondEntity);
+    }
 }

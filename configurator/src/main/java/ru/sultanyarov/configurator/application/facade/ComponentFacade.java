@@ -7,6 +7,8 @@ import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateComponentRequest;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateComponentRequest;
 
+import java.util.List;
+
 /**
  * Facade interface for component management operations.
  * Provides an application boundary for converting transport-layer requests and responses
@@ -56,6 +58,15 @@ public interface ComponentFacade {
      * @return the created component image
      */
     ComponentImage uploadComponentImage(Long componentId, MultipartFile file, Integer orderIndex);
+
+    /**
+     * Retrieves component images in their deterministic display order.
+     *
+     * @param componentId the unique identifier of the component
+     * @return component images sorted by order index and image identifier
+     * @throws ru.sultanyarov.configurator.domain.exception.NotFoundException if the component does not exist
+     */
+    List<ComponentImage> getComponentImages(Long componentId);
 
     /**
      * Retrieves a paginated list of components belonging to the specified domain.

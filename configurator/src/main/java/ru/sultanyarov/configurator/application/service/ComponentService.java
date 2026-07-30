@@ -5,6 +5,8 @@ import ru.sultanyarov.configurator.domain.model.ComponentImage;
 import ru.sultanyarov.configurator.domain.model.ComponentImageUpload;
 import ru.sultanyarov.configurator.domain.model.Page;
 
+import java.util.List;
+
 /**
  * Service interface for managing {@link Component} entities.
  * Provides application-level business operations for components.
@@ -49,6 +51,15 @@ public interface ComponentService {
      * @return the persisted component image
      */
     ComponentImage uploadImage(Long id, ComponentImageUpload image, Integer orderIndex);
+
+    /**
+     * Retrieves images attached to a component.
+     *
+     * @param id the unique identifier of the component
+     * @return component images in deterministic display order
+     * @throws ru.sultanyarov.configurator.domain.exception.NotFoundException if the component does not exist
+     */
+    List<ComponentImage> getImagesByComponentId(Long id);
 
     /**
      * Retrieves a component by its unique identifier.
