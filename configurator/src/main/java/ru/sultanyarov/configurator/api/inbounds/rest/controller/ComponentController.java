@@ -9,6 +9,7 @@ import ru.sultanyarov.configurator.api.inbounds.rest.dto.Component;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentImage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateComponentRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateComponentRequest;
 import ru.sultanyarov.configurator.application.facade.ComponentFacade;
 
 import java.util.List;
@@ -41,8 +42,8 @@ public class ComponentController implements ComponentsApi {
     }
 
     @Override
-    public ResponseEntity<Component> componentsIdPut(Long id, CreateComponentRequest createComponentRequest) {
-        return null;
+    public ResponseEntity<Component> componentsIdPut(Long id, UpdateComponentRequest updateComponentRequest) {
+        return ResponseEntity.ok(componentFacade.updateComponent(id, updateComponentRequest));
     }
 
     @Override

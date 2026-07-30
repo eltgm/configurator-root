@@ -410,6 +410,31 @@ components:
         - componentTypeId
         - name
 
+    UpdateComponentRequest:
+      type: object
+      properties:
+        componentTypeId:
+          type: integer
+          format: int64
+        name:
+          type: string
+          minLength: 1
+          pattern: '^\S.*'
+        brand:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        attributes:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttributeValueInput'
+      required:
+        - componentTypeId
+        - name
+        - attributes
+
     ### COMPATIBILITY ###
     CompatibilityLink:
       type: object
@@ -1187,6 +1212,7 @@ paths:
     put:
       tags: [ Components ]
       summary: Update component
+      description: Fully replaces editable component fields and attribute values. Component type cannot be changed.
       parameters:
         - name: id
           in: path
@@ -1194,12 +1220,13 @@ paths:
           schema:
             type: integer
             format: int64
+            minimum: 1
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateComponentRequest'
+              $ref: '#/components/schemas/UpdateComponentRequest'
       responses:
         '200':
           description: Updated
@@ -1215,6 +1242,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Component with the same name already exists within the component type
           content:
             application/json:
               schema:

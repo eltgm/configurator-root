@@ -3,6 +3,7 @@ package ru.sultanyarov.configurator.application.facade;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.Component;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateComponentRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateComponentRequest;
 
 /**
  * Facade interface for component management operations.
@@ -21,6 +22,19 @@ public interface ComponentFacade {
      * @throws ru.sultanyarov.configurator.domain.exception.BusinessException            if the component could not be created
      */
     Component createComponent(CreateComponentRequest createComponentRequest);
+
+    /**
+     * Fully replaces the editable state of an existing component.
+     *
+     * @param componentId the unique identifier of the component to update
+     * @param updateComponentRequest the request containing the target component state
+     * @return the updated component DTO
+     * @throws ru.sultanyarov.configurator.domain.exception.NotFoundException if the component does not exist
+     * @throws ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException if another component with the same name exists within the component type
+     * @throws ru.sultanyarov.configurator.domain.exception.ValidationException if the component type is changed or attribute validation fails
+     * @throws ru.sultanyarov.configurator.domain.exception.BusinessException if the component could not be updated
+     */
+    Component updateComponent(Long componentId, UpdateComponentRequest updateComponentRequest);
 
     /**
      * Retrieves a paginated list of components belonging to the specified domain.

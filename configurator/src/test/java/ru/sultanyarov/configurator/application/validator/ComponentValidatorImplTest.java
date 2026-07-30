@@ -121,6 +121,66 @@ class ComponentValidatorImplTest {
                 .hasMessageContaining("Incorrect enum value");
     }
 
+    @Test
+    void validateUpdate_shouldAllowComponentToKeepItsOwnName() {
+        Component existing = Component.builder()
+                .id(7L)
+                .componentTypeId(1L)
+                .name("Existing")
+                .attributes(List.of())
+                .build();
+        ComponentType componentType = componentType(List.of(), List.of(existing));
+        Component componentToUpdate = Component.builder()
+                .componentTypeId(1L)
+                .name("Existing")
+                .attributes(List.of())
+                .build();
+
+        assertThatCode(() -> validator.validateUpdate(
+                componentToUpdate,
+                existing,
+                componentType,
+                attributeMap(componentType.attributeDefinitions())
+        )).doesNotThrowAnyException();
+    }
+
+    @Test
+    void validateUpdate_shouldRejectNameUsedByAnotherComponent() {
+        Component existing = Component.builder().id(7L).componentTypeId(1L).name("Existing").build();
+        Component another = Component.builder().id(8L).componentTypeId(1L).name("Taken").build();
+        ComponentType componentType = componentType(List.of(), List.of(existing, another));
+        Component componentToUpdate = component("Taken", List.of());
+
+        assertThatThrownBy(() -> validator.validateUpdate(
+                componentToUpdate,
+                existing,
+                componentType,
+                attributeMap(componentType.attributeDefinitions())
+        ))
+                .isInstanceOf(EntityAlreadyExistsException.class)
+                .hasMessageContaining("unique");
+    }
+
+    @Test
+    void validateUpdate_shouldRejectComponentTypeChange() {
+        Component existing = Component.builder().id(7L).componentTypeId(1L).name("Existing").build();
+        Component componentToUpdate = Component.builder()
+                .componentTypeId(2L)
+                .name("Existing")
+                .attributes(List.of())
+                .build();
+        ComponentType componentType = componentType(List.of(), List.of(existing));
+
+        assertThatThrownBy(() -> validator.validateUpdate(
+                componentToUpdate,
+                existing,
+                componentType,
+                attributeMap(componentType.attributeDefinitions())
+        ))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Changing component type");
+    }
+
     private static Component component(String name, List<AttributeValue> attributes) {
         return Component.builder()
                 .componentTypeId(1L)

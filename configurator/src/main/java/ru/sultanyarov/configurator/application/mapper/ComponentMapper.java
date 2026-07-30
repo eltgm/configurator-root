@@ -4,6 +4,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateComponentRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateComponentRequest;
 import ru.sultanyarov.configurator.domain.model.Component;
 import ru.sultanyarov.configurator.domain.model.Page;
 
@@ -15,6 +16,12 @@ public interface ComponentMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "archived", ignore = true)
     Component toEntity(CreateComponentRequest createComponentRequest);
+
+    @Mapping(target = "images", ignore = true)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "archived", ignore = true)
+    Component toEntity(UpdateComponentRequest updateComponentRequest);
 
     ru.sultanyarov.configurator.api.inbounds.rest.dto.Component toDto(Component component);
 

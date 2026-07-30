@@ -17,4 +17,11 @@ public interface AttributeValueRepository {
      * @return the created attribute values enriched with persisted metadata
      */
     List<AttributeValue> createAttributeValues(List<AttributeValue> newComponentAttributes, Long componentId);
+
+    /**
+     * Deletes every attribute value belonging to the specified component.
+     *
+     * @param componentId the unique identifier of the component
+     */
+    void deleteByComponentId(Long componentId);
 }

@@ -19,6 +19,23 @@ public interface ComponentRepository {
     Optional<Component> createComponent(Component componentToCreate);
 
     /**
+     * Retrieves a component with its attribute values and images.
+     *
+     * @param id the unique identifier of the component
+     * @return the component, or empty when it does not exist
+     */
+    Optional<Component> getComponentById(Long id);
+
+    /**
+     * Updates editable fields of an existing component.
+     *
+     * @param id the unique identifier of the component
+     * @param component the target editable state
+     * @return the updated component, or empty when the update did not affect a row
+     */
+    Optional<Component> updateComponent(Long id, Component component);
+
+    /**
      * Checks whether at least one component exists for the specified component type.
      *
      * @param id the unique identifier of the component type

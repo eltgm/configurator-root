@@ -56,6 +56,13 @@ public class AttributeValueRepositoryImpl implements AttributeValueRepository {
         return fetchFullAttributeValuesByIds(inserted);
     }
 
+    @Override
+    public void deleteByComponentId(Long componentId) {
+        dslContext.deleteFrom(AV)
+                .where(AV.COMPONENT_ID.eq(componentId))
+                .execute();
+    }
+
     private List<AttributeValue> fetchFullAttributeValuesByIds(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return List.of();
