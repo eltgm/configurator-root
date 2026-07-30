@@ -3,10 +3,11 @@ package ru.sultanyarov.configurator.infrastructure.persistence.jooq;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ru.sultanyarov.configurator.domain.entity.jooq.Tables;
+import ru.sultanyarov.configurator.domain.model.CompatibilityLink;
 import ru.sultanyarov.configurator.domain.model.Component;
 import ru.sultanyarov.configurator.domain.model.DataType;
 
-import java.util.Set;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -46,14 +47,17 @@ class ConfiguratorRepositoryImplTest extends AbstractJooqRepositoryTest {
     }
 
     @Test
-    void getManuallyCompatibleComponentIds_shouldResolveBothLinkDirectionsAndDomainScope() {
-        insertCompatibilityLink(1L, 1L, 1L, 2L);
-        insertCompatibilityLink(2L, 1L, 1L, 3L);
-        insertCompatibilityLink(3L, 2L, 1L, 5L);
+    void getManualCompatibilityLinks_shouldReturnDetailsForBothDirectionsAndDomainScope() {
+        insertCompatibilityLink(1L, 1L, 1L, 2L, "Base on right");
+        insertCompatibilityLink(2L, 1L, 2L, 3L, "Base on left");
+        insertCompatibilityLink(3L, 2L, 2L, 5L, "Foreign");
 
-        Set<Long> result = repository.getManuallyCompatibleComponentIds(1L, 1L);
+        List<CompatibilityLink> result = repository.getManualCompatibilityLinks(1L, 2L);
 
-        assertThat(result).containsExactly(2L, 3L);
+        assertThat(result).containsExactly(
+                new CompatibilityLink(1L, 1L, 1L, 2L, "Base on right"),
+                new CompatibilityLink(2L, 1L, 2L, 3L, "Base on left")
+        );
     }
 
     private void insertDomain(Long id, String name) {
@@ -120,13 +124,15 @@ class ConfiguratorRepositoryImplTest extends AbstractJooqRepositoryTest {
             Long id,
             Long domainId,
             Long componentAId,
-            Long componentBId
+            Long componentBId,
+            String comment
     ) {
         dslContext.insertInto(Tables.COMPATIBILITY_LINK)
                 .set(Tables.COMPATIBILITY_LINK.ID, id)
                 .set(Tables.COMPATIBILITY_LINK.DOMAIN_ID, domainId)
                 .set(Tables.COMPATIBILITY_LINK.COMPONENT_A_ID, componentAId)
                 .set(Tables.COMPATIBILITY_LINK.COMPONENT_B_ID, componentBId)
+                .set(Tables.COMPATIBILITY_LINK.COMMENT, comment)
                 .execute();
     }
 }

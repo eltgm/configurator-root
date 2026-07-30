@@ -7,6 +7,10 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.sultanyarov.configurator.application.port.out.CompatibilityRuleRepository;
 import ru.sultanyarov.configurator.application.port.out.ConfiguratorRepository;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
+import ru.sultanyarov.configurator.domain.model.CompatibilityExplanation;
+import ru.sultanyarov.configurator.domain.model.CompatibilityExplanationSource;
+import ru.sultanyarov.configurator.domain.model.CompatibilityLink;
+import ru.sultanyarov.configurator.domain.model.CompatibilityRuleMatch;
 import ru.sultanyarov.configurator.domain.model.CompatibilityRuleSet;
 import ru.sultanyarov.configurator.domain.model.CompatibleComponent;
 import ru.sultanyarov.configurator.domain.model.CompatibleComponentGroup;
@@ -19,7 +23,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @Slf4j
 @Service
@@ -47,8 +50,8 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
                 domainId,
                 baseComponentId
         );
-        Set<Long> manuallyCompatibleIds =
-                configuratorRepository.getManuallyCompatibleComponentIds(domainId, baseComponentId);
+        List<CompatibilityLink> manualLinks =
+                configuratorRepository.getManualCompatibilityLinks(domainId, baseComponentId);
         List<CompatibilityRuleSet> automaticRules =
                 compatibilityRuleRepository.getEnabledByDomainIdAndComponentTypeId(
                         domainId,
@@ -57,20 +60,24 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
 
         Map<Long, List<CompatibilityRuleSet>> rulesByCandidateType =
                 indexRulesByCandidateType(automaticRules, baseComponent.getComponentTypeId());
+        Map<Long, List<CompatibilityExplanation>> manualExplanations =
+                indexManualExplanations(manualLinks, baseComponentId);
         Map<Long, List<CompatibleComponent>> compatibleByType = new HashMap<>();
 
         for (Component candidate : candidates) {
-            boolean manuallyCompatible = manuallyCompatibleIds.contains(candidate.getId());
-            boolean automaticallyCompatible = matchesAnyRule(
+            List<CompatibilityExplanation> explanations = new ArrayList<>(
+                    manualExplanations.getOrDefault(candidate.getId(), List.of())
+            );
+            explanations.addAll(evaluateRules(
                     baseComponent,
                     candidate,
                     rulesByCandidateType.getOrDefault(candidate.getComponentTypeId(), List.of())
-            );
-            if (manuallyCompatible || automaticallyCompatible) {
+            ));
+            if (!explanations.isEmpty()) {
                 compatibleByType.computeIfAbsent(
                         candidate.getComponentTypeId(),
                         ignored -> new ArrayList<>()
-                ).add(toCompatibleComponent(candidate));
+                ).add(toCompatibleComponent(candidate, explanations));
             }
         }
 
@@ -80,18 +87,52 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
                 .build();
     }
 
-    private boolean matchesAnyRule(
+    private List<CompatibilityExplanation> evaluateRules(
             Component baseComponent,
             Component candidate,
             List<CompatibilityRuleSet> rules
     ) {
-        return rules.stream().anyMatch(rule -> {
+        List<CompatibilityExplanation> explanations = new ArrayList<>();
+        for (CompatibilityRuleSet rule : rules) {
             boolean baseIsComponentA =
                     baseComponent.getComponentTypeId().equals(rule.componentTypeAId());
             Component componentA = baseIsComponentA ? baseComponent : candidate;
             Component componentB = baseIsComponentA ? candidate : baseComponent;
-            return compatibilityRuleEvaluator.matches(rule, componentA, componentB);
-        });
+            compatibilityRuleEvaluator.evaluate(rule, componentA, componentB)
+                    .map(ConfiguratorServiceImpl::toAutomaticExplanation)
+                    .ifPresent(explanations::add);
+        }
+        return explanations;
+    }
+
+    private static CompatibilityExplanation toAutomaticExplanation(
+            CompatibilityRuleMatch match
+    ) {
+        return CompatibilityExplanation.builder()
+                .source(CompatibilityExplanationSource.AUTOMATIC)
+                .ruleSetId(match.ruleSetId())
+                .ruleSetName(match.ruleSetName())
+                .conditions(match.conditions())
+                .build();
+    }
+
+    private static Map<Long, List<CompatibilityExplanation>> indexManualExplanations(
+            List<CompatibilityLink> links,
+            Long baseComponentId
+    ) {
+        Map<Long, List<CompatibilityExplanation>> result = new HashMap<>();
+        for (CompatibilityLink link : links) {
+            Long candidateId = baseComponentId.equals(link.componentAId())
+                    ? link.componentBId()
+                    : link.componentAId();
+            result.computeIfAbsent(candidateId, ignored -> new ArrayList<>())
+                    .add(CompatibilityExplanation.builder()
+                            .source(CompatibilityExplanationSource.MANUAL)
+                            .linkId(link.id())
+                            .comment(link.comment())
+                            .build());
+        }
+        return result;
     }
 
     private static Map<Long, List<CompatibilityRuleSet>> indexRulesByCandidateType(
@@ -125,12 +166,16 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
                 .toList();
     }
 
-    private static CompatibleComponent toCompatibleComponent(Component component) {
+    private static CompatibleComponent toCompatibleComponent(
+            Component component,
+            List<CompatibilityExplanation> explanations
+    ) {
         return CompatibleComponent.builder()
                 .id(component.getId())
                 .name(component.getName())
                 .brand(component.getBrand())
                 .componentTypeId(component.getComponentTypeId())
+                .explanations(List.copyOf(explanations))
                 .build();
     }
 

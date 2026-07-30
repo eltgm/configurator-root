@@ -2,14 +2,18 @@ package ru.sultanyarov.configurator.application.service;
 
 import org.springframework.stereotype.Service;
 import ru.sultanyarov.configurator.domain.model.AttributeValue;
+import ru.sultanyarov.configurator.domain.model.CompatibilityConditionExplanation;
 import ru.sultanyarov.configurator.domain.model.CompatibilityRuleCondition;
+import ru.sultanyarov.configurator.domain.model.CompatibilityRuleMatch;
 import ru.sultanyarov.configurator.domain.model.CompatibilityRuleSet;
 import ru.sultanyarov.configurator.domain.model.Component;
 import ru.sultanyarov.configurator.domain.model.DataType;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -17,7 +21,7 @@ import java.util.stream.Collectors;
 public class CompatibilityRuleEvaluatorImpl implements CompatibilityRuleEvaluator {
 
     @Override
-    public boolean matches(
+    public Optional<CompatibilityRuleMatch> evaluate(
             CompatibilityRuleSet ruleSet,
             Component componentA,
             Component componentB
@@ -30,16 +34,28 @@ public class CompatibilityRuleEvaluatorImpl implements CompatibilityRuleEvaluato
                 || !ruleSet.componentTypeBId().equals(componentB.getComponentTypeId())
                 || ruleSet.conditions() == null
                 || ruleSet.conditions().isEmpty()) {
-            return false;
+            return Optional.empty();
         }
 
         Map<Long, AttributeValue> valuesA = valuesByDefinitionId(componentA);
         Map<Long, AttributeValue> valuesB = valuesByDefinitionId(componentB);
-        return ruleSet.conditions().stream()
-                .allMatch(condition -> matches(condition, valuesA, valuesB));
+        List<CompatibilityConditionExplanation> explanations = new ArrayList<>();
+        for (CompatibilityRuleCondition condition : ruleSet.conditions()) {
+            Optional<CompatibilityConditionExplanation> explanation =
+                    evaluate(condition, valuesA, valuesB);
+            if (explanation.isEmpty()) {
+                return Optional.empty();
+            }
+            explanations.add(explanation.get());
+        }
+        return Optional.of(CompatibilityRuleMatch.builder()
+                .ruleSetId(ruleSet.id())
+                .ruleSetName(ruleSet.name())
+                .conditions(List.copyOf(explanations))
+                .build());
     }
 
-    private static boolean matches(
+    private static Optional<CompatibilityConditionExplanation> evaluate(
             CompatibilityRuleCondition condition,
             Map<Long, AttributeValue> valuesA,
             Map<Long, AttributeValue> valuesB
@@ -52,18 +68,18 @@ public class CompatibilityRuleEvaluatorImpl implements CompatibilityRuleEvaluato
                 || right.value() == null
                 || left.dataType() == null
                 || left.dataType() != right.dataType()) {
-            return false;
+            return Optional.empty();
         }
         if (switch (condition.operator()) {
             case GT, GTE, LT, LTE -> left.dataType() != DataType.NUMBER;
             case EQUALS, NOT_EQUALS -> false;
         }) {
-            return false;
+            return Optional.empty();
         }
 
         try {
             int comparison = compare(left, right);
-            return switch (condition.operator()) {
+            boolean matches = switch (condition.operator()) {
                 case EQUALS -> comparison == 0;
                 case NOT_EQUALS -> comparison != 0;
                 case GT -> comparison > 0;
@@ -71,8 +87,20 @@ public class CompatibilityRuleEvaluatorImpl implements CompatibilityRuleEvaluato
                 case LT -> comparison < 0;
                 case LTE -> comparison <= 0;
             };
+            if (!matches) {
+                return Optional.empty();
+            }
+            return Optional.of(CompatibilityConditionExplanation.builder()
+                    .leftAttributeDefinitionId(condition.leftAttributeDefinitionId())
+                    .leftAttributeName(left.name())
+                    .leftValue(left.value())
+                    .operator(condition.operator())
+                    .rightAttributeDefinitionId(condition.rightAttributeDefinitionId())
+                    .rightAttributeName(right.name())
+                    .rightValue(right.value())
+                    .build());
         } catch (IllegalArgumentException exception) {
-            return false;
+            return Optional.empty();
         }
     }
 

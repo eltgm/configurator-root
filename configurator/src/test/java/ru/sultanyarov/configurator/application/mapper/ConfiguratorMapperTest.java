@@ -2,6 +2,10 @@ package ru.sultanyarov.configurator.application.mapper;
 
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
+import ru.sultanyarov.configurator.domain.model.CompatibilityConditionExplanation;
+import ru.sultanyarov.configurator.domain.model.CompatibilityExplanation;
+import ru.sultanyarov.configurator.domain.model.CompatibilityExplanationSource;
+import ru.sultanyarov.configurator.domain.model.CompatibilityRuleOperator;
 import ru.sultanyarov.configurator.domain.model.CompatibleComponent;
 import ru.sultanyarov.configurator.domain.model.CompatibleComponentGroup;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorResult;
@@ -20,7 +24,25 @@ class ConfiguratorMapperTest {
                 List.of(new CompatibleComponentGroup(
                         20L,
                         "Motherboard",
-                        List.of(new CompatibleComponent(2L, "Board", "Brand", 20L))
+                        List.of(new CompatibleComponent(
+                                2L,
+                                "Board",
+                                "Brand",
+                                20L,
+                                List.of(
+                                        CompatibilityExplanation.builder()
+                                                .source(CompatibilityExplanationSource.MANUAL)
+                                                .linkId(11L)
+                                                .comment("Manual")
+                                                .build(),
+                                        CompatibilityExplanation.builder()
+                                                .source(CompatibilityExplanationSource.AUTOMATIC)
+                                                .ruleSetId(7L)
+                                                .ruleSetName("Socket")
+                                                .conditions(List.of(conditionExplanation()))
+                                                .build()
+                                )
+                        ))
                 ))
         );
 
@@ -35,7 +57,38 @@ class ConfiguratorMapperTest {
                 assertThat(component.getName()).isEqualTo("Board");
                 assertThat(component.getBrand()).isEqualTo("Brand");
                 assertThat(component.getComponentTypeId()).isEqualTo(20L);
+                assertThat(component.getExplanations()).hasSize(2);
+                assertThat(component.getExplanations().getFirst()).satisfies(explanation -> {
+                    assertThat(explanation.getSource().getValue()).isEqualTo("MANUAL");
+                    assertThat(explanation.getLinkId()).isEqualTo(11L);
+                    assertThat(explanation.getComment()).isEqualTo("Manual");
+                });
+                assertThat(component.getExplanations().get(1)).satisfies(explanation -> {
+                    assertThat(explanation.getSource().getValue()).isEqualTo("AUTOMATIC");
+                    assertThat(explanation.getRuleSetId()).isEqualTo(7L);
+                    assertThat(explanation.getRuleSetName()).isEqualTo("Socket");
+                    assertThat(explanation.getConditions()).singleElement()
+                            .satisfies(condition -> {
+                                assertThat(condition.getLeftAttributeName()).isEqualTo("socket");
+                                assertThat(condition.getLeftValue()).isEqualTo("AM5");
+                                assertThat(condition.getOperator().getValue()).isEqualTo("EQUALS");
+                                assertThat(condition.getRightAttributeName()).isEqualTo("socket");
+                                assertThat(condition.getRightValue()).isEqualTo("AM5");
+                            });
+                });
             });
         });
+    }
+
+    private static CompatibilityConditionExplanation conditionExplanation() {
+        return CompatibilityConditionExplanation.builder()
+                .leftAttributeDefinitionId(101L)
+                .leftAttributeName("socket")
+                .leftValue("AM5")
+                .operator(CompatibilityRuleOperator.EQUALS)
+                .rightAttributeDefinitionId(201L)
+                .rightAttributeName("socket")
+                .rightValue("AM5")
+                .build();
     }
 }

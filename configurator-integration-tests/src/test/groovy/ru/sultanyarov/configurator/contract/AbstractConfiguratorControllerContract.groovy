@@ -27,6 +27,38 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
         responseBody.compatibleByType[0].components*.brand == ["Board Brand", null]
         responseBody.compatibleByType[1].components*.id == [5L]
 
+        and: "every matching manual and automatic reason is explained"
+        def both = responseBody.compatibleByType[0].components[0]
+        both.explanations*.source*.toString() == ["MANUAL", "AUTOMATIC"]
+        with(both.explanations[0]) {
+            linkId == 801L
+            comment == "Duplicate automatic source"
+            ruleSetId == null
+            conditions == null
+        }
+        with(both.explanations[1]) {
+            linkId == null
+            ruleSetId == 701L
+            ruleSetName == "Socket and power"
+            conditions*.leftAttributeDefinitionId == [101L, 102L]
+            conditions*.leftAttributeName == ["socket", "power"]
+            conditions*.leftValue == ["AM5", "100"]
+            conditions*.operator*.toString() == ["EQUALS", "LTE"]
+            conditions*.rightAttributeDefinitionId == [201L, 202L]
+            conditions*.rightAttributeName == ["socket", "power_limit"]
+            conditions*.rightValue == ["AM5", "200"]
+        }
+
+        and: "manual-only components contain their link details"
+        def manualBoard = responseBody.compatibleByType[0].components[1]
+        manualBoard.explanations*.source*.toString() == ["MANUAL"]
+        manualBoard.explanations[0].linkId == 802L
+        manualBoard.explanations[0].comment == "Manual mismatch override"
+        def manualCooler = responseBody.compatibleByType[1].components[0]
+        manualCooler.explanations*.source*.toString() == ["MANUAL"]
+        manualCooler.explanations[0].linkId == 803L
+        manualCooler.explanations[0].comment == "Manual cross-type compatibility"
+
         and: "automatic/manual duplicate, archived candidate and disabled-only match are absent"
         responseBody.compatibleByType*.components.flatten()*.id == [2L, 3L, 5L]
     }

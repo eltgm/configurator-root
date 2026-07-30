@@ -1,9 +1,9 @@
 package ru.sultanyarov.configurator.application.port.out;
 
+import ru.sultanyarov.configurator.domain.model.CompatibilityLink;
 import ru.sultanyarov.configurator.domain.model.Component;
 
 import java.util.List;
-import java.util.Set;
 
 /**
  * Outbound read port for the single-component configurator use case.
@@ -20,11 +20,11 @@ public interface ConfiguratorRepository {
     List<Component> getActiveCandidates(Long domainId, Long baseComponentId);
 
     /**
-     * Loads identifiers connected to the base component by a direct manual compatibility link.
+     * Loads direct manual compatibility links connected to the base component.
      *
      * @param domainId        domain identifier
      * @param baseComponentId selected component identifier
-     * @return linked component identifiers
+     * @return links in stable identifier order
      */
-    Set<Long> getManuallyCompatibleComponentIds(Long domainId, Long baseComponentId);
+    List<CompatibilityLink> getManualCompatibilityLinks(Long domainId, Long baseComponentId);
 }

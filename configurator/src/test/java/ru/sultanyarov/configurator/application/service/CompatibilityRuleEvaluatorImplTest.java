@@ -20,28 +20,28 @@ class CompatibilityRuleEvaluatorImplTest {
 
     @ParameterizedTest
     @MethodSource("matchingComparisons")
-    void matches_shouldEvaluateSupportedOperators(
+    void evaluate_shouldEvaluateSupportedOperators(
             DataType dataType,
             String left,
             CompatibilityRuleOperator operator,
             String right
     ) {
-        assertThat(evaluator.matches(
+        assertThat(evaluator.evaluate(
                 rule(true, condition(101L, operator, 201L)),
                 component(1L, 10L, value(101L, dataType, left)),
                 component(2L, 20L, value(201L, dataType, right))
-        )).isTrue();
+        )).isPresent();
     }
 
     @Test
-    void matches_shouldRequireEveryCondition() {
+    void evaluate_shouldReturnRuleAndConditionExplanationsWhenEveryConditionMatches() {
         CompatibilityRuleSet rule = rule(
                 true,
                 condition(101L, CompatibilityRuleOperator.EQUALS, 201L),
-                condition(102L, CompatibilityRuleOperator.GTE, 202L)
+                condition(102L, CompatibilityRuleOperator.LTE, 202L)
         );
 
-        assertThat(evaluator.matches(
+        assertThat(evaluator.evaluate(
                 rule,
                 component(
                         1L,
@@ -55,64 +55,102 @@ class CompatibilityRuleEvaluatorImplTest {
                         value(201L, DataType.STRING, "AM5"),
                         value(202L, DataType.NUMBER, "200")
                 )
-        )).isFalse();
+        )).hasValueSatisfying(match -> {
+            assertThat(match.ruleSetId()).isEqualTo(7L);
+            assertThat(match.ruleSetName()).isEqualTo("Rule");
+            assertThat(match.conditions()).hasSize(2);
+            assertThat(match.conditions().getFirst()).satisfies(explanation -> {
+                assertThat(explanation.leftAttributeDefinitionId()).isEqualTo(101L);
+                assertThat(explanation.leftAttributeName()).isEqualTo("attribute-101");
+                assertThat(explanation.leftValue()).isEqualTo("AM5");
+                assertThat(explanation.operator()).isEqualTo(CompatibilityRuleOperator.EQUALS);
+                assertThat(explanation.rightAttributeDefinitionId()).isEqualTo(201L);
+                assertThat(explanation.rightAttributeName()).isEqualTo("attribute-201");
+                assertThat(explanation.rightValue()).isEqualTo("AM5");
+            });
+        });
     }
 
     @Test
-    void matches_shouldTreatNumericallyEqualScalesAsEqual() {
-        assertThat(evaluator.matches(
+    void evaluate_shouldRequireEveryCondition() {
+        CompatibilityRuleSet rule = rule(
+                true,
+                condition(101L, CompatibilityRuleOperator.EQUALS, 201L),
+                condition(102L, CompatibilityRuleOperator.GTE, 202L)
+        );
+
+        assertThat(evaluator.evaluate(
+                rule,
+                component(
+                        1L,
+                        10L,
+                        value(101L, DataType.STRING, "AM5"),
+                        value(102L, DataType.NUMBER, "100")
+                ),
+                component(
+                        2L,
+                        20L,
+                        value(201L, DataType.STRING, "AM5"),
+                        value(202L, DataType.NUMBER, "200")
+                )
+        )).isEmpty();
+    }
+
+    @Test
+    void evaluate_shouldTreatNumericallyEqualScalesAsEqual() {
+        assertThat(evaluator.evaluate(
                 rule(true, condition(101L, CompatibilityRuleOperator.EQUALS, 201L)),
                 component(1L, 10L, value(101L, DataType.NUMBER, "1.0")),
                 component(2L, 20L, value(201L, DataType.NUMBER, "1.00"))
-        )).isTrue();
+        )).isPresent();
     }
 
     @Test
-    void matches_shouldReturnFalseForMissingAttributeValue() {
-        assertThat(evaluator.matches(
+    void evaluate_shouldReturnEmptyForMissingAttributeValue() {
+        assertThat(evaluator.evaluate(
                 rule(true, condition(101L, CompatibilityRuleOperator.EQUALS, 201L)),
                 component(1L, 10L, value(101L, DataType.STRING, "AM5")),
                 component(2L, 20L)
-        )).isFalse();
+        )).isEmpty();
     }
 
     @Test
-    void matches_shouldReturnFalseForDisabledOrEmptyRule() {
+    void evaluate_shouldReturnEmptyForDisabledOrEmptyRule() {
         Component componentA = component(1L, 10L, value(101L, DataType.STRING, "AM5"));
         Component componentB = component(2L, 20L, value(201L, DataType.STRING, "AM5"));
 
-        assertThat(evaluator.matches(
+        assertThat(evaluator.evaluate(
                 rule(false, condition(101L, CompatibilityRuleOperator.EQUALS, 201L)),
                 componentA,
                 componentB
-        )).isFalse();
-        assertThat(evaluator.matches(rule(true), componentA, componentB)).isFalse();
+        )).isEmpty();
+        assertThat(evaluator.evaluate(rule(true), componentA, componentB)).isEmpty();
     }
 
     @Test
-    void matches_shouldReturnFalseForWrongComponentOrientation() {
+    void evaluate_shouldReturnEmptyForWrongComponentOrientation() {
         CompatibilityRuleSet rule =
                 rule(true, condition(101L, CompatibilityRuleOperator.EQUALS, 201L));
 
-        assertThat(evaluator.matches(
+        assertThat(evaluator.evaluate(
                 rule,
                 component(2L, 20L, value(201L, DataType.STRING, "AM5")),
                 component(1L, 10L, value(101L, DataType.STRING, "AM5"))
-        )).isFalse();
+        )).isEmpty();
     }
 
     @Test
-    void matches_shouldRejectDirectionalOperatorForNonNumberAndMalformedValues() {
-        assertThat(evaluator.matches(
+    void evaluate_shouldRejectDirectionalOperatorForNonNumberAndMalformedValues() {
+        assertThat(evaluator.evaluate(
                 rule(true, condition(101L, CompatibilityRuleOperator.GT, 201L)),
                 component(1L, 10L, value(101L, DataType.STRING, "Z")),
                 component(2L, 20L, value(201L, DataType.STRING, "A"))
-        )).isFalse();
-        assertThat(evaluator.matches(
+        )).isEmpty();
+        assertThat(evaluator.evaluate(
                 rule(true, condition(101L, CompatibilityRuleOperator.GT, 201L)),
                 component(1L, 10L, value(101L, DataType.NUMBER, "invalid")),
                 component(2L, 20L, value(201L, DataType.NUMBER, "1"))
-        )).isFalse();
+        )).isEmpty();
     }
 
     private static Stream<Object[]> matchingComparisons() {
@@ -132,7 +170,9 @@ class CompatibilityRuleEvaluatorImplTest {
             CompatibilityRuleCondition... conditions
     ) {
         return CompatibilityRuleSet.builder()
+                .id(7L)
                 .domainId(1L)
+                .name("Rule")
                 .componentTypeAId(10L)
                 .componentTypeBId(20L)
                 .enabled(enabled)
@@ -172,6 +212,7 @@ class CompatibilityRuleEvaluatorImplTest {
     ) {
         return AttributeValue.builder()
                 .attributeDefinitionId(definitionId)
+                .name("attribute-" + definitionId)
                 .dataType(dataType)
                 .value(value)
                 .build();

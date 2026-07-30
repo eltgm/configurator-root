@@ -8,17 +8,21 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ru.sultanyarov.configurator.application.port.out.CompatibilityRuleRepository;
 import ru.sultanyarov.configurator.application.port.out.ConfiguratorRepository;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
+import ru.sultanyarov.configurator.domain.model.CompatibilityConditionExplanation;
+import ru.sultanyarov.configurator.domain.model.CompatibilityExplanationSource;
+import ru.sultanyarov.configurator.domain.model.CompatibilityLink;
+import ru.sultanyarov.configurator.domain.model.CompatibilityRuleMatch;
+import ru.sultanyarov.configurator.domain.model.CompatibilityRuleOperator;
 import ru.sultanyarov.configurator.domain.model.CompatibilityRuleSet;
 import ru.sultanyarov.configurator.domain.model.Component;
 import ru.sultanyarov.configurator.domain.model.ComponentType;
 import ru.sultanyarov.configurator.domain.model.Domain;
 
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -49,12 +53,17 @@ class ConfiguratorServiceImplTest {
         stubBase(domain, base);
         when(configuratorRepository.getActiveCandidates(1L, 1L))
                 .thenReturn(List.of(automatic, duplicateSource, manual));
-        when(configuratorRepository.getManuallyCompatibleComponentIds(1L, 1L))
-                .thenReturn(Set.of(3L, 4L));
+        when(configuratorRepository.getManualCompatibilityLinks(1L, 1L))
+                .thenReturn(List.of(
+                        link(11L, 1L, 3L, "Manual"),
+                        link(12L, 1L, 4L, "Both")
+                ));
         when(compatibilityRuleRepository.getEnabledByDomainIdAndComponentTypeId(1L, 10L))
                 .thenReturn(List.of(rule));
-        when(compatibilityRuleEvaluator.matches(rule, base, automatic)).thenReturn(true);
-        when(compatibilityRuleEvaluator.matches(rule, base, duplicateSource)).thenReturn(true);
+        when(compatibilityRuleEvaluator.evaluate(rule, base, automatic))
+                .thenReturn(Optional.of(match(7L)));
+        when(compatibilityRuleEvaluator.evaluate(rule, base, duplicateSource))
+                .thenReturn(Optional.of(match(7L)));
 
         var result = service.getCompatibleComponents(1L, 1L);
 
@@ -68,6 +77,29 @@ class ConfiguratorServiceImplTest {
         assertThat(result.compatibleByType().get(1).components())
                 .extracting(component -> component.id())
                 .containsExactly(2L, 4L);
+        assertThat(result.compatibleByType().get(0).components().getFirst().explanations())
+                .singleElement()
+                .satisfies(explanation -> {
+                    assertThat(explanation.source())
+                            .isEqualTo(CompatibilityExplanationSource.MANUAL);
+                    assertThat(explanation.linkId()).isEqualTo(11L);
+                    assertThat(explanation.comment()).isEqualTo("Manual");
+                });
+        assertThat(result.compatibleByType().get(1).components().getFirst().explanations())
+                .singleElement()
+                .satisfies(explanation -> {
+                    assertThat(explanation.source())
+                            .isEqualTo(CompatibilityExplanationSource.AUTOMATIC);
+                    assertThat(explanation.ruleSetId()).isEqualTo(7L);
+                    assertThat(explanation.ruleSetName()).isEqualTo("Rule 7");
+                    assertThat(explanation.conditions()).hasSize(1);
+                });
+        assertThat(result.compatibleByType().get(1).components().get(1).explanations())
+                .extracting(explanation -> explanation.source())
+                .containsExactly(
+                        CompatibilityExplanationSource.MANUAL,
+                        CompatibilityExplanationSource.AUTOMATIC
+                );
     }
 
     @Test
@@ -79,17 +111,48 @@ class ConfiguratorServiceImplTest {
         CompatibilityRuleSet second = rule(8L, 10L, 20L);
         stubBase(domain, base);
         when(configuratorRepository.getActiveCandidates(1L, 1L)).thenReturn(List.of(candidate));
-        when(configuratorRepository.getManuallyCompatibleComponentIds(1L, 1L)).thenReturn(Set.of());
+        when(configuratorRepository.getManualCompatibilityLinks(1L, 1L)).thenReturn(List.of());
         when(compatibilityRuleRepository.getEnabledByDomainIdAndComponentTypeId(1L, 10L))
                 .thenReturn(List.of(first, second));
-        when(compatibilityRuleEvaluator.matches(first, base, candidate)).thenReturn(false);
-        when(compatibilityRuleEvaluator.matches(second, base, candidate)).thenReturn(true);
+        when(compatibilityRuleEvaluator.evaluate(first, base, candidate))
+                .thenReturn(Optional.empty());
+        when(compatibilityRuleEvaluator.evaluate(second, base, candidate))
+                .thenReturn(Optional.of(match(8L)));
 
         assertThat(service.getCompatibleComponents(1L, 1L).compatibleByType())
                 .singleElement()
-                .satisfies(group -> assertThat(group.components())
-                        .extracting(component -> component.id())
-                        .containsExactly(2L));
+                .satisfies(group -> {
+                    assertThat(group.components())
+                            .extracting(component -> component.id())
+                            .containsExactly(2L);
+                    assertThat(group.components().getFirst().explanations())
+                            .singleElement()
+                            .satisfies(explanation ->
+                                    assertThat(explanation.ruleSetId()).isEqualTo(8L));
+                });
+    }
+
+    @Test
+    void getCompatibleComponents_shouldReturnEveryMatchingAutomaticRuleExplanation() {
+        Domain domain = domain();
+        Component base = component(1L, 10L, "Base", false);
+        Component candidate = component(2L, 20L, "Candidate", false);
+        CompatibilityRuleSet first = rule(7L, 10L, 20L);
+        CompatibilityRuleSet second = rule(8L, 10L, 20L);
+        stubBase(domain, base);
+        when(configuratorRepository.getActiveCandidates(1L, 1L)).thenReturn(List.of(candidate));
+        when(configuratorRepository.getManualCompatibilityLinks(1L, 1L)).thenReturn(List.of());
+        when(compatibilityRuleRepository.getEnabledByDomainIdAndComponentTypeId(1L, 10L))
+                .thenReturn(List.of(first, second));
+        when(compatibilityRuleEvaluator.evaluate(first, base, candidate))
+                .thenReturn(Optional.of(match(7L)));
+        when(compatibilityRuleEvaluator.evaluate(second, base, candidate))
+                .thenReturn(Optional.of(match(8L)));
+
+        assertThat(service.getCompatibleComponents(1L, 1L)
+                .compatibleByType().getFirst().components().getFirst().explanations())
+                .extracting(explanation -> explanation.ruleSetId())
+                .containsExactly(7L, 8L);
     }
 
     @Test
@@ -100,17 +163,18 @@ class ConfiguratorServiceImplTest {
         CompatibilityRuleSet rule = rule(7L, 10L, 20L);
         stubBase(domain, base);
         when(configuratorRepository.getActiveCandidates(1L, 1L)).thenReturn(List.of(candidate));
-        when(configuratorRepository.getManuallyCompatibleComponentIds(1L, 1L)).thenReturn(Set.of());
+        when(configuratorRepository.getManualCompatibilityLinks(1L, 1L)).thenReturn(List.of());
         when(compatibilityRuleRepository.getEnabledByDomainIdAndComponentTypeId(1L, 20L))
                 .thenReturn(List.of(rule));
-        when(compatibilityRuleEvaluator.matches(rule, candidate, base)).thenReturn(true);
+        when(compatibilityRuleEvaluator.evaluate(rule, candidate, base))
+                .thenReturn(Optional.of(match(7L)));
 
         assertThat(service.getCompatibleComponents(1L, 1L).compatibleByType())
                 .singleElement()
                 .satisfies(group -> assertThat(group.components())
                         .extracting(component -> component.id())
                         .containsExactly(2L));
-        verify(compatibilityRuleEvaluator).matches(rule, candidate, base);
+        verify(compatibilityRuleEvaluator).evaluate(rule, candidate, base);
     }
 
     @Test
@@ -119,7 +183,7 @@ class ConfiguratorServiceImplTest {
         Component base = component(1L, 10L, "Base", false);
         stubBase(domain, base);
         when(configuratorRepository.getActiveCandidates(1L, 1L)).thenReturn(List.of());
-        when(configuratorRepository.getManuallyCompatibleComponentIds(1L, 1L)).thenReturn(Set.of());
+        when(configuratorRepository.getManualCompatibilityLinks(1L, 1L)).thenReturn(List.of());
         when(compatibilityRuleRepository.getEnabledByDomainIdAndComponentTypeId(1L, 10L))
                 .thenReturn(List.of());
 
@@ -199,10 +263,42 @@ class ConfiguratorServiceImplTest {
         return CompatibilityRuleSet.builder()
                 .id(id)
                 .domainId(1L)
+                .name("Rule " + id)
                 .componentTypeAId(typeA)
                 .componentTypeBId(typeB)
                 .enabled(true)
                 .conditions(List.of())
+                .build();
+    }
+
+    private static CompatibilityRuleMatch match(Long ruleSetId) {
+        return CompatibilityRuleMatch.builder()
+                .ruleSetId(ruleSetId)
+                .ruleSetName("Rule " + ruleSetId)
+                .conditions(List.of(CompatibilityConditionExplanation.builder()
+                        .leftAttributeDefinitionId(101L)
+                        .leftAttributeName("socket")
+                        .leftValue("AM5")
+                        .operator(CompatibilityRuleOperator.EQUALS)
+                        .rightAttributeDefinitionId(201L)
+                        .rightAttributeName("socket")
+                        .rightValue("AM5")
+                        .build()))
+                .build();
+    }
+
+    private static CompatibilityLink link(
+            Long id,
+            Long componentAId,
+            Long componentBId,
+            String comment
+    ) {
+        return CompatibilityLink.builder()
+                .id(id)
+                .domainId(1L)
+                .componentAId(componentAId)
+                .componentBId(componentBId)
+                .comment(comment)
                 .build();
     }
 }

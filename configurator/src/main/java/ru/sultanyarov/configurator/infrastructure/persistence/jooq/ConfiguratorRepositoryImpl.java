@@ -11,16 +11,14 @@ import org.springframework.stereotype.Repository;
 import ru.sultanyarov.configurator.application.port.out.ConfiguratorRepository;
 import ru.sultanyarov.configurator.common.util.JooqMapperUtils;
 import ru.sultanyarov.configurator.domain.model.AttributeValue;
+import ru.sultanyarov.configurator.domain.model.CompatibilityLink;
 import ru.sultanyarov.configurator.domain.model.Component;
 import ru.sultanyarov.configurator.domain.model.DataType;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 import static org.jooq.impl.DSL.multiset;
-import static org.jooq.impl.DSL.when;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.ATTRIBUTE_DEFINITION;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.ATTRIBUTE_VALUE;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.COMPATIBILITY_LINK;
@@ -61,25 +59,31 @@ public class ConfiguratorRepositoryImpl implements ConfiguratorRepository {
     }
 
     @Override
-    public Set<Long> getManuallyCompatibleComponentIds(Long domainId, Long baseComponentId) {
-        var compatibleComponentId = when(
-                COMPATIBILITY_LINK.COMPONENT_A_ID.eq(baseComponentId),
-                COMPATIBILITY_LINK.COMPONENT_B_ID
-        )
-                .otherwise(COMPATIBILITY_LINK.COMPONENT_A_ID)
-                .as("compatible_component_id");
-
-        return dslContext.select(compatibleComponentId)
+    public List<CompatibilityLink> getManualCompatibilityLinks(
+            Long domainId,
+            Long baseComponentId
+    ) {
+        return dslContext.select(
+                        COMPATIBILITY_LINK.ID,
+                        COMPATIBILITY_LINK.DOMAIN_ID,
+                        COMPATIBILITY_LINK.COMPONENT_A_ID,
+                        COMPATIBILITY_LINK.COMPONENT_B_ID,
+                        COMPATIBILITY_LINK.COMMENT
+                )
                 .from(COMPATIBILITY_LINK)
                 .where(COMPATIBILITY_LINK.DOMAIN_ID.eq(domainId))
                 .and(
                         COMPATIBILITY_LINK.COMPONENT_A_ID.eq(baseComponentId)
                                 .or(COMPATIBILITY_LINK.COMPONENT_B_ID.eq(baseComponentId))
                 )
-                .orderBy(compatibleComponentId.asc())
-                .fetch(compatibleComponentId)
-                .stream()
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+                .orderBy(COMPATIBILITY_LINK.ID.asc())
+                .fetch(record -> CompatibilityLink.builder()
+                        .id(record.get(COMPATIBILITY_LINK.ID))
+                        .domainId(record.get(COMPATIBILITY_LINK.DOMAIN_ID))
+                        .componentAId(record.get(COMPATIBILITY_LINK.COMPONENT_A_ID))
+                        .componentBId(record.get(COMPATIBILITY_LINK.COMPONENT_B_ID))
+                        .comment(record.get(COMPATIBILITY_LINK.COMMENT))
+                        .build());
     }
 
     private SelectField<List<AttributeValue>> attributeValuesField() {
