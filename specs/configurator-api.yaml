@@ -466,12 +466,16 @@ components:
         componentAId:
           type: integer
           format: int64
+          minimum: 1
         componentBId:
           type: integer
           format: int64
+          minimum: 1
         comment:
           type: string
+          maxLength: 1000
           nullable: true
+          description: Optional comment; blank values are normalized to null
       required:
         - componentAId
         - componentBId
@@ -511,6 +515,9 @@ components:
         target:
           type: integer
           format: int64
+        comment:
+          type: string
+          nullable: true
       required:
         - id
         - source
@@ -1409,6 +1416,11 @@ paths:
     post:
       tags: [ Compatibility ]
       summary: Create compatibility link
+      description: |
+        Creates one undirected COMPATIBLE link between two active components of the
+        specified domain. The component identifiers are normalized before persistence:
+        the smaller identifier is stored as componentAId and the larger as componentBId.
+        Blank comments are normalized to null.
       parameters:
         - name: id
           in: path
@@ -1416,6 +1428,7 @@ paths:
           schema:
             type: integer
             format: int64
+            minimum: 1
       requestBody:
         required: true
         content:
@@ -1430,7 +1443,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/CompatibilityLink'
         '400':
-          description: Invalid input or different domains
+          description: Invalid input, self-link, or component outside the specified domain
           content:
             application/json:
               schema:
@@ -1442,7 +1455,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Duplicate compatibility link
+          description: Duplicate compatibility link or archived component
           content:
             application/json:
               schema:
