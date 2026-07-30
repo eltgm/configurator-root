@@ -229,6 +229,51 @@ class ComponentServiceImplTest {
     }
 
     @Test
+    void getImagesByComponentId_shouldReturnImagesForArchivedComponent() {
+        ComponentImage firstImage = ComponentImage.builder()
+                .id(9L)
+                .componentId(7L)
+                .url("/first.png")
+                .orderIndex(0)
+                .build();
+        ComponentImage secondImage = ComponentImage.builder()
+                .id(10L)
+                .componentId(7L)
+                .url("/second.png")
+                .orderIndex(1)
+                .build();
+        Component component = Component.builder()
+                .id(7L)
+                .archived(true)
+                .images(List.of(firstImage, secondImage))
+                .build();
+        when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+
+        List<ComponentImage> result = componentService.getImagesByComponentId(7L);
+
+        assertThat(result).containsExactly(firstImage, secondImage);
+        verify(componentRepository).getById(7L);
+        verifyNoInteractions(componentImageStorage);
+    }
+
+    @Test
+    void getImagesByComponentId_shouldReturnEmptyListWhenRepositoryHasNoImagesCollection() {
+        Component component = Component.builder().id(7L).images(null).build();
+        when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+
+        assertThat(componentService.getImagesByComponentId(7L)).isEmpty();
+    }
+
+    @Test
+    void getImagesByComponentId_shouldThrowNotFoundExceptionWhenComponentDoesNotExist() {
+        when(componentRepository.getById(7L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> componentService.getImagesByComponentId(7L))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessageContaining("7");
+    }
+
+    @Test
     void getByPageByDomainId_shouldDelegateSearchWithoutComponentTypeFilter() {
         Domain domain = Domain.builder()
                 .id(1L)

@@ -210,7 +210,10 @@ public class ComponentRepositoryImpl implements ComponentRepository {
                         )
                         .from(componentImage)
                         .where(componentImage.COMPONENT_ID.eq(COMPONENT.ID))
-                        .orderBy(componentImage.ORDER_INDEX, componentImage.ID)
+                        .orderBy(
+                                componentImage.ORDER_INDEX.asc().nullsLast(),
+                                componentImage.ID.asc()
+                        )
         )
                 .convertFrom(result -> result.map(record -> ComponentImage.builder()
                         .id(record.get(componentImage.ID))

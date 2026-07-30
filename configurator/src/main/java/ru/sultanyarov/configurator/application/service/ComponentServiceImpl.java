@@ -152,6 +152,15 @@ public class ComponentServiceImpl implements ComponentService {
         }
     }
 
+    @Override
+    public List<ComponentImage> getImagesByComponentId(Long id) {
+        log.debug("get images for component with id {}", id);
+        Component component = getById(id);
+        return component.getImages() == null
+                ? List.of()
+                : List.copyOf(component.getImages());
+    }
+
     private void compensateStoredImage(StoredImage storedImage, RuntimeException originalException) {
         try {
             componentImageStorage.delete(storedImage.objectKey());

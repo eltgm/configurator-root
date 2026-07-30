@@ -16,6 +16,7 @@ import ru.sultanyarov.configurator.domain.exception.ValidationException;
 import ru.sultanyarov.configurator.domain.model.ComponentImageUpload;
 
 import java.io.IOException;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -69,6 +70,14 @@ public class ComponentFacadeImpl implements ComponentFacade {
         } catch (IOException exception) {
             throw new BusinessException(exception, "Failed to read uploaded image");
         }
+    }
+
+    @Override
+    public List<ComponentImage> getComponentImages(Long componentId) {
+        log.info("Getting images for component with id {}", componentId);
+        return componentService.getImagesByComponentId(componentId).stream()
+                .map(componentMapper::toDto)
+                .toList();
     }
 
     @Override

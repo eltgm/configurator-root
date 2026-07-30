@@ -3,6 +3,7 @@ package ru.sultanyarov.configurator.contract
 
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.AttributeValueInput
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.Component
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentImage
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentPage
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateComponentRequest
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ErrorResponse
@@ -684,6 +685,75 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         ).status == 413
     }
 
+    def "should get component images in deterministic display order"() {
+        given:
+        prepareComponentImagesReadData()
+
+        when:
+        def result = get("/components/1/images")
+
+        then:
+        result.status == 200
+        List<ComponentImage> responseBody = objectMapper.readerForListOf(ComponentImage)
+                .readValue(result.body)
+        responseBody*.getId() == [602L, 603L, 604L, 601L]
+        responseBody*.getOrderIndex() == [0, 2, 2, null]
+        responseBody*.getUrl() == [
+                "/files/components/1/zero.png",
+                "/files/components/1/first-two.png",
+                "/files/components/1/second-two.png",
+                "/files/components/1/unordered.png"
+        ]
+    }
+
+    def "should return empty array when component has no images"() {
+        given:
+        prepareComponentImageData()
+
+        when:
+        def result = get("/components/1/images")
+
+        then:
+        result.status == 200
+        objectMapper.readerForListOf(ComponentImage).readValue(result.body).isEmpty()
+    }
+
+    def "should get images of archived component"() {
+        given:
+        prepareComponentImagesReadData()
+        delete("/components/1").status == 204
+
+        when:
+        def result = get("/components/1/images")
+
+        then:
+        result.status == 200
+        List<ComponentImage> responseBody = objectMapper.readerForListOf(ComponentImage)
+                .readValue(result.body)
+        responseBody*.getId() == [602L, 603L, 604L, 601L]
+    }
+
+    def "should return not found when getting images of non-existent component"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        when:
+        def result = get("/components/999999/images")
+
+        then:
+        result.status == 404
+        objectMapper.readValue(result.body, ErrorResponse).getMessage() ==
+                "Component with id 999999 not found"
+    }
+
+    def "should return bad request when component id for image retrieval is not positive"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        expect:
+        get("/components/0/images").status == 400
+    }
+
     def "should get components by domain with pagination"() {
         given:
         prepareComponentSearchData()
@@ -765,6 +835,16 @@ abstract class AbstractComponentControllerContract extends Specification impleme
                 "/sql/insert-test-domain.sql",
                 "/sql/insert-test-component-type.sql",
                 "/sql/insert-test-component.sql"
+        )
+    }
+
+    private void prepareComponentImagesReadData() {
+        runSqlScripts(
+                "/sql/clear-db.sql",
+                "/sql/insert-test-domain.sql",
+                "/sql/insert-test-component-type.sql",
+                "/sql/insert-test-component.sql",
+                "/sql/insert-test-component-images.sql"
         )
     }
 
