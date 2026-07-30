@@ -295,6 +295,29 @@ class ComponentServiceImplTest {
     }
 
     @Test
+    void getById_shouldReturnComponentWhenItExists() {
+        Component component = Component.builder().id(1L).name("Component").build();
+
+        when(componentRepository.getById(1L)).thenReturn(Optional.of(component));
+
+        Component result = componentService.getById(1L);
+
+        assertThat(result).isSameAs(component);
+        verify(componentRepository).getById(1L);
+    }
+
+    @Test
+    void getById_shouldThrowNotFoundExceptionWhenComponentDoesNotExist() {
+        when(componentRepository.getById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> componentService.getById(1L))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("Component with id 1 not found");
+
+        verify(componentRepository).getById(1L);
+    }
+
+    @Test
     void unimplementedMethods_shouldReturnNullOrDoNothing() {
         componentService.deleteById(1L);
         assertThat(componentService.getPage(0, 10)).isNull();

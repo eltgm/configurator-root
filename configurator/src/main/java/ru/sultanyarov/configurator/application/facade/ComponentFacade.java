@@ -49,4 +49,13 @@ public interface ComponentFacade {
      * @throws ru.sultanyarov.configurator.domain.exception.ValidationException if the component type does not belong to the specified domain
      */
     ComponentPage getComponentsByDomainId(Long domainId, Long componentTypeId, String name, Integer page, Integer size);
+
+    /**
+     * Retrieves a component by its unique identifier.
+     *
+     * @param id the unique identifier of the component to retrieve
+     * @return the component DTO with the specified ID
+     * @throws ru.sultanyarov.configurator.domain.exception.NotFoundException if no component found with the given ID
+     */
+    Component getComponentById(Long id);
 }

@@ -73,9 +73,21 @@ class ComponentControllerTest {
     }
 
     @Test
+    void componentsIdGet_shouldDelegateRetrievalToFacade() {
+        Component component = new Component();
+
+        when(componentFacade.getComponentById(1L)).thenReturn(component);
+
+        ResponseEntity<Component> response = componentController.componentsIdGet(1L);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isSameAs(component);
+        verify(componentFacade).getComponentById(1L);
+    }
+
+    @Test
     void stubbedEndpoints_shouldReturnNullUntilImplemented() {
         assertThat(componentController.componentsIdDelete(1L)).isNull();
-        assertThat(componentController.componentsIdGet(1L)).isNull();
         assertThat(componentController.componentsIdImagesGet(1L)).isNull();
         assertThat(componentController.componentsIdImagesPost(1L, null, 1)).isNull();
     }

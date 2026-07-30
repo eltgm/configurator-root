@@ -45,4 +45,12 @@ public class ComponentFacadeImpl implements ComponentFacade {
                 componentService.getByPageByDomainId(domainId, componentTypeId, name, page, size)
         );
     }
+
+    @Override
+    public Component getComponentById(Long id) {
+        log.info("Getting component");
+        return componentMapper.toDto(
+                componentService.getById(id)
+        );
+    }
 }

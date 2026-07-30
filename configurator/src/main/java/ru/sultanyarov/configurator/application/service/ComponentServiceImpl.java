@@ -107,8 +107,10 @@ public class ComponentServiceImpl implements ComponentService {
 
     @Override
     public Component getById(Long id) {
+        log.debug("get component by id {}", id);
+
         return componentRepository.getComponentById(id)
-                .orElseThrow(() -> new NotFoundException("Component with id {} does not exist", id));
+                .orElseThrow(() -> new NotFoundException("Component with id {} not found", id));
     }
 
     @Override
