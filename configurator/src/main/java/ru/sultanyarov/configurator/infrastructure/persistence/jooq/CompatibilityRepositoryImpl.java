@@ -37,4 +37,12 @@ public class CompatibilityRepositoryImpl implements CompatibilityRepository {
                         .comment(record.get(COMPATIBILITY_LINK.COMMENT))
                         .build());
     }
+
+    @Override
+    public boolean deleteByIdAndDomainId(Long linkId, Long domainId) {
+        return dslContext.deleteFrom(COMPATIBILITY_LINK)
+                .where(COMPATIBILITY_LINK.ID.eq(linkId))
+                .and(COMPATIBILITY_LINK.DOMAIN_ID.eq(domainId))
+                .execute() > 0;
+    }
 }

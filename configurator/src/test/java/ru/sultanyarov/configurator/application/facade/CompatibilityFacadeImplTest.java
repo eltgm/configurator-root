@@ -67,4 +67,11 @@ class CompatibilityFacadeImplTest {
         assertThat(result).isSameAs(dto);
         verify(compatibilityMapper).toEntity(1L, 3L, 9L, null);
     }
+
+    @Test
+    void deleteCompatibilityLink_shouldDelegateToService() {
+        compatibilityFacade.deleteCompatibilityLink(1L, 11L);
+
+        verify(compatibilityService).deleteByIdAndDomainId(11L, 1L);
+    }
 }

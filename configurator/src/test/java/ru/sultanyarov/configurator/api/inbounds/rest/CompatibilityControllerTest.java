@@ -39,4 +39,14 @@ class CompatibilityControllerTest {
         assertThat(response.getBody()).isSameAs(createdLink);
         verify(compatibilityFacade).createCompatibilityLink(1L, request);
     }
+
+    @Test
+    void domainsIdCompatibilityLinkIdDelete_shouldDelegateDeletionToFacade() {
+        ResponseEntity<Void> response =
+                compatibilityController.domainsIdCompatibilityLinkIdDelete(1L, 11L);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(response.getBody()).isNull();
+        verify(compatibilityFacade).deleteCompatibilityLink(1L, 11L);
+    }
 }

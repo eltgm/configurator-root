@@ -16,4 +16,12 @@ public interface CompatibilityFacade {
      * @return the created normalized compatibility link DTO
      */
     CompatibilityLink createCompatibilityLink(Long domainId, CreateCompatibilityLinkRequest request);
+
+    /**
+     * Deletes a compatibility link scoped to a domain.
+     *
+     * @param domainId the domain identifier
+     * @param linkId   the compatibility link identifier
+     */
+    void deleteCompatibilityLink(Long domainId, Long linkId);
 }

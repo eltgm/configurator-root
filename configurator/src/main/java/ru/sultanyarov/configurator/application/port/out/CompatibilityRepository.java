@@ -16,4 +16,13 @@ public interface CompatibilityRepository {
      * @return the created link, or empty when the normalized pair already exists in the domain
      */
     Optional<CompatibilityLink> create(CompatibilityLink compatibilityLink);
+
+    /**
+     * Deletes a compatibility link only when it belongs to the specified domain.
+     *
+     * @param linkId   the compatibility link identifier
+     * @param domainId the domain identifier
+     * @return {@code true} when a row was deleted
+     */
+    boolean deleteByIdAndDomainId(Long linkId, Long domainId);
 }

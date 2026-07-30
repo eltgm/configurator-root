@@ -22,8 +22,9 @@ public class CompatibilityController implements CompatibilityApi {
     }
 
     @Override
-    public ResponseEntity<Void> domainsIdCompatibilityLinkIdDelete(Long id, Integer linkId) {
-        return null;
+    public ResponseEntity<Void> domainsIdCompatibilityLinkIdDelete(Long id, Long linkId) {
+        compatibilityFacade.deleteCompatibilityLink(id, linkId);
+        return ResponseEntity.noContent().build();
     }
 
     @Override
