@@ -89,7 +89,7 @@ class ComponentRepositoryImplTest extends AbstractJooqRepositoryTest {
                 .set(Tables.COMPONENT_IMAGE.ORDER_INDEX, 1)
                 .execute();
 
-        Component component = repository.getComponentById(7L).orElseThrow();
+        Component component = repository.getById(7L).orElseThrow();
 
         assertThat(component.getAttributes()).singleElement()
                 .satisfies(attribute -> {
@@ -110,7 +110,7 @@ class ComponentRepositoryImplTest extends AbstractJooqRepositoryTest {
     @Test
     void shouldUpdateOnlyEditableComponentFields() {
         insertComponent(7L, 1L, "Switch");
-        Component beforeUpdate = repository.getComponentById(7L).orElseThrow();
+        Component beforeUpdate = repository.getById(7L).orElseThrow();
 
         Component updated = repository.updateComponent(7L, Component.builder()
                         .componentTypeId(2L)
@@ -131,7 +131,7 @@ class ComponentRepositoryImplTest extends AbstractJooqRepositoryTest {
 
     @Test
     void shouldReturnEmptyWhenComponentDoesNotExist() {
-        assertThat(repository.getComponentById(999L)).isEmpty();
+        assertThat(repository.getById(999L)).isEmpty();
         assertThat(repository.updateComponent(999L, Component.builder().name("Missing").build())).isEmpty();
     }
 
@@ -187,7 +187,7 @@ class ComponentRepositoryImplTest extends AbstractJooqRepositoryTest {
     }
 
     @Test
-    void shouldGetComponentById() {
+    void shouldGetById() {
         insertComponent(1L, 1L, "Switch A");
         insertComponent(2L, 2L, "Keycap");
 

@@ -109,7 +109,7 @@ public class ComponentServiceImpl implements ComponentService {
     public Component getById(Long id) {
         log.debug("get component by id {}", id);
 
-        return componentRepository.getComponentById(id)
+        return componentRepository.getById(id)
                 .orElseThrow(() -> new NotFoundException("Component with id {} not found", id));
     }
 
