@@ -134,6 +134,41 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
     }
 
     @Test
+    void getEnabledByDomainIdAndComponentTypeId_shouldFilterDomainTypeAndDisabledRules() {
+        CompatibilityRuleSet first = repository.create(ruleSet(
+                1L,
+                "First",
+                10L,
+                20L,
+                true,
+                List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 201L, 0))
+        )).orElseThrow();
+        repository.create(ruleSet(
+                1L,
+                "Disabled",
+                10L,
+                20L,
+                false,
+                List.of(condition(102L, CompatibilityRuleOperator.EQUALS, 202L, 0))
+        )).orElseThrow();
+        repository.create(ruleSet(
+                2L,
+                "Foreign",
+                30L,
+                40L,
+                true,
+                List.of(condition(301L, CompatibilityRuleOperator.EQUALS, 401L, 0))
+        )).orElseThrow();
+
+        assertThat(repository.getEnabledByDomainIdAndComponentTypeId(1L, 10L))
+                .containsExactly(first);
+        assertThat(repository.getEnabledByDomainIdAndComponentTypeId(1L, 20L))
+                .containsExactly(first);
+        assertThat(repository.getEnabledByDomainIdAndComponentTypeId(1L, 30L))
+                .isEmpty();
+    }
+
+    @Test
     void updateByIdAndDomainId_shouldUpdateMetadataAndReplaceConditions() {
         CompatibilityRuleSet created = repository.create(ruleSet(
                 1L,

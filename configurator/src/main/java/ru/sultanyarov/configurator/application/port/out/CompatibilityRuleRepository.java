@@ -36,6 +36,18 @@ public interface CompatibilityRuleRepository {
     List<CompatibilityRuleSet> getAllByDomainId(Long domainId);
 
     /**
+     * Retrieves enabled rule sets that involve a component type.
+     *
+     * @param domainId       domain identifier
+     * @param componentTypeId component-type identifier on either normalized side
+     * @return enabled rule-set aggregates in stable identifier order
+     */
+    List<CompatibilityRuleSet> getEnabledByDomainIdAndComponentTypeId(
+            Long domainId,
+            Long componentTypeId
+    );
+
+    /**
      * Updates aggregate metadata and replaces all its conditions.
      *
      * @param ruleSetId rule-set identifier

@@ -90,6 +90,31 @@ public class CompatibilityRuleRepositoryImpl implements CompatibilityRuleReposit
     }
 
     @Override
+    public List<CompatibilityRuleSet> getEnabledByDomainIdAndComponentTypeId(
+            Long domainId,
+            Long componentTypeId
+    ) {
+        return dslContext.select(
+                        COMPATIBILITY_RULE_SET.ID,
+                        COMPATIBILITY_RULE_SET.DOMAIN_ID,
+                        COMPATIBILITY_RULE_SET.NAME,
+                        COMPATIBILITY_RULE_SET.COMPONENT_TYPE_A_ID,
+                        COMPATIBILITY_RULE_SET.COMPONENT_TYPE_B_ID,
+                        COMPATIBILITY_RULE_SET.ENABLED,
+                        COMPATIBILITY_RULE_SET.CREATED_AT,
+                        conditionsField()
+                )
+                .from(COMPATIBILITY_RULE_SET)
+                .where(COMPATIBILITY_RULE_SET.DOMAIN_ID.eq(domainId))
+                .and(COMPATIBILITY_RULE_SET.ENABLED.isTrue())
+                .and(
+                        COMPATIBILITY_RULE_SET.COMPONENT_TYPE_A_ID.eq(componentTypeId)
+                                .or(COMPATIBILITY_RULE_SET.COMPONENT_TYPE_B_ID.eq(componentTypeId))
+                )
+                .orderBy(COMPATIBILITY_RULE_SET.ID.asc())
+                .fetch(this::mapRuleSet);
+    }
+    @Override
     @Transactional
     public Optional<CompatibilityRuleSet> updateByIdAndDomainId(
             Long ruleSetId,
