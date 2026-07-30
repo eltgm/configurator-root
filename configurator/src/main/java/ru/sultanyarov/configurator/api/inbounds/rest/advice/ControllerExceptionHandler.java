@@ -6,11 +6,17 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ErrorResponse;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
+import ru.sultanyarov.configurator.domain.exception.ComponentArchivedException;
 import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
 import ru.sultanyarov.configurator.domain.exception.EntityHasRelatedEntitiesException;
+import ru.sultanyarov.configurator.domain.exception.ExternalStorageException;
+import ru.sultanyarov.configurator.domain.exception.ImageTooLargeException;
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
+import ru.sultanyarov.configurator.domain.exception.UnsupportedImageFormatException;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
 
 import java.time.LocalDateTime;
@@ -19,6 +25,9 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.PAYLOAD_TOO_LARGE;
+import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
+import static org.springframework.http.HttpStatus.UNSUPPORTED_MEDIA_TYPE;
 
 @RestControllerAdvice
 public class ControllerExceptionHandler {
@@ -32,7 +41,11 @@ public class ControllerExceptionHandler {
         return getBody(NOT_FOUND, exception);
     }
 
-    @ExceptionHandler({EntityAlreadyExistsException.class, EntityHasRelatedEntitiesException.class})
+    @ExceptionHandler({
+            EntityAlreadyExistsException.class,
+            EntityHasRelatedEntitiesException.class,
+            ComponentArchivedException.class
+    })
     public ResponseEntity<?> handleEntityAlreadyExistsException(Exception exception) {
         return getBody(CONFLICT, exception);
     }
@@ -40,10 +53,26 @@ public class ControllerExceptionHandler {
     @ExceptionHandler({
             ValidationException.class,
             MethodArgumentNotValidException.class,
-            ConstraintViolationException.class
+            ConstraintViolationException.class,
+            MissingServletRequestPartException.class
     })
     public ResponseEntity<?> handleValidationException(Exception exception) {
         return getBody(BAD_REQUEST, exception);
+    }
+
+    @ExceptionHandler({ImageTooLargeException.class, MaxUploadSizeExceededException.class})
+    public ResponseEntity<?> handlePayloadTooLargeException(Exception exception) {
+        return getBody(PAYLOAD_TOO_LARGE, exception);
+    }
+
+    @ExceptionHandler(UnsupportedImageFormatException.class)
+    public ResponseEntity<?> handleUnsupportedImageFormatException(Exception exception) {
+        return getBody(UNSUPPORTED_MEDIA_TYPE, exception);
+    }
+
+    @ExceptionHandler(ExternalStorageException.class)
+    public ResponseEntity<?> handleExternalStorageException(Exception exception) {
+        return getBody(SERVICE_UNAVAILABLE, exception);
     }
 
 

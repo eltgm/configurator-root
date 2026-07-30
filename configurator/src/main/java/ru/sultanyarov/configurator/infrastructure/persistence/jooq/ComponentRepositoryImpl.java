@@ -15,6 +15,7 @@ import ru.sultanyarov.configurator.domain.model.DataType;
 
 import java.util.*;
 
+import static org.jooq.impl.DSL.max;
 import static org.jooq.impl.DSL.multiset;
 import static ru.sultanyarov.configurator.common.util.PaginationHelper.*;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.*;
@@ -72,6 +73,33 @@ public class ComponentRepositoryImpl implements ComponentRepository {
                 .set(COMPONENT.ARCHIVED, true)
                 .where(COMPONENT.ID.eq(id))
                 .execute() > 0;
+    }
+
+    @Override
+    public Optional<ComponentImage> createImage(ComponentImage image) {
+        var componentImage = Tables.COMPONENT_IMAGE;
+        return dslContext.insertInto(componentImage)
+                .set(componentImage.COMPONENT_ID, image.componentId())
+                .set(componentImage.FILE_PATH, image.url())
+                .set(componentImage.ORDER_INDEX, image.orderIndex())
+                .returning()
+                .fetchOptional(record -> ComponentImage.builder()
+                        .id(record.get(componentImage.ID))
+                        .componentId(record.get(componentImage.COMPONENT_ID))
+                        .url(record.get(componentImage.FILE_PATH))
+                        .orderIndex(record.get(componentImage.ORDER_INDEX))
+                        .build());
+    }
+
+    @Override
+    public int getNextImageOrderIndex(Long componentId) {
+        var componentImage = Tables.COMPONENT_IMAGE;
+        Field<Integer> maximumOrderIndexField = max(componentImage.ORDER_INDEX);
+        Integer maximumOrderIndex = dslContext.select(maximumOrderIndexField)
+                .from(componentImage)
+                .where(componentImage.COMPONENT_ID.eq(componentId))
+                .fetchOne(maximumOrderIndexField);
+        return maximumOrderIndex == null ? 0 : maximumOrderIndex + 1;
     }
 
     @Override

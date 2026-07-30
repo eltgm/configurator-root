@@ -3,12 +3,19 @@ package ru.sultanyarov.configurator.application.facade;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.Component;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentImage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateComponentRequest;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateComponentRequest;
 import ru.sultanyarov.configurator.application.mapper.ComponentMapper;
 import ru.sultanyarov.configurator.application.service.ComponentService;
+import ru.sultanyarov.configurator.domain.exception.BusinessException;
+import ru.sultanyarov.configurator.domain.exception.ValidationException;
+import ru.sultanyarov.configurator.domain.model.ComponentImageUpload;
+
+import java.io.IOException;
 
 @Slf4j
 @Service
@@ -42,6 +49,26 @@ public class ComponentFacadeImpl implements ComponentFacade {
     public void archiveComponent(Long componentId) {
         log.info("Archiving component with id {}", componentId);
         componentService.archiveById(componentId);
+    }
+
+    @Override
+    public ComponentImage uploadComponentImage(Long componentId, MultipartFile file, Integer orderIndex) {
+        log.info("Uploading image for component with id {}", componentId);
+        if (file == null) {
+            throw new ValidationException("Image file is required");
+        }
+
+        try {
+            return componentMapper.toDto(
+                    componentService.uploadImage(
+                            componentId,
+                            new ComponentImageUpload(file.getBytes(), file.getContentType()),
+                            orderIndex
+                    )
+            );
+        } catch (IOException exception) {
+            throw new BusinessException(exception, "Failed to read uploaded image");
+        }
     }
 
     @Override

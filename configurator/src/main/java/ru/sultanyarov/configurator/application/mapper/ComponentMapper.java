@@ -25,6 +25,10 @@ public interface ComponentMapper {
 
     ru.sultanyarov.configurator.api.inbounds.rest.dto.Component toDto(Component component);
 
+    ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentImage toDto(
+            ru.sultanyarov.configurator.domain.model.ComponentImage componentImage
+    );
+
     /**
      * Converts a domain page of components to its transport-layer representation.
      *

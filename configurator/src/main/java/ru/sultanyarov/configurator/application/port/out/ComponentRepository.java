@@ -43,6 +43,22 @@ public interface ComponentRepository {
     boolean archiveComponentById(Long id);
 
     /**
+     * Persists image metadata for a component.
+     *
+     * @param image image metadata containing component, URL and display order
+     * @return the created image with generated identifier, or empty if creation failed
+     */
+    Optional<ComponentImage> createImage(ComponentImage image);
+
+    /**
+     * Returns the next display order after the maximum existing image order.
+     *
+     * @param componentId the component identifier
+     * @return next display order, starting at zero
+     */
+    int getNextImageOrderIndex(Long componentId);
+
+    /**
      * Checks whether at least one component exists for the specified component type.
      *
      * @param id the unique identifier of the component type

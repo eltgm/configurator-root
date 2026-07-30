@@ -18,6 +18,19 @@ services:
       timeout: 5s
       retries: 5
 
+  minio:
+    image: "quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z"
+    container_name: configurator-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
   app:
     build:
       context: .
@@ -26,12 +39,20 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      minio:
+        condition: service_started
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/configurator
       DB_USER: configurator
       DB_PASSWORD: configurator
+      IMAGE_STORAGE_ENDPOINT: http://minio:9000
+      IMAGE_STORAGE_ACCESS_KEY: minioadmin
+      IMAGE_STORAGE_SECRET_KEY: minioadmin
+      IMAGE_STORAGE_BUCKET: configurator-components
+      IMAGE_STORAGE_PUBLIC_URL: http://localhost:9000
     ports:
       - "8080:8080"
 
 volumes:
   postgres_data:
+  minio_data:

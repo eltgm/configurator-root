@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ru.sultanyarov.configurator.domain.entity.jooq.Tables;
 import ru.sultanyarov.configurator.domain.model.Component;
+import ru.sultanyarov.configurator.domain.model.ComponentImage;
 import ru.sultanyarov.configurator.domain.model.DataType;
 import ru.sultanyarov.configurator.domain.model.Page;
 
@@ -264,6 +265,42 @@ class ComponentRepositoryImplTest extends AbstractJooqRepositoryTest {
     @Test
     void shouldReturnFalseWhenArchivingNonExistentComponent() {
         assertThat(repository.archiveComponentById(404L)).isFalse();
+    }
+
+    @Test
+    void shouldCreateComponentImageMetadata() {
+        insertComponent(7L, 1L, "Switch");
+
+        ComponentImage createdImage = repository.createImage(ComponentImage.builder()
+                        .componentId(7L)
+                        .url("http://storage/configurator-components/components/7/image.png")
+                        .orderIndex(3)
+                        .build())
+                .orElseThrow();
+
+        assertThat(createdImage.id()).isNotNull();
+        assertThat(createdImage.componentId()).isEqualTo(7L);
+        assertThat(createdImage.url())
+                .isEqualTo("http://storage/configurator-components/components/7/image.png");
+        assertThat(createdImage.orderIndex()).isEqualTo(3);
+    }
+
+    @Test
+    void shouldCalculateNextComponentImageOrderIndex() {
+        insertComponent(7L, 1L, "Switch");
+        assertThat(repository.getNextImageOrderIndex(7L)).isZero();
+        dslContext.insertInto(Tables.COMPONENT_IMAGE)
+                .set(Tables.COMPONENT_IMAGE.COMPONENT_ID, 7L)
+                .set(Tables.COMPONENT_IMAGE.FILE_PATH, "/first.png")
+                .set(Tables.COMPONENT_IMAGE.ORDER_INDEX, 2)
+                .execute();
+        dslContext.insertInto(Tables.COMPONENT_IMAGE)
+                .set(Tables.COMPONENT_IMAGE.COMPONENT_ID, 7L)
+                .set(Tables.COMPONENT_IMAGE.FILE_PATH, "/second.png")
+                .set(Tables.COMPONENT_IMAGE.ORDER_INDEX, 5)
+                .execute();
+
+        assertThat(repository.getNextImageOrderIndex(7L)).isEqualTo(6);
     }
 
     private void insertComponent(Long id, Long componentTypeId, String name) {

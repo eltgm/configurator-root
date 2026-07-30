@@ -8,6 +8,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.core.io.ClassPathResource
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator
+import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
@@ -19,7 +20,7 @@ import javax.sql.DataSource
 
 @ActiveProfiles("test")
 @SpringBootTest(
-        classes = ConfiguratorApplication,
+        classes = [ConfiguratorApplication, ComponentImageStorageTestConfiguration],
         webEnvironment = SpringBootTest.WebEnvironment.MOCK
 )
 @AutoConfigureMockMvc
@@ -76,6 +77,25 @@ class ComponentControllerIntegrationSpec extends AbstractComponentControllerCont
     @Override
     TestResponse delete(String path) {
         def result = mockMvc.perform(MockMvcRequestBuilders.delete(path)).andReturn()
+        return new TestResponse(result.response.status, result.response.contentAsString)
+    }
+
+    @Override
+    TestResponse postMultipart(
+            String path,
+            String filename,
+            String contentType,
+            byte[] content,
+            Integer orderIndex
+    ) {
+        def requestBuilder = MockMvcRequestBuilders.multipart(path)
+        if (content != null) {
+            requestBuilder.file(new MockMultipartFile("file", filename, contentType, content))
+        }
+        if (orderIndex != null) {
+            requestBuilder.param("orderIndex", String.valueOf(orderIndex))
+        }
+        def result = mockMvc.perform(requestBuilder).andReturn()
         return new TestResponse(result.response.status, result.response.contentAsString)
     }
 }

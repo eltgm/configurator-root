@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockMultipartFile;
 import ru.sultanyarov.configurator.api.inbounds.rest.controller.ComponentController;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.Component;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentPage;
@@ -95,8 +96,27 @@ class ComponentControllerTest {
     }
 
     @Test
+    void componentsIdImagesPost_shouldDelegateUploadToFacade() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "image.png",
+                "image/png",
+                new byte[]{1, 2, 3}
+        );
+        ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentImage image =
+                new ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentImage(10L, "/image.png");
+        when(componentFacade.uploadComponentImage(7L, file, 2)).thenReturn(image);
+
+        ResponseEntity<ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentImage> response =
+                componentController.componentsIdImagesPost(7L, file, 2);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isSameAs(image);
+        verify(componentFacade).uploadComponentImage(7L, file, 2);
+    }
+
+    @Test
     void stubbedEndpoints_shouldReturnNullUntilImplemented() {
         assertThat(componentController.componentsIdImagesGet(1L)).isNull();
-        assertThat(componentController.componentsIdImagesPost(1L, null, 1)).isNull();
     }
 }

@@ -4,17 +4,23 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.sultanyarov.configurator.application.port.out.ComponentImageStorage;
 import ru.sultanyarov.configurator.application.port.out.ComponentRepository;
+import ru.sultanyarov.configurator.application.validator.ComponentImageValidator;
 import ru.sultanyarov.configurator.application.validator.ComponentValidator;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
+import ru.sultanyarov.configurator.domain.exception.ComponentArchivedException;
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
 import ru.sultanyarov.configurator.domain.model.AttributeDefinition;
 import ru.sultanyarov.configurator.domain.model.AttributeValue;
 import ru.sultanyarov.configurator.domain.model.Component;
+import ru.sultanyarov.configurator.domain.model.ComponentImage;
+import ru.sultanyarov.configurator.domain.model.ComponentImageUpload;
 import ru.sultanyarov.configurator.domain.model.ComponentType;
 import ru.sultanyarov.configurator.domain.model.Domain;
 import ru.sultanyarov.configurator.domain.model.Page;
+import ru.sultanyarov.configurator.domain.model.StoredImage;
 
 import java.util.List;
 import java.util.Map;
@@ -29,6 +35,8 @@ public class ComponentServiceImpl implements ComponentService {
     private final ComponentTypeService componentTypeService;
     private final AttributeValueService attributeValueService;
     private final ComponentValidator componentValidator;
+    private final ComponentImageValidator componentImageValidator;
+    private final ComponentImageStorage componentImageStorage;
     private final DomainService domainService;
 
     @Override
@@ -110,6 +118,46 @@ public class ComponentServiceImpl implements ComponentService {
 
         if (!componentRepository.archiveComponentById(id)) {
             throw new BusinessException("Failed to archive component with id {}", id);
+        }
+    }
+
+    @Override
+    public ComponentImage uploadImage(Long id, ComponentImageUpload image, Integer orderIndex) {
+        log.debug("upload image for component with id {}", id);
+        Component component = getById(id);
+        if (Boolean.TRUE.equals(component.getArchived())) {
+            throw new ComponentArchivedException("Cannot upload image for archived component with id {}", id);
+        }
+
+        componentImageValidator.validate(image, orderIndex);
+        int resolvedOrderIndex = orderIndex == null
+                ? componentRepository.getNextImageOrderIndex(id)
+                : orderIndex;
+        StoredImage storedImage = componentImageStorage.store(id, image);
+
+        try {
+            return componentRepository.createImage(
+                            ComponentImage.builder()
+                                    .componentId(id)
+                                    .url(storedImage.url())
+                                    .orderIndex(resolvedOrderIndex)
+                                    .build()
+                    )
+                    .orElseThrow(() -> new BusinessException(
+                            "Failed to persist image metadata for component with id {}", id
+                    ));
+        } catch (RuntimeException exception) {
+            compensateStoredImage(storedImage, exception);
+            throw exception;
+        }
+    }
+
+    private void compensateStoredImage(StoredImage storedImage, RuntimeException originalException) {
+        try {
+            componentImageStorage.delete(storedImage.objectKey());
+        } catch (RuntimeException cleanupException) {
+            log.error("Failed to remove image {} after metadata persistence failure", storedImage.objectKey(), cleanupException);
+            originalException.addSuppressed(cleanupException);
         }
     }
 

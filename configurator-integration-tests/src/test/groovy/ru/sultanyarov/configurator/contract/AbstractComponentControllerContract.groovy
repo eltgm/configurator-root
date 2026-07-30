@@ -487,6 +487,203 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         delete("/components/0").status == 400
     }
 
+    def "should upload supported #contentType component image"() {
+        given:
+        prepareComponentImageData()
+
+        when:
+        def result = postMultipart(
+                "/components/1/images",
+                filename,
+                contentType,
+                content,
+                3
+        )
+
+        then:
+        result.status == 201
+        def responseBody = objectMapper.readValue(result.body, ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentImage)
+        responseBody.getId() != null
+        responseBody.getOrderIndex() == 3
+        responseBody.getUrl().contains("/configurator-components/components/1/")
+        responseBody.getUrl().endsWith(extension)
+
+        and:
+        def componentResult = get("/components/1")
+        componentResult.status == 200
+        def component = objectMapper.readValue(componentResult.body, Component)
+        component.getImages().size() == 1
+        component.getImages().first().getId() == responseBody.getId()
+        component.getImages().first().getUrl() == responseBody.getUrl()
+        component.getImages().first().getOrderIndex() == 3
+
+        where:
+        filename     | contentType  | content     | extension
+        "image.jpg"  | "image/jpeg" | jpegBytes() | ".jpg"
+        "image.png"  | "image/png"  | pngBytes()  | ".png"
+        "image.webp" | "image/webp" | webpBytes() | ".webp"
+    }
+
+    def "should assign next image order index when it is omitted"() {
+        given:
+        prepareComponentImageData()
+
+        when:
+        def firstResult = postMultipart(
+                "/components/1/images",
+                "first.png",
+                "image/png",
+                pngBytes(),
+                null
+        )
+        def secondResult = postMultipart(
+                "/components/1/images",
+                "second.png",
+                "image/png",
+                pngBytes(),
+                null
+        )
+
+        then:
+        firstResult.status == 201
+        secondResult.status == 201
+        objectMapper.readValue(
+                firstResult.body,
+                ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentImage
+        ).getOrderIndex() == 0
+        objectMapper.readValue(
+                secondResult.body,
+                ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentImage
+        ).getOrderIndex() == 1
+    }
+
+    def "should return not found when uploading image for non-existent component"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        expect:
+        postMultipart(
+                "/components/999999/images",
+                "image.png",
+                "image/png",
+                pngBytes(),
+                null
+        ).status == 404
+    }
+
+    def "should return conflict when uploading image for archived component"() {
+        given:
+        prepareComponentImageData()
+        delete("/components/1").status == 204
+
+        expect:
+        postMultipart(
+                "/components/1/images",
+                "image.png",
+                "image/png",
+                pngBytes(),
+                null
+        ).status == 409
+    }
+
+    def "should return bad request when image file is missing"() {
+        given:
+        prepareComponentImageData()
+
+        expect:
+        postMultipart(
+                "/components/1/images",
+                "image.png",
+                "image/png",
+                null,
+                0
+        ).status == 400
+    }
+
+    def "should return bad request when image file is empty"() {
+        given:
+        prepareComponentImageData()
+
+        expect:
+        postMultipart(
+                "/components/1/images",
+                "image.png",
+                "image/png",
+                new byte[0],
+                null
+        ).status == 400
+    }
+
+    def "should return bad request when image order index is negative"() {
+        given:
+        prepareComponentImageData()
+
+        expect:
+        postMultipart(
+                "/components/1/images",
+                "image.png",
+                "image/png",
+                pngBytes(),
+                -1
+        ).status == 400
+    }
+
+    def "should return bad request when component id for image upload is not positive"() {
+        given:
+        prepareComponentImageData()
+
+        expect:
+        postMultipart(
+                "/components/0/images",
+                "image.png",
+                "image/png",
+                pngBytes(),
+                null
+        ).status == 400
+    }
+
+    def "should return unsupported media type for unsupported image format"() {
+        given:
+        prepareComponentImageData()
+
+        expect:
+        postMultipart(
+                "/components/1/images",
+                "image.gif",
+                "image/gif",
+                new byte[]{0x47, 0x49, 0x46},
+                null
+        ).status == 415
+    }
+
+    def "should return unsupported media type when content does not match declared image format"() {
+        given:
+        prepareComponentImageData()
+
+        expect:
+        postMultipart(
+                "/components/1/images",
+                "fake.jpg",
+                "image/jpeg",
+                new byte[]{1, 2, 3},
+                null
+        ).status == 415
+    }
+
+    def "should return payload too large when image exceeds ten mebibytes"() {
+        given:
+        prepareComponentImageData()
+
+        expect:
+        postMultipart(
+                "/components/1/images",
+                "large.png",
+                "image/png",
+                oversizedPng(),
+                null
+        ).status == 413
+    }
+
     def "should get components by domain with pagination"() {
         given:
         prepareComponentSearchData()
@@ -562,6 +759,15 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         )
     }
 
+    private void prepareComponentImageData() {
+        runSqlScripts(
+                "/sql/clear-db.sql",
+                "/sql/insert-test-domain.sql",
+                "/sql/insert-test-component-type.sql",
+                "/sql/insert-test-component.sql"
+        )
+    }
+
     private void prepareComponentUpdateData() {
         runSqlScripts(
                 "/sql/clear-db.sql",
@@ -584,5 +790,30 @@ abstract class AbstractComponentControllerContract extends Specification impleme
                         new AttributeValueInput(102L, "75%")
                 ]
         )
+    }
+
+    private static byte[] jpegBytes() {
+        return new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x00}
+    }
+
+    private static byte[] pngBytes() {
+        return new byte[]{
+                (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
+        }
+    }
+
+    private static byte[] webpBytes() {
+        return new byte[]{
+                0x52, 0x49, 0x46, 0x46,
+                0, 0, 0, 0,
+                0x57, 0x45, 0x42, 0x50
+        }
+    }
+
+    private static byte[] oversizedPng() {
+        def content = new byte[10 * 1024 * 1024 + 1]
+        def signature = pngBytes()
+        System.arraycopy(signature, 0, content, 0, signature.length)
+        return content
     }
 }
