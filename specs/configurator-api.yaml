@@ -696,6 +696,98 @@ components:
         - name
         - componentTypeId
 
+    CompatibilityExplanationSource:
+      type: string
+      description: Source that made the candidate component compatible
+      enum:
+        - MANUAL
+        - AUTOMATIC
+
+    CompatibilityConditionExplanation:
+      type: object
+      description: Successful attribute comparison from an automatic compatibility rule
+      properties:
+        leftAttributeDefinitionId:
+          type: integer
+          format: int64
+        leftAttributeName:
+          type: string
+        leftValue:
+          type: string
+        operator:
+          $ref: '#/components/schemas/CompatibilityRuleOperator'
+        rightAttributeDefinitionId:
+          type: integer
+          format: int64
+        rightAttributeName:
+          type: string
+        rightValue:
+          type: string
+      required:
+        - leftAttributeDefinitionId
+        - leftAttributeName
+        - leftValue
+        - operator
+        - rightAttributeDefinitionId
+        - rightAttributeName
+        - rightValue
+
+    CompatibilityExplanation:
+      type: object
+      description: |
+        One reason why the candidate is compatible. Manual explanations contain linkId and
+        optional comment. Automatic explanations contain ruleSetId, ruleSetName and all
+        successful rule conditions.
+      properties:
+        source:
+          $ref: '#/components/schemas/CompatibilityExplanationSource'
+        linkId:
+          type: integer
+          format: int64
+          nullable: true
+        comment:
+          type: string
+          nullable: true
+        ruleSetId:
+          type: integer
+          format: int64
+          nullable: true
+        ruleSetName:
+          type: string
+          nullable: true
+        conditions:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/CompatibilityConditionExplanation'
+      required:
+        - source
+
+    ConfiguratorCompatibleComponent:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        brand:
+          type: string
+          nullable: true
+        componentTypeId:
+          type: integer
+          format: int64
+        explanations:
+          type: array
+          description: All manual links and enabled automatic rule sets that matched
+          items:
+            $ref: '#/components/schemas/CompatibilityExplanation'
+      required:
+        - id
+        - name
+        - componentTypeId
+        - explanations
+
     ConfiguratorTypeGroup:
       type: object
       properties:
@@ -707,7 +799,7 @@ components:
         components:
           type: array
           items:
-            $ref: '#/components/schemas/ComponentShort'
+            $ref: '#/components/schemas/ConfiguratorCompatibleComponent'
       required:
         - componentTypeId
         - componentTypeName
@@ -1892,6 +1984,13 @@ paths:
     get:
       tags: [ Configurator ]
       summary: Get compatible components for selected component
+      description: |
+        Returns active domain components that are directly compatible with the selected active
+        component through either a manual compatibility link or at least one enabled automatic
+        attribute rule set. All conditions inside one rule set must match; multiple rule sets are
+        alternatives. Every returned component contains all matched manual and automatic
+        compatibility explanations. Results are grouped by component type. Transitive
+        compatibility is not included.
       parameters:
         - name: id
           in: path
@@ -1899,12 +1998,14 @@ paths:
           schema:
             type: integer
             format: int64
+            minimum: 1
         - name: componentId
           in: query
           required: true
           schema:
             type: integer
             format: int64
+            minimum: 1
       responses:
         '200':
           description: Success
@@ -1913,7 +2014,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ConfiguratorResponse'
         '400':
-          description: Missing componentId
+          description: Invalid identifier, component outside the domain, or archived base component
           content:
             application/json:
               schema:

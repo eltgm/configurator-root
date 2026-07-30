@@ -4,6 +4,7 @@ import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
@@ -64,6 +65,13 @@ class ControllerExceptionHandlerTest {
                 handler.handleValidationException(missingPartException),
                 HttpStatus.BAD_REQUEST,
                 missingPartException.getLocalizedMessage()
+        );
+        MissingServletRequestParameterException missingParameterException =
+                new MissingServletRequestParameterException("componentId", "Long");
+        assertErrorResponse(
+                handler.handleValidationException(missingParameterException),
+                HttpStatus.BAD_REQUEST,
+                missingParameterException.getLocalizedMessage()
         );
     }
 
