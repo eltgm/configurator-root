@@ -1,6 +1,7 @@
 package ru.sultanyarov.configurator.application.port.out;
 
 import ru.sultanyarov.configurator.domain.model.CompatibilityLink;
+import ru.sultanyarov.configurator.domain.model.CompatibilityGraph;
 
 import java.util.Optional;
 
@@ -8,6 +9,14 @@ import java.util.Optional;
  * Outbound port for compatibility link persistence.
  */
 public interface CompatibilityRepository {
+
+    /**
+     * Loads the compatibility graph for a domain.
+     *
+     * @param domainId the domain identifier
+     * @return active domain components and links between them, sorted by identifier
+     */
+    CompatibilityGraph getGraphByDomainId(Long domainId);
 
     /**
      * Persists an undirected compatibility link.

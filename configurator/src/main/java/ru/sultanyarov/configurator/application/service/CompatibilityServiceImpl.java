@@ -10,6 +10,7 @@ import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
 import ru.sultanyarov.configurator.domain.model.Component;
+import ru.sultanyarov.configurator.domain.model.CompatibilityGraph;
 import ru.sultanyarov.configurator.domain.model.CompatibilityLink;
 import ru.sultanyarov.configurator.domain.model.ComponentType;
 import ru.sultanyarov.configurator.domain.model.Domain;
@@ -26,6 +27,14 @@ public class CompatibilityServiceImpl implements CompatibilityService {
     private final CompatibilityRepository compatibilityRepository;
     private final DomainService domainService;
     private final ComponentService componentService;
+
+    @Override
+    @Transactional(readOnly = true)
+    public CompatibilityGraph getGraphByDomainId(Long domainId) {
+        log.debug("get compatibility graph for domain with id {}", domainId);
+        domainService.getById(domainId);
+        return compatibilityRepository.getGraphByDomainId(domainId);
+    }
 
     @Override
     @Transactional

@@ -1,11 +1,21 @@
 package ru.sultanyarov.configurator.application.service;
 
 import ru.sultanyarov.configurator.domain.model.CompatibilityLink;
+import ru.sultanyarov.configurator.domain.model.CompatibilityGraph;
 
 /**
  * Service for compatibility management use cases.
  */
 public interface CompatibilityService {
+
+    /**
+     * Returns the compatibility graph for an existing domain.
+     *
+     * @param domainId the domain identifier
+     * @return active components and their compatibility links
+     * @throws ru.sultanyarov.configurator.domain.exception.NotFoundException if the domain does not exist
+     */
+    CompatibilityGraph getGraphByDomainId(Long domainId);
 
     /**
      * Creates one undirected compatibility link between active components of a domain.

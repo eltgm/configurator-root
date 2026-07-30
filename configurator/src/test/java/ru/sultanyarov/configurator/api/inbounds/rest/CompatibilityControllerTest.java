@@ -10,7 +10,10 @@ import org.springframework.http.ResponseEntity;
 import ru.sultanyarov.configurator.api.inbounds.rest.controller.CompatibilityController;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CompatibilityLink;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateCompatibilityLinkRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.GraphResponse;
 import ru.sultanyarov.configurator.application.facade.CompatibilityFacade;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
@@ -24,6 +27,19 @@ class CompatibilityControllerTest {
 
     @InjectMocks
     private CompatibilityController compatibilityController;
+
+    @Test
+    void domainsIdCompatibilityGraphGet_shouldDelegateRetrievalToFacade() {
+        GraphResponse graphResponse = new GraphResponse(List.of(), List.of());
+        when(compatibilityFacade.getCompatibilityGraph(1L)).thenReturn(graphResponse);
+
+        ResponseEntity<GraphResponse> response =
+                compatibilityController.domainsIdCompatibilityGraphGet(1L);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isSameAs(graphResponse);
+        verify(compatibilityFacade).getCompatibilityGraph(1L);
+    }
 
     @Test
     void domainsIdCompatibilityPost_shouldDelegateCreationToFacade() {

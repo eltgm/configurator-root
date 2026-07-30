@@ -3,6 +3,7 @@ package ru.sultanyarov.configurator.contract
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CompatibilityLink
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateCompatibilityLinkRequest
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ErrorResponse
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.GraphResponse
 import spock.lang.Specification
 
 import java.util.concurrent.Callable
@@ -10,6 +11,77 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 
 abstract class AbstractCompatibilityControllerContract extends Specification implements ApiTestSupport {
+
+    def "should return sorted compatibility graph with active nodes and scoped edges"() {
+        given:
+        prepareCompatibilityGraphData()
+
+        when:
+        def result = get("/domains/1/compatibility/graph")
+
+        then:
+        result.status == 200
+        def responseBody = objectMapper.readValue(result.body, GraphResponse)
+        responseBody.nodes*.id == [1L, 2L, 3L, 7L]
+        responseBody.nodes*.name == [
+                "Keychron Q1",
+                "Keychron K2",
+                "Gateron Yellow",
+                "Isolated Component"
+        ]
+        responseBody.nodes*.componentTypeId == [1L, 1L, 2L, 2L]
+        responseBody.nodes*.componentTypeName == [
+                "Test Component Type",
+                "Test Component Type",
+                "Second Component Type",
+                "Second Component Type"
+        ]
+        responseBody.nodes*.brand == ["Keychron", "Keychron", "Gateron", null]
+
+        and:
+        responseBody.edges*.id == [701L, 704L]
+        responseBody.edges*.source == [2L, 1L]
+        responseBody.edges*.target == [3L, 3L]
+        responseBody.edges*.comment == ["Same domain", null]
+    }
+
+    def "should return empty compatibility graph for existing domain without components"() {
+        given:
+        runSqlScripts(
+                "/sql/clear-db.sql",
+                "/sql/insert-test-domain.sql"
+        )
+
+        when:
+        def result = get("/domains/1/compatibility/graph")
+
+        then:
+        result.status == 200
+        def responseBody = objectMapper.readValue(result.body, GraphResponse)
+        responseBody.nodes.isEmpty()
+        responseBody.edges.isEmpty()
+    }
+
+    def "should return not found for compatibility graph of non-existent domain"() {
+        given:
+        prepareCompatibilityGraphData()
+
+        when:
+        def result = get("/domains/999999/compatibility/graph")
+
+        then:
+        result.status == 404
+        objectMapper.readValue(result.body, ErrorResponse).getMessage() ==
+                "Domain with id 999999 not found"
+    }
+
+    def "should return bad request for non-positive compatibility graph domain id"() {
+        given:
+        prepareCompatibilityGraphData()
+
+        expect:
+        get("/domains/0/compatibility/graph").status == 400
+    }
 
     def "should create normalized compatibility link and trim comment"() {
         given:
@@ -339,6 +411,18 @@ abstract class AbstractCompatibilityControllerContract extends Specification imp
                 "/sql/insert-second-test-component-type.sql",
                 "/sql/insert-test-component.sql",
                 "/sql/insert-compatibility-test-data.sql"
+        )
+    }
+
+    private void prepareCompatibilityGraphData() {
+        runSqlScripts(
+                "/sql/clear-db.sql",
+                "/sql/insert-test-domain.sql",
+                "/sql/insert-test-component-type.sql",
+                "/sql/insert-second-test-component-type.sql",
+                "/sql/insert-test-component.sql",
+                "/sql/insert-compatibility-test-data.sql",
+                "/sql/insert-compatibility-graph-data.sql"
         )
     }
 }
