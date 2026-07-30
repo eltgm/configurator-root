@@ -1465,6 +1465,9 @@ paths:
     delete:
       tags: [ Compatibility ]
       summary: Delete compatibility link
+      description: |
+        Physically deletes a compatibility link scoped to the specified domain.
+        A link that belongs to another domain is treated as not found.
       parameters:
         - name: id
           in: path
@@ -1472,16 +1475,25 @@ paths:
           schema:
             type: integer
             format: int64
+            minimum: 1
         - name: linkId
           in: path
           required: true
           schema:
             type: integer
+            format: int64
+            minimum: 1
       responses:
         '204':
           description: Deleted
+        '400':
+          description: Invalid domain or compatibility link identifier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Not found
+          description: Domain or compatibility link not found
           content:
             application/json:
               schema:

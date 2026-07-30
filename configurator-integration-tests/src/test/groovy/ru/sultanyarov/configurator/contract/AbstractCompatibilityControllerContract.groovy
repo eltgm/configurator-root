@@ -229,6 +229,108 @@ abstract class AbstractCompatibilityControllerContract extends Specification imp
         ).status == 400
     }
 
+    def "should physically delete compatibility link and allow pair recreation"() {
+        given:
+        prepareCompatibilityData()
+        def linkId = createCompatibilityLink()
+
+        when:
+        def deleteResult = delete("/domains/1/compatibility/${linkId}")
+
+        then:
+        deleteResult.status == 204
+        deleteResult.body.isEmpty()
+
+        and:
+        post(
+                "/domains/1/compatibility",
+                new CreateCompatibilityLinkRequest(1L, 3L)
+        ).status == 201
+    }
+
+    def "should return not found when deleting compatibility link repeatedly"() {
+        given:
+        prepareCompatibilityData()
+        def linkId = createCompatibilityLink()
+        delete("/domains/1/compatibility/${linkId}").status == 204
+
+        when:
+        def result = delete("/domains/1/compatibility/${linkId}")
+
+        then:
+        result.status == 404
+        objectMapper.readValue(result.body, ErrorResponse).getMessage() ==
+                "Compatibility link with id ${linkId} not found in domain with id 1"
+    }
+
+    def "should hide compatibility link that belongs to another domain scope"() {
+        given:
+        prepareCompatibilityData()
+        def linkId = createCompatibilityLink()
+
+        when:
+        def result = delete("/domains/2/compatibility/${linkId}")
+
+        then:
+        result.status == 404
+        objectMapper.readValue(result.body, ErrorResponse).getMessage() ==
+                "Compatibility link with id ${linkId} not found in domain with id 2"
+
+        and:
+        delete("/domains/1/compatibility/${linkId}").status == 204
+    }
+
+    def "should return not found when deleting compatibility link from non-existent domain"() {
+        given:
+        prepareCompatibilityData()
+
+        when:
+        def result = delete("/domains/999999/compatibility/1")
+
+        then:
+        result.status == 404
+        objectMapper.readValue(result.body, ErrorResponse).getMessage() ==
+                "Domain with id 999999 not found"
+    }
+
+    def "should return not found when deleting non-existent compatibility link"() {
+        given:
+        prepareCompatibilityData()
+
+        when:
+        def result = delete("/domains/1/compatibility/999999")
+
+        then:
+        result.status == 404
+        objectMapper.readValue(result.body, ErrorResponse).getMessage() ==
+                "Compatibility link with id 999999 not found in domain with id 1"
+    }
+
+    def "should return bad request for non-positive compatibility deletion domain id"() {
+        given:
+        prepareCompatibilityData()
+
+        expect:
+        delete("/domains/0/compatibility/1").status == 400
+    }
+
+    def "should return bad request for non-positive compatibility link id"() {
+        given:
+        prepareCompatibilityData()
+
+        expect:
+        delete("/domains/1/compatibility/0").status == 400
+    }
+
+    private Long createCompatibilityLink() {
+        def result = post(
+                "/domains/1/compatibility",
+                new CreateCompatibilityLinkRequest(1L, 3L)
+        )
+        assert result.status == 201
+        return objectMapper.readValue(result.body, CompatibilityLink).getId()
+    }
+
     private void prepareCompatibilityData() {
         runSqlScripts(
                 "/sql/clear-db.sql",

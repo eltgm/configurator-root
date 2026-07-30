@@ -31,6 +31,12 @@ public class CompatibilityFacadeImpl implements CompatibilityFacade {
         );
     }
 
+    @Override
+    public void deleteCompatibilityLink(Long domainId, Long linkId) {
+        log.info("Deleting compatibility link with id {} from domain with id {}", linkId, domainId);
+        compatibilityService.deleteByIdAndDomainId(linkId, domainId);
+    }
+
     private static String normalizeComment(String comment) {
         if (comment == null || comment.isBlank()) {
             return null;

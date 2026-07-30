@@ -55,6 +55,35 @@ class CompatibilityRepositoryImplTest extends AbstractJooqRepositoryTest {
         assertThat(dslContext.fetchCount(Tables.COMPATIBILITY_LINK)).isOne();
     }
 
+    @Test
+    void deleteByIdAndDomainId_shouldPhysicallyDeleteScopedLink() {
+        CompatibilityLink createdLink = repository.create(
+                new CompatibilityLink(null, 1L, 3L, 9L, null)
+        ).orElseThrow();
+
+        boolean deleted = repository.deleteByIdAndDomainId(createdLink.id(), 1L);
+
+        assertThat(deleted).isTrue();
+        assertThat(dslContext.fetchCount(Tables.COMPATIBILITY_LINK)).isZero();
+    }
+
+    @Test
+    void deleteByIdAndDomainId_shouldNotDeleteLinkFromAnotherDomainScope() {
+        CompatibilityLink createdLink = repository.create(
+                new CompatibilityLink(null, 1L, 3L, 9L, null)
+        ).orElseThrow();
+
+        boolean deleted = repository.deleteByIdAndDomainId(createdLink.id(), 2L);
+
+        assertThat(deleted).isFalse();
+        assertThat(dslContext.fetchCount(Tables.COMPATIBILITY_LINK)).isOne();
+    }
+
+    @Test
+    void deleteByIdAndDomainId_shouldReturnFalseWhenLinkDoesNotExist() {
+        assertThat(repository.deleteByIdAndDomainId(999L, 1L)).isFalse();
+    }
+
     private void insertComponent(Long id, String name) {
         dslContext.insertInto(Tables.COMPONENT)
                 .set(Tables.COMPONENT.ID, id)

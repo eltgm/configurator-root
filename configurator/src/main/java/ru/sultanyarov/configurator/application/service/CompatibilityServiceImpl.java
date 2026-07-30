@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.sultanyarov.configurator.application.port.out.CompatibilityRepository;
 import ru.sultanyarov.configurator.domain.exception.ComponentArchivedException;
 import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
+import ru.sultanyarov.configurator.domain.exception.NotFoundException;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
 import ru.sultanyarov.configurator.domain.model.Component;
 import ru.sultanyarov.configurator.domain.model.CompatibilityLink;
@@ -56,6 +57,20 @@ public class CompatibilityServiceImpl implements CompatibilityService {
                         normalizedLink.componentBId(),
                         normalizedLink.domainId()
                 ));
+    }
+
+    @Override
+    @Transactional
+    public void deleteByIdAndDomainId(Long linkId, Long domainId) {
+        log.debug("delete compatibility link with id {} from domain with id {}", linkId, domainId);
+        domainService.getById(domainId);
+        if (!compatibilityRepository.deleteByIdAndDomainId(linkId, domainId)) {
+            throw new NotFoundException(
+                    "Compatibility link with id {} not found in domain with id {}",
+                    linkId,
+                    domainId
+            );
+        }
     }
 
     private static void validateNotSelfLink(CompatibilityLink compatibilityLink) {

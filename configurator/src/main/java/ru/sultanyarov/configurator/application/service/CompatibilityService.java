@@ -18,4 +18,13 @@ public interface CompatibilityService {
      * @throws ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException if the undirected link already exists
      */
     CompatibilityLink create(CompatibilityLink compatibilityLink);
+
+    /**
+     * Physically deletes a compatibility link scoped to a domain.
+     *
+     * @param linkId   the compatibility link identifier
+     * @param domainId the domain identifier
+     * @throws ru.sultanyarov.configurator.domain.exception.NotFoundException if the domain or scoped link does not exist
+     */
+    void deleteByIdAndDomainId(Long linkId, Long domainId);
 }

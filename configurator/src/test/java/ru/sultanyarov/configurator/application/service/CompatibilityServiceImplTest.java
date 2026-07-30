@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ru.sultanyarov.configurator.application.port.out.CompatibilityRepository;
 import ru.sultanyarov.configurator.domain.exception.ComponentArchivedException;
 import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
+import ru.sultanyarov.configurator.domain.exception.NotFoundException;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
 import ru.sultanyarov.configurator.domain.model.Component;
 import ru.sultanyarov.configurator.domain.model.CompatibilityLink;
@@ -21,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -125,6 +127,39 @@ class CompatibilityServiceImplTest {
         assertThatThrownBy(() -> compatibilityService.create(requestedLink))
                 .isInstanceOf(EntityAlreadyExistsException.class)
                 .hasMessage("Compatibility link between components 3 and 9 already exists in domain 1");
+    }
+
+    @Test
+    void deleteByIdAndDomainId_shouldDeleteScopedLink() {
+        when(domainService.getById(1L)).thenReturn(domain(1L));
+        when(compatibilityRepository.deleteByIdAndDomainId(11L, 1L)).thenReturn(true);
+
+        compatibilityService.deleteByIdAndDomainId(11L, 1L);
+
+        verify(domainService).getById(1L);
+        verify(compatibilityRepository).deleteByIdAndDomainId(11L, 1L);
+    }
+
+    @Test
+    void deleteByIdAndDomainId_shouldThrowNotFoundWhenScopedLinkDoesNotExist() {
+        when(domainService.getById(1L)).thenReturn(domain(1L));
+        when(compatibilityRepository.deleteByIdAndDomainId(11L, 1L)).thenReturn(false);
+
+        assertThatThrownBy(() -> compatibilityService.deleteByIdAndDomainId(11L, 1L))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("Compatibility link with id 11 not found in domain with id 1");
+    }
+
+    @Test
+    void deleteByIdAndDomainId_shouldNotAccessRepositoryWhenDomainDoesNotExist() {
+        when(domainService.getById(999L))
+                .thenThrow(new NotFoundException("Domain with id 999 not found"));
+
+        assertThatThrownBy(() -> compatibilityService.deleteByIdAndDomainId(11L, 999L))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("Domain with id 999 not found");
+
+        verifyNoInteractions(compatibilityRepository);
     }
 
     private static Domain domain(Long id) {
