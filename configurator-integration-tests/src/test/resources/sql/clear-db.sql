@@ -1,5 +1,7 @@
 DELETE FROM configuration_component;
 DELETE FROM configuration;
+DELETE FROM compatibility_rule_condition;
+DELETE FROM compatibility_rule_set;
 DELETE FROM compatibility_link;
 DELETE FROM component_image;
 DELETE FROM attribute_value;

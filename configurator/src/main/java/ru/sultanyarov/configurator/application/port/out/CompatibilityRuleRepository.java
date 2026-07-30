@@ -42,6 +42,8 @@ public interface CompatibilityRuleRepository {
      * @param domainId  domain identifier
      * @param ruleSet   target aggregate state
      * @return updated aggregate, or empty when not found in the scope
+     * @throws ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException
+     *         when the target business key already exists
      */
     Optional<CompatibilityRuleSet> updateByIdAndDomainId(
             Long ruleSetId,
@@ -57,6 +59,24 @@ public interface CompatibilityRuleRepository {
      * @return {@code true} when an aggregate was deleted
      */
     boolean deleteByIdAndDomainId(Long ruleSetId, Long domainId);
+
+    /**
+     * Checks the rule-set business key, optionally excluding the aggregate being updated.
+     *
+     * @param domainId             domain identifier
+     * @param componentTypeAId     normalized first component-type identifier
+     * @param componentTypeBId     normalized second component-type identifier
+     * @param name                 normalized rule-set name
+     * @param excludedRuleSetId    aggregate identifier to ignore, or {@code null}
+     * @return {@code true} when another aggregate has the same business key
+     */
+    boolean existsByBusinessKey(
+            Long domainId,
+            Long componentTypeAId,
+            Long componentTypeBId,
+            String name,
+            Long excludedRuleSetId
+    );
 
     /**
      * Checks whether a component type is referenced by any rule set.

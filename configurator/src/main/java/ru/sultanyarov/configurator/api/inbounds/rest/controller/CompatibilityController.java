@@ -5,9 +5,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import ru.sultanyarov.configurator.api.inbounds.rest.CompatibilityApi;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CompatibilityLink;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.CompatibilityRuleSet;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateCompatibilityLinkRequest;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.GraphResponse;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.SaveCompatibilityRuleSetRequest;
 import ru.sultanyarov.configurator.application.facade.CompatibilityFacade;
+import ru.sultanyarov.configurator.application.facade.CompatibilityRuleFacade;
+
+import java.util.List;
 
 import static org.springframework.http.HttpStatus.CREATED;
 
@@ -15,6 +20,7 @@ import static org.springframework.http.HttpStatus.CREATED;
 @RequiredArgsConstructor
 public class CompatibilityController implements CompatibilityApi {
     private final CompatibilityFacade compatibilityFacade;
+    private final CompatibilityRuleFacade compatibilityRuleFacade;
 
     @Override
     public ResponseEntity<GraphResponse> domainsIdCompatibilityGraphGet(Long id) {
@@ -34,5 +40,48 @@ public class CompatibilityController implements CompatibilityApi {
     ) {
         return ResponseEntity.status(CREATED)
                 .body(compatibilityFacade.createCompatibilityLink(id, createCompatibilityLinkRequest));
+    }
+
+    @Override
+    public ResponseEntity<List<CompatibilityRuleSet>> domainsIdCompatibilityRulesGet(Long id) {
+        return ResponseEntity.ok(compatibilityRuleFacade.getAllByDomainId(id));
+    }
+
+    @Override
+    public ResponseEntity<CompatibilityRuleSet> domainsIdCompatibilityRulesPost(
+            Long id,
+            SaveCompatibilityRuleSetRequest saveCompatibilityRuleSetRequest
+    ) {
+        return ResponseEntity.status(CREATED)
+                .body(compatibilityRuleFacade.create(id, saveCompatibilityRuleSetRequest));
+    }
+
+    @Override
+    public ResponseEntity<CompatibilityRuleSet> domainsIdCompatibilityRulesRuleIdGet(
+            Long id,
+            Long ruleId
+    ) {
+        return ResponseEntity.ok(compatibilityRuleFacade.getByIdAndDomainId(ruleId, id));
+    }
+
+    @Override
+    public ResponseEntity<CompatibilityRuleSet> domainsIdCompatibilityRulesRuleIdPut(
+            Long id,
+            Long ruleId,
+            SaveCompatibilityRuleSetRequest saveCompatibilityRuleSetRequest
+    ) {
+        return ResponseEntity.ok(
+                compatibilityRuleFacade.updateByIdAndDomainId(
+                        ruleId,
+                        id,
+                        saveCompatibilityRuleSetRequest
+                )
+        );
+    }
+
+    @Override
+    public ResponseEntity<Void> domainsIdCompatibilityRulesRuleIdDelete(Long id, Long ruleId) {
+        compatibilityRuleFacade.deleteByIdAndDomainId(ruleId, id);
+        return ResponseEntity.noContent().build();
     }
 }

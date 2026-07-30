@@ -1,9 +1,13 @@
 package ru.sultanyarov.configurator.contract
 
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CompatibilityLink
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.CompatibilityRuleConditionInput
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.CompatibilityRuleOperator
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.CompatibilityRuleSet
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateCompatibilityLinkRequest
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ErrorResponse
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.GraphResponse
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.SaveCompatibilityRuleSetRequest
 import spock.lang.Specification
 
 import java.util.concurrent.Callable
@@ -394,6 +398,324 @@ abstract class AbstractCompatibilityControllerContract extends Specification imp
         delete("/domains/1/compatibility/0").status == 400
     }
 
+    def "should create normalized attribute compatibility rule set"() {
+        given:
+        prepareCompatibilityRuleData()
+        def request = ruleRequest(
+                "  Frequency rule  ",
+                20L,
+                10L,
+                new CompatibilityRuleConditionInput(
+                        202L,
+                        CompatibilityRuleOperator.GT,
+                        102L
+                )
+        )
+
+        when:
+        def result = post("/domains/1/compatibility/rules", request)
+
+        then:
+        result.status == 201
+        def responseBody = objectMapper.readValue(result.body, CompatibilityRuleSet)
+        responseBody.id != null
+        responseBody.domainId == 1L
+        responseBody.name == "Frequency rule"
+        responseBody.componentTypeAId == 10L
+        responseBody.componentTypeBId == 20L
+        responseBody.enabled
+        responseBody.createdAt != null
+        responseBody.conditions.size() == 1
+        with(responseBody.conditions.first()) {
+            id != null
+            ruleSetId == responseBody.id
+            leftAttributeDefinitionId == 102L
+            operator == CompatibilityRuleOperator.LT
+            rightAttributeDefinitionId == 202L
+            orderIndex == 0
+            createdAt != null
+        }
+    }
+
+    def "should return compatibility rule sets in stable order and empty list for empty domain"() {
+        given:
+        prepareCompatibilityRuleData()
+
+        expect:
+        get("/domains/1/compatibility/rules").body == "[]"
+
+        when:
+        def first = createCompatibilityRule("First")
+        def second = createCompatibilityRule("Second")
+        def result = get("/domains/1/compatibility/rules")
+
+        then:
+        result.status == 200
+        def responseBody = objectMapper.readerForListOf(CompatibilityRuleSet).readValue(result.body)
+        responseBody*.id == [first.id, second.id]
+        responseBody*.name == ["First", "Second"]
+    }
+
+    def "should get compatibility rule set only in its domain scope"() {
+        given:
+        prepareCompatibilityRuleData()
+        def created = createCompatibilityRule("Scoped")
+
+        expect:
+        objectMapper.readValue(
+                get("/domains/1/compatibility/rules/${created.id}").body,
+                CompatibilityRuleSet
+        ) == created
+
+        when:
+        def foreignScope = get("/domains/2/compatibility/rules/${created.id}")
+
+        then:
+        foreignScope.status == 404
+        objectMapper.readValue(foreignScope.body, ErrorResponse).message ==
+                "Compatibility rule set with id ${created.id} not found in domain with id 2"
+    }
+
+    def "should fully replace compatibility rule set and preserve aggregate identity"() {
+        given:
+        prepareCompatibilityRuleData()
+        def created = createCompatibilityRule("Original")
+        def replacement = new SaveCompatibilityRuleSetRequest(
+                "Updated",
+                10L,
+                20L,
+                false,
+                [
+                        new CompatibilityRuleConditionInput(
+                                102L,
+                                CompatibilityRuleOperator.GTE,
+                                202L
+                        ).orderIndex(8)
+                ]
+        )
+
+        when:
+        def result = put("/domains/1/compatibility/rules/${created.id}", replacement)
+
+        then:
+        result.status == 200
+        def responseBody = objectMapper.readValue(result.body, CompatibilityRuleSet)
+        responseBody.id == created.id
+        responseBody.createdAt == created.createdAt
+        responseBody.name == "Updated"
+        !responseBody.enabled
+        responseBody.conditions.size() == 1
+        responseBody.conditions.first().id != created.conditions.first().id
+        responseBody.conditions.first().operator == CompatibilityRuleOperator.GTE
+        responseBody.conditions.first().orderIndex == 8
+
+        and:
+        objectMapper.readValue(
+                get("/domains/1/compatibility/rules/${created.id}").body,
+                CompatibilityRuleSet
+        ) == responseBody
+    }
+
+    def "should physically delete compatibility rule set with its conditions"() {
+        given:
+        prepareCompatibilityRuleData()
+        def created = createCompatibilityRule("Delete")
+
+        when:
+        def deleteResult = delete("/domains/1/compatibility/rules/${created.id}")
+
+        then:
+        deleteResult.status == 204
+        deleteResult.body.isEmpty()
+        get("/domains/1/compatibility/rules/${created.id}").status == 404
+        delete("/domains/1/compatibility/rules/${created.id}").status == 404
+    }
+
+    def "should return conflict for duplicate compatibility rule business key"() {
+        given:
+        prepareCompatibilityRuleData()
+        createCompatibilityRule("Duplicate")
+
+        when:
+        def result = post(
+                "/domains/1/compatibility/rules",
+                ruleRequest("Duplicate", 10L, 20L, stringEqualityCondition())
+        )
+
+        then:
+        result.status == 409
+        objectMapper.readValue(result.body, ErrorResponse).message ==
+                "Compatibility rule set 'Duplicate' already exists for component types 10 and 20 in domain 1"
+    }
+
+    def "should create only one compatibility rule for concurrent duplicate requests"() {
+        given:
+        prepareCompatibilityRuleData()
+        def ready = new CountDownLatch(2)
+        def start = new CountDownLatch(1)
+        def executor = Executors.newFixedThreadPool(2)
+        def request = ruleRequest("Concurrent", 10L, 20L, stringEqualityCondition())
+        def futures = (1..2).collect {
+            executor.submit({
+                ready.countDown()
+                start.await()
+                post("/domains/1/compatibility/rules", request)
+            } as Callable<TestResponse>)
+        }
+
+        when:
+        ready.await()
+        start.countDown()
+        def statuses = futures.collect { it.get().status }.sort()
+
+        then:
+        statuses == [201, 409]
+        def rules = objectMapper.readerForListOf(CompatibilityRuleSet)
+                .readValue(get("/domains/1/compatibility/rules").body)
+        rules*.name == ["Concurrent"]
+
+        cleanup:
+        executor.shutdownNow()
+    }
+
+    def "should return conflict when replacement duplicates another compatibility rule"() {
+        given:
+        prepareCompatibilityRuleData()
+        createCompatibilityRule("First")
+        def second = createCompatibilityRule("Second")
+
+        when:
+        def result = put(
+                "/domains/1/compatibility/rules/${second.id}",
+                ruleRequest("First", 20L, 10L, new CompatibilityRuleConditionInput(
+                        201L,
+                        CompatibilityRuleOperator.EQUALS,
+                        101L
+                ))
+        )
+
+        then:
+        result.status == 409
+    }
+
+    def "should reject invalid compatibility rule semantics"() {
+        given:
+        prepareCompatibilityRuleData()
+
+        expect:
+        post("/domains/1/compatibility/rules", request).status == expectedStatus
+
+        where:
+        request                                                                                    | expectedStatus
+        ruleRequest("Same type", 10L, 10L, stringEqualityCondition())                              | 400
+        ruleRequest("Foreign type", 10L, 30L, stringEqualityCondition())                           | 400
+        ruleRequest("Missing type", 10L, 999999L, stringEqualityCondition())                        | 404
+        ruleRequest("Wrong side", 10L, 20L, new CompatibilityRuleConditionInput(
+                201L, CompatibilityRuleOperator.EQUALS, 101L))                                     | 400
+        ruleRequest("Mismatched types", 10L, 20L, new CompatibilityRuleConditionInput(
+                101L, CompatibilityRuleOperator.EQUALS, 202L))                                     | 400
+        ruleRequest("Invalid operator", 10L, 20L, new CompatibilityRuleConditionInput(
+                101L, CompatibilityRuleOperator.GT, 201L))                                         | 400
+        new SaveCompatibilityRuleSetRequest(
+                "Duplicate conditions",
+                10L,
+                20L,
+                true,
+                [stringEqualityCondition(), stringEqualityCondition().orderIndex(1)]
+        )                                                                                          | 400
+    }
+
+    def "should enforce compatibility rule transport validation"() {
+        given:
+        prepareCompatibilityRuleData()
+
+        expect:
+        post("/domains/1/compatibility/rules", body).status == 400
+
+        where:
+        body << [
+                [
+                        componentTypeAId: 10L,
+                        componentTypeBId: 20L,
+                        enabled         : true,
+                        conditions      : [[
+                                leftAttributeDefinitionId : 101L,
+                                operator                  : "EQUALS",
+                                rightAttributeDefinitionId: 201L
+                        ]]
+                ],
+                [
+                        name            : "   ",
+                        componentTypeAId: 10L,
+                        componentTypeBId: 20L,
+                        enabled         : true,
+                        conditions      : [[
+                                leftAttributeDefinitionId : 101L,
+                                operator                  : "EQUALS",
+                                rightAttributeDefinitionId: 201L
+                        ]]
+                ],
+                [
+                        name            : "Rule",
+                        componentTypeAId: 0L,
+                        componentTypeBId: 20L,
+                        enabled         : true,
+                        conditions      : [[
+                                leftAttributeDefinitionId : 101L,
+                                operator                  : "EQUALS",
+                                rightAttributeDefinitionId: 201L
+                        ]]
+                ],
+                [
+                        name            : "Rule",
+                        componentTypeAId: 10L,
+                        componentTypeBId: 20L,
+                        enabled         : true,
+                        conditions      : []
+                ],
+                [
+                        name            : "Rule",
+                        componentTypeAId: 10L,
+                        componentTypeBId: 20L,
+                        enabled         : true,
+                        conditions      : [[
+                                leftAttributeDefinitionId : 101L,
+                                operator                  : "EQUALS",
+                                rightAttributeDefinitionId: 201L,
+                                orderIndex                : -1
+                        ]]
+                ]
+        ]
+    }
+
+    def "should return not found for compatibility rule operations in missing domains"() {
+        given:
+        prepareCompatibilityRuleData()
+
+        expect:
+        get("/domains/999999/compatibility/rules").status == 404
+        post(
+                "/domains/999999/compatibility/rules",
+                ruleRequest("Rule", 10L, 20L, stringEqualityCondition())
+        ).status == 404
+        get("/domains/999999/compatibility/rules/1").status == 404
+        delete("/domains/999999/compatibility/rules/1").status == 404
+    }
+
+    def "should reject non-positive compatibility rule path identifiers"() {
+        given:
+        prepareCompatibilityRuleData()
+
+        expect:
+        get("/domains/0/compatibility/rules").status == 400
+        get("/domains/1/compatibility/rules/0").status == 400
+        put(
+                "/domains/1/compatibility/rules/0",
+                ruleRequest("Rule", 10L, 20L, stringEqualityCondition())
+        ).status == 400
+        delete("/domains/1/compatibility/rules/0").status == 400
+    }
+
     private Long createCompatibilityLink() {
         def result = post(
                 "/domains/1/compatibility",
@@ -401,6 +723,38 @@ abstract class AbstractCompatibilityControllerContract extends Specification imp
         )
         assert result.status == 201
         return objectMapper.readValue(result.body, CompatibilityLink).getId()
+    }
+
+    private CompatibilityRuleSet createCompatibilityRule(String name) {
+        def result = post(
+                "/domains/1/compatibility/rules",
+                ruleRequest(name, 10L, 20L, stringEqualityCondition())
+        )
+        assert result.status == 201
+        return objectMapper.readValue(result.body, CompatibilityRuleSet)
+    }
+
+    private static SaveCompatibilityRuleSetRequest ruleRequest(
+            String name,
+            Long componentTypeAId,
+            Long componentTypeBId,
+            CompatibilityRuleConditionInput condition
+    ) {
+        return new SaveCompatibilityRuleSetRequest(
+                name,
+                componentTypeAId,
+                componentTypeBId,
+                true,
+                [condition]
+        )
+    }
+
+    private static CompatibilityRuleConditionInput stringEqualityCondition() {
+        return new CompatibilityRuleConditionInput(
+                101L,
+                CompatibilityRuleOperator.EQUALS,
+                201L
+        )
     }
 
     private void prepareCompatibilityData() {
@@ -423,6 +777,13 @@ abstract class AbstractCompatibilityControllerContract extends Specification imp
                 "/sql/insert-test-component.sql",
                 "/sql/insert-compatibility-test-data.sql",
                 "/sql/insert-compatibility-graph-data.sql"
+        )
+    }
+
+    private void prepareCompatibilityRuleData() {
+        runSqlScripts(
+                "/sql/clear-db.sql",
+                "/sql/insert-compatibility-rule-test-data.sql"
         )
     }
 }

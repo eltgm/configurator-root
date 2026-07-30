@@ -4,6 +4,7 @@ import org.jooq.exception.DataAccessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ru.sultanyarov.configurator.domain.entity.jooq.Tables;
+import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
 import ru.sultanyarov.configurator.domain.model.CompatibilityRuleCondition;
 import ru.sultanyarov.configurator.domain.model.CompatibilityRuleOperator;
 import ru.sultanyarov.configurator.domain.model.CompatibilityRuleSet;
@@ -199,6 +200,43 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
     }
 
     @Test
+    void updateByIdAndDomainId_shouldTranslateDuplicateBusinessKeyToConflict() {
+        repository.create(ruleSet(
+                1L,
+                "First",
+                10L,
+                20L,
+                true,
+                List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 201L, 0))
+        )).orElseThrow();
+        CompatibilityRuleSet second = repository.create(ruleSet(
+                1L,
+                "Second",
+                10L,
+                20L,
+                true,
+                List.of(condition(102L, CompatibilityRuleOperator.EQUALS, 202L, 0))
+        )).orElseThrow();
+
+        assertThatThrownBy(() -> repository.updateByIdAndDomainId(
+                second.id(),
+                1L,
+                ruleSet(
+                        1L,
+                        "First",
+                        10L,
+                        20L,
+                        true,
+                        List.of(condition(102L, CompatibilityRuleOperator.EQUALS, 202L, 0))
+                )
+        ))
+                .isInstanceOf(EntityAlreadyExistsException.class)
+                .hasMessage(
+                        "Compatibility rule set 'First' already exists for component types 10 and 20 in domain 1"
+                );
+    }
+
+    @Test
     void deleteByIdAndDomainId_shouldDeleteScopedAggregateAndCascadeConditions() {
         CompatibilityRuleSet created = repository.create(ruleSet(
                 1L,
@@ -229,6 +267,22 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
         assertThat(repository.hasByComponentTypeId(10L)).isTrue();
         assertThat(repository.hasByComponentTypeId(20L)).isTrue();
         assertThat(repository.hasByComponentTypeId(30L)).isFalse();
+    }
+
+    @Test
+    void existsByBusinessKey_shouldSupportCreateAndUpdateChecks() {
+        CompatibilityRuleSet created = repository.create(ruleSet(
+                1L,
+                "Socket",
+                10L,
+                20L,
+                true,
+                List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 201L, 0))
+        )).orElseThrow();
+
+        assertThat(repository.existsByBusinessKey(1L, 10L, 20L, "Socket", null)).isTrue();
+        assertThat(repository.existsByBusinessKey(1L, 10L, 20L, "Socket", created.id())).isFalse();
+        assertThat(repository.existsByBusinessKey(1L, 10L, 20L, "Other", null)).isFalse();
     }
 
     @Test
