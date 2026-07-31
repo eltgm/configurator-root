@@ -40,6 +40,10 @@ class ConfiguratorMapperTest {
                                                 .ruleSetId(7L)
                                                 .ruleSetName("Socket")
                                                 .conditions(List.of(conditionExplanation()))
+                                                .build(),
+                                        CompatibilityExplanation.builder()
+                                                .source(CompatibilityExplanationSource.TRANSITIVE)
+                                                .pathComponentIds(List.of(1L, 3L, 2L))
                                                 .build()
                                 )
                         ))
@@ -57,7 +61,7 @@ class ConfiguratorMapperTest {
                 assertThat(component.getName()).isEqualTo("Board");
                 assertThat(component.getBrand()).isEqualTo("Brand");
                 assertThat(component.getComponentTypeId()).isEqualTo(20L);
-                assertThat(component.getExplanations()).hasSize(2);
+                assertThat(component.getExplanations()).hasSize(3);
                 assertThat(component.getExplanations().getFirst()).satisfies(explanation -> {
                     assertThat(explanation.getSource().getValue()).isEqualTo("MANUAL");
                     assertThat(explanation.getLinkId()).isEqualTo(11L);
@@ -75,6 +79,10 @@ class ConfiguratorMapperTest {
                                 assertThat(condition.getRightAttributeName()).isEqualTo("socket");
                                 assertThat(condition.getRightValue()).isEqualTo("AM5");
                             });
+                });
+                assertThat(component.getExplanations().get(2)).satisfies(explanation -> {
+                    assertThat(explanation.getSource().getValue()).isEqualTo("TRANSITIVE");
+                    assertThat(explanation.getPathComponentIds()).containsExactly(1L, 3L, 2L);
                 });
             });
         });

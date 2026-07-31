@@ -15,14 +15,24 @@ public class ConfiguratorFacadeImpl implements ConfiguratorFacade {
     private final ConfiguratorMapper configuratorMapper;
 
     @Override
-    public ConfiguratorResponse getCompatibleComponents(Long domainId, Long baseComponentId) {
+    public ConfiguratorResponse getCompatibleComponents(
+            Long domainId,
+            Long baseComponentId,
+            boolean includeTransitive
+    ) {
         log.info(
-                "Getting compatible components in domain with id {} for base component with id {}",
+                "Getting compatible components in domain with id {} for base component with id {}, "
+                        + "include transitive: {}",
                 domainId,
-                baseComponentId
+                baseComponentId,
+                includeTransitive
         );
         return configuratorMapper.toDto(
-                configuratorService.getCompatibleComponents(domainId, baseComponentId)
+                configuratorService.getCompatibleComponents(
+                        domainId,
+                        baseComponentId,
+                        includeTransitive
+                )
         );
     }
 }

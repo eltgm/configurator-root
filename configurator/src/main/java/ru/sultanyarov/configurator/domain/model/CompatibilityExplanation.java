@@ -11,6 +11,7 @@ public record CompatibilityExplanation(
         String comment,
         Long ruleSetId,
         String ruleSetName,
-        List<CompatibilityConditionExplanation> conditions
+        List<CompatibilityConditionExplanation> conditions,
+        List<Long> pathComponentIds
 ) {
 }

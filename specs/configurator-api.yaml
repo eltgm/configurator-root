@@ -702,6 +702,7 @@ components:
       enum:
         - MANUAL
         - AUTOMATIC
+        - TRANSITIVE
 
     CompatibilityConditionExplanation:
       type: object
@@ -737,7 +738,7 @@ components:
       description: |
         One reason why the candidate is compatible. Manual explanations contain linkId and
         optional comment. Automatic explanations contain ruleSetId, ruleSetName and all
-        successful rule conditions.
+        successful rule conditions. Transitive explanations contain a shortest component path.
       properties:
         source:
           $ref: '#/components/schemas/CompatibilityExplanationSource'
@@ -760,6 +761,17 @@ components:
           nullable: true
           items:
             $ref: '#/components/schemas/CompatibilityConditionExplanation'
+        pathComponentIds:
+          type: array
+          nullable: true
+          minItems: 3
+          description: |
+            Ordered shortest path from the base component to a transitively compatible
+            component. Present only for TRANSITIVE explanations.
+          items:
+            type: integer
+            format: int64
+            minimum: 1
       required:
         - source
 
@@ -1988,9 +2000,10 @@ paths:
         Returns active domain components that are directly compatible with the selected active
         component through either a manual compatibility link or at least one enabled automatic
         attribute rule set. All conditions inside one rule set must match; multiple rule sets are
-        alternatives. Every returned component contains all matched manual and automatic
-        compatibility explanations. Results are grouped by component type. Transitive
-        compatibility is not included.
+        alternatives. Every returned component contains compatibility explanations. By default,
+        only direct compatibility is returned. When includeTransitive=true, active components
+        reachable through the manual and automatic compatibility graph are also returned with
+        one deterministic shortest path. Results are grouped by component type.
       parameters:
         - name: id
           in: path
@@ -2006,6 +2019,13 @@ paths:
             type: integer
             format: int64
             minimum: 1
+        - name: includeTransitive
+          in: query
+          required: false
+          description: Include components reachable through two or more compatibility edges
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
           description: Success

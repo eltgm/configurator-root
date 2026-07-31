@@ -41,7 +41,8 @@ VALUES (1, 10, 'Base CPU', 'CPU Brand', NULL, false, NOW()),
        (5, 30, 'Manual cooler', 'Cooler Brand', NULL, false, NOW()),
        (6, 20, 'Disabled-rule-only board', 'Board Brand', NULL, false, NOW()),
        (7, 40, 'Foreign component', NULL, NULL, false, NOW()),
-       (8, 30, 'Isolated cooler', NULL, NULL, false, NOW());
+       (8, 30, 'Isolated cooler', NULL, NULL, false, NOW()),
+       (9, 30, 'Transitive cooler', 'Path Brand', NULL, false, NOW());
 
 INSERT INTO attribute_value (
     id,
@@ -102,4 +103,5 @@ INSERT INTO compatibility_link (
 )
 VALUES (801, 1, 1, 2, 'Duplicate automatic source', NOW()),
        (802, 1, 1, 3, 'Manual mismatch override', NOW()),
-       (803, 1, 1, 5, 'Manual cross-type compatibility', NOW());
+       (803, 1, 1, 5, 'Manual cross-type compatibility', NOW()),
+       (804, 1, 3, 9, 'Second transitive hop', NOW());

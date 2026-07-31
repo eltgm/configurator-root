@@ -48,6 +48,14 @@ public interface CompatibilityRuleRepository {
     );
 
     /**
+     * Retrieves every enabled rule set of a domain for compatibility graph construction.
+     *
+     * @param domainId domain identifier
+     * @return enabled rule-set aggregates in stable identifier order
+     */
+    List<CompatibilityRuleSet> getEnabledByDomainId(Long domainId);
+
+    /**
      * Updates aggregate metadata and replaces all its conditions.
      *
      * @param ruleSetId rule-set identifier
