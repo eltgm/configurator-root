@@ -33,6 +33,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        JAR_FILE: ${JAR_FILE:-configurator/build/libs/configurator-0.1.0-SNAPSHOT.jar}
     container_name: configurator-app
     depends_on:
       postgres:

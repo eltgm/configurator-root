@@ -1,0 +1,38 @@
+name: Bug report
+description: Сообщить о воспроизводимой ошибке
+title: "[Bug]: "
+labels: [ "bug", "triage" ]
+body:
+  - type: markdown
+    attributes:
+      value: Уязвимости сообщайте приватно по SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Версия
+      placeholder: v0.1.0 или commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Что произошло
+      description: Опишите фактическое и ожидаемое поведение.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Шаги воспроизведения
+      placeholder: |
+        1. Выполнить запрос ...
+        2. Передать ...
+        3. Получить ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Логи и окружение
+      description: Не публикуйте токены, пароли и персональные данные.
+      render: shell

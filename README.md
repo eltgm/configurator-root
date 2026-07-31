@@ -1,317 +1,149 @@
-# Configurator Root
+# Configurator
 
-Short English summary: `configurator-root` is a backend-first MVP for a component configurator.  
-The repository contains a Spring Boot application, OpenAPI and jOOQ code generation, PostgreSQL/Flyway migrations, and a dedicated integration test module with both in-process and external test modes.
+[![CI](https://github.com/eltgm/configurator-root/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/eltgm/configurator-root/actions/workflows/ci.yml)
+[![Java 21](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/21/)
+[![Spring Boot 3.4.11](https://img.shields.io/badge/Spring%20Boot-3.4.11-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+[![OpenAPI 3.1](https://img.shields.io/badge/OpenAPI-3.1-6BA539?logo=openapiinitiative&logoColor=white)](specs/configurator-api.yaml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## О проекте
+Backend-first конфигуратор компонентов: каталог доменов и компонентов, ручные и атрибутивные правила совместимости,
+поиск совместимых наборов и сохранение конфигураций.
 
-`configurator-root` — это backend-first MVP для конфигуратора компонентов.
+> [!IMPORTANT]
+> Текущий релизный уровень — `0.1.0` (MVP preview). Контракты `POST /auth/register` и `POST /auth/login` описаны в
+> OpenAPI, но аутентификация и авторизация ещё не реализованы. API нельзя публиковать в недоверенной сети до добавления
+> Spring Security/JWT.
 
-Проект предназначен для хранения и управления:
-- доменами (`Domain`)
-- типами компонентов (`ComponentType`)
-- определениями атрибутов (`AttributeDefinition`)
-- компонентами (`Component`)
-- значениями атрибутов компонентов (`AttributeValue`)
+## Возможности
 
-Репозиторий ориентирован на разработчиков и содержит не только само приложение, но и весь необходимый контур для локальной разработки:
-- миграции БД
-- генерацию OpenAPI-кода
-- генерацию jOOQ-кода
-- unit-тесты
-- интеграционные тесты в отдельном модуле
-- Docker Compose для локального окружения
+| Область          | Состояние       | Возможности                                                                       |
+|------------------|-----------------|-----------------------------------------------------------------------------------|
+| Домены           | Реализовано     | создание, чтение, обновление, удаление, пагинация                                 |
+| Типы компонентов | Реализовано     | CRUD внутри домена                                                                |
+| Атрибуты         | Реализовано     | создание, получение списка, обновление определений                                |
+| Компоненты       | Реализовано     | создание, получение, обновление, архивирование, списки и фильтрация               |
+| Изображения      | Реализовано     | загрузка в MinIO, порядок изображений, получение списка                           |
+| Совместимость    | Реализовано     | ручные связи, граф, CRUD атрибутивных правил, объяснение результата               |
+| Конфигуратор     | Реализовано     | прямой и транзитивный поиск, поиск по нескольким компонентам, пересечение наборов |
+| Конфигурации     | Реализовано     | создание, список, получение и экспорт в JSON                                      |
+| Аутентификация   | Только контракт | регистрация, login и Bearer JWT описаны, runtime-реализации нет                   |
 
-Статус проекта: `MVP in progress`
-
-## Что есть в репозитории
-
-### Модули
-
-- `configurator`
-  Основное Spring Boot приложение.
-- `configurator-integration-tests`
-  Отдельный модуль интеграционных тестов.
-- `specs/configurator-api.yaml`
-  Источник истины для OpenAPI-контрактов.
-
-### Технологический стек
-
-- Java 21
-- Gradle
-- Spring Boot 3.4.x
-- Spring Web
-- Spring Validation
-- PostgreSQL
-- Flyway
-- jOOQ
-- OpenAPI Generator
-- MapStruct
-- Lombok
-- JUnit 5
-- Spock
-- Testcontainers
-- RestAssured
-
-## Текущее состояние
-
-Сейчас проект находится в стадии активной разработки MVP. В репозитории уже есть рабочая backend-архитектура, миграции, генерация кода и покрытие тестами, но функциональность реализована не полностью.
-
-### Уже реализовано
-
-- CRUD для доменов
-- CRUD для типов компонентов
-- создание и обновление атрибутов типов компонентов
-- создание компонента через `POST /components`
-- централизованная обработка ошибок REST API
-- unit-тесты c порогом покрытия `>= 90%` для модуля `configurator`
-- интеграционные тесты в двух режимах:
-  - in-process через Spring Boot + Testcontainers
-  - external against running app
-
-### Текущие ограничения
-
-- frontend в этом репозитории отсутствует
-- проект сейчас backend-first
-- не все endpoint’ы из OpenAPI уже реализованы
-- в `ComponentController` часть endpoint’ов пока остаются заглушками
-- основная зрелая часть приложения сейчас:
-  - `domains`
-  - `component-types`
-  - `attributes`
-  - `components` creation flow
+Frontend в репозиторий не входит.
 
 ## Архитектура
 
-В проекте используется слоистая архитектура с элементами гексагональной.
+Проект следует слоистой архитектуре с гексагональными границами:
 
-Базовая логическая цепочка:
+```text
+controller -> facade -> service -> outbound port -> infrastructure
+```
 
-`controller -> facade -> service -> port -> infrastructure`
+- `api.inbounds.rest` — HTTP, generated OpenAPI-интерфейсы и REST DTO;
+- `application.facade` — transport boundary и маппинг;
+- `application.service` — use cases и бизнес-оркестрация;
+- `application.port.out` — интерфейсы хранилищ и внешних систем;
+- `domain` — доменные модели и ошибки;
+- `infrastructure` — jOOQ/PostgreSQL, MinIO и временный адаптер текущего пользователя.
 
-### Основные пакеты
+Архитектурные границы проверяются тестами ArchUnit. Generated-код в `build/generated/**` вручную не редактируется.
 
-- `api.inbounds.rest`
-  HTTP-слой, OpenAPI controllers, REST DTO, exception handling
-- `application.facade`
-  граница между transport DTO и бизнес-моделями
-- `application.service`
-  application use cases и orchestration
-- `application.port.out`
-  outbound ports / repository interfaces
-- `application.validator`
-  отдельные validator-компоненты уровня application rules
-- `application.mapper`
-  MapStruct-мэппинг между transport и domain model
-- `domain.model`
-  доменные модели
-- `domain.exception`
-  доменные и application-level исключения
-- `infrastructure.persistence`
-  jOOQ-реализации и persistence-специфичный код
+## Технологии
 
-### Архитектурные правила
-
-- контроллеры должны быть тонкими
-- контроллеры не должны ходить в репозитории напрямую
-- фасады принимают/возвращают REST DTO и делегируют в сервисы
-- сервисы работают с доменными моделями
-- интерфейсы репозиториев живут в `application.port.out`
-- реализации репозиториев живут в `infrastructure.persistence`
-- generated-код не редактируется вручную
+- Java 21, Gradle Wrapper;
+- Spring Boot 3.4.11, Spring Web, Bean Validation;
+- PostgreSQL 17, Flyway, jOOQ;
+- OpenAPI 3.1 и OpenAPI Generator;
+- MinIO для изображений;
+- MapStruct и Lombok;
+- JUnit 5, Spock, ArchUnit, Testcontainers, MockMvc и RestAssured;
+- JaCoCo с обязательным покрытием не ниже 90%;
+- Spotless и Google Java Format.
 
 ## Структура репозитория
 
 ```text
-configurator-root
-├── configurator
-│   ├── src/main/java
-│   ├── src/main/resources
-│   ├── build.gradle
-│   ├── jooq.gradle
-│   └── openapi.gradle
-├── configurator-integration-tests
-│   ├── src/test
-│   ├── src/externalTest
-│   └── build.gradle
-├── specs
-│   └── configurator-api.yaml
+.
+├── configurator/                   # Spring Boot приложение
+├── configurator-integration-tests/ # общие local/external integration contracts
+├── specs/configurator-api.yaml     # источник истины REST API
+├── docs/release/                   # релизный аудит и checklist
+├── .github/                        # CI, release automation, templates
 ├── docker-compose.yml
-├── Dockerfile
-├── build.gradle
-└── settings.gradle
+└── Dockerfile
 ```
 
-## Источники истины
+Источники истины:
 
-### OpenAPI
-
-Источник истины:
-
-- [specs/configurator-api.yaml](/Users/eltgm/IdeaProjects/configurator-root/specs/configurator-api.yaml)
-
-Если нужно изменить REST API:
-1. изменить OpenAPI-спецификацию
-2. пересгенерировать код через Gradle lifecycle
-3. адаптировать ручной код приложения
-
-### База данных и jOOQ
-
-Источник истины:
-
-- `configurator/src/main/resources/db/migration/*`
-
-Если нужно изменить структуру БД:
-1. добавить новую Flyway-миграцию
-2. пересгенерировать jOOQ-код
-3. адаптировать persistence/application код
-
-### Generated-код
-
-Нельзя редактировать вручную:
-
-- `build/generated/**`
-
-## Требования для локальной разработки
-
-Нужно установить:
-
-- JDK 21
-- Docker / Docker Desktop
-- Gradle Wrapper используется из репозитория, отдельная установка Gradle не нужна
+- REST API — [`specs/configurator-api.yaml`](specs/configurator-api.yaml);
+- схема БД — [`configurator/src/main/resources/db/migration`](configurator/src/main/resources/db/migration);
+- правила для AI-агентов — [`AGENTS.md`](AGENTS.md).
 
 ## Быстрый старт
 
-### Вариант 1. Основной путь: запуск через Docker Compose
-
-Этот путь рекомендуется для первого запуска.
-
-Важно: текущий `Dockerfile` является runtime-only и ожидает уже собранный JAR.
-
-#### 1. Собрать JAR
+Понадобятся JDK 21 и Docker с Compose plugin. Отдельно устанавливать Gradle не нужно.
 
 ```bash
 ./gradlew :configurator:bootJar
-```
-
-#### 2. Поднять приложение и PostgreSQL
-
-```bash
 docker compose up --build
 ```
 
-После запуска:
+После запуска доступны:
 
-- приложение: [http://localhost:8080](http://localhost:8080)
-- PostgreSQL:
-  - host: `localhost`
-  - port: `5432`
-  - db: `configurator`
-  - user: `configurator`
-  - password: `configurator`
+- приложение — <http://localhost:8080>;
+- Swagger UI — <http://localhost:8080/swagger-ui/index.html>;
+- OpenAPI JSON — <http://localhost:8080/v3/api-docs>;
+- MinIO API — <http://localhost:9000>;
+- MinIO Console — <http://localhost:9001>;
+- PostgreSQL — `localhost:5432/configurator`.
 
-### Вариант 2. Локальный запуск приложения без Docker app
+Локальные значения `configurator/configurator`, `minioadmin/minioadmin` предназначены только для разработки.
 
-Можно поднять только PostgreSQL в Docker, а приложение запустить локально.
+### Запуск приложения из IDE
 
-#### 1. Поднять PostgreSQL
+Поднимите инфраструктуру и запустите main-класс Spring Boot из IntelliJ IDEA:
 
 ```bash
-docker compose up -d postgres
+docker compose up -d postgres minio
 ```
 
-#### 2. Запустить приложение
+По умолчанию приложение использует локальные адреса сервисов из `application.yml`. При необходимости задайте переменные
+окружения в Run Configuration.
+
+## Конфигурация
+
+| Переменная                 | Значение по умолчанию                           | Назначение                       |
+|----------------------------|-------------------------------------------------|----------------------------------|
+| `DB_URL`                   | `jdbc:postgresql://localhost:5432/configurator` | JDBC URL                         |
+| `DB_USER`                  | `configurator`                                  | пользователь БД                  |
+| `DB_PASSWORD`              | `configurator`                                  | пароль БД                        |
+| `IMAGE_STORAGE_ENDPOINT`   | `http://localhost:9000`                         | внутренний endpoint MinIO/S3     |
+| `IMAGE_STORAGE_ACCESS_KEY` | `minioadmin`                                    | access key                       |
+| `IMAGE_STORAGE_SECRET_KEY` | `minioadmin`                                    | secret key                       |
+| `IMAGE_STORAGE_BUCKET`     | `configurator-components`                       | bucket изображений               |
+| `IMAGE_STORAGE_PUBLIC_URL` | `http://localhost:9000`                         | публичная основа URL изображений |
+
+Лимит одного загружаемого файла — 10 MB.
+
+## Проверка проекта
+
+### Полный локальный контур
 
 ```bash
-./gradlew :configurator:bootRun
+./gradlew build
 ```
 
-По умолчанию приложение использует:
+Команда компилирует проект, запускает unit/repository/architecture tests, local integration contracts, Spotless и JaCoCo
+verification. Для Testcontainers должен быть доступен Docker daemon.
 
-- `DB_URL=jdbc:postgresql://localhost:5432/configurator`
-- `DB_USER=configurator`
-- `DB_PASSWORD=configurator`
-
-Эти параметры можно переопределить через переменные окружения.
-
-## Конфигурация приложения
-
-Основной конфиг:
-
-- [application.yml](/Users/eltgm/IdeaProjects/configurator-root/configurator/src/main/resources/application.yml)
-
-Локальный профиль:
-
-- [application-local.yml](/Users/eltgm/IdeaProjects/configurator-root/configurator/src/main/resources/application-local.yml)
-
-Поддерживаемые переменные окружения:
-
-- `DB_URL`
-- `DB_USER`
-- `DB_PASSWORD`
-
-## OpenAPI и документация API
-
-OpenAPI-спецификация лежит в:
-
-- [configurator-api.yaml](/Users/eltgm/IdeaProjects/configurator-root/specs/configurator-api.yaml)
-
-После запуска приложения стоит проверить:
-
-- Swagger UI: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
-- OpenAPI JSON: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
-
-Если пути будут изменены конфигурацией, ориентируйтесь на `springdoc`-настройки проекта.
-
-## Тесты
-
-### Unit tests
-
-Основной модуль:
+### External integration contracts
 
 ```bash
-./gradlew :configurator:test
-```
-
-Особенности:
-
-- вместе с unit-тестами запускается JaCoCo
-- для модуля `configurator` зафиксирован порог покрытия `>= 90%`
-- часть пакетов исключена из coverage policy:
-  - `common.util`
-  - `domain`
-  - `build`
-  - `infrastructure.persistence.jooq.config`
-  - generated REST/API DTO
-
-### In-process integration tests
-
-Интеграционные тесты, которые сами поднимают Spring context и используют Testcontainers:
-
-```bash
-./gradlew :configurator-integration-tests:test
-```
-
-Этот режим:
-
-- поднимает PostgreSQL через Testcontainers
-- стартует Spring Boot in-process
-- гоняет HTTP-контур через `MockMvc`
-
-### External integration tests
-
-Интеграционные тесты против уже поднятого приложения:
-
-```bash
+./gradlew :configurator:bootJar
+docker compose up -d --build
 ./gradlew :configurator-integration-tests:externalIntegrationTest
 ```
 
-Перед запуском нужно:
-
-1. поднять PostgreSQL и приложение
-2. убедиться, что приложение доступно по `http://localhost:8080`
-
-При необходимости можно переопределить параметры:
+Параметры внешнего контура можно переопределить:
 
 ```bash
 ./gradlew :configurator-integration-tests:externalIntegrationTest \
@@ -321,132 +153,37 @@ OpenAPI-спецификация лежит в:
   -Dtest.dbPassword=configurator
 ```
 
-### Полная проверка перед завершением работы
+Local и external режимы используют одни и те же контрактные сценарии; различается только transport/setup.
 
-Рекомендуемый минимум:
+## Разработка
 
-```bash
-./gradlew build
-./gradlew :configurator-integration-tests:externalIntegrationTest
-```
+1. Создайте `feature/CON<версия>-<номер>` или `bugfix/CON<версия>-<номер>` от `develop`.
+2. Для API сначала измените OpenAPI; для БД сначала добавьте Flyway-миграцию.
+3. Соблюдайте цепочку `controller -> facade -> service -> port -> infrastructure`.
+4. Добавьте unit-тесты и общий integration contract.
+5. Выполните `./gradlew build` и внешний интеграционный контур.
+6. Откройте pull request в `develop`.
 
-## Что обычно меняют разработчики
+Подробнее: [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
-### Изменение API
+## Релизы
 
-1. изменить [specs/configurator-api.yaml](/Users/eltgm/IdeaProjects/configurator-root/specs/configurator-api.yaml)
-2. пересобрать проект
-3. адаптировать controllers / facade / service / tests
+Проект использует Semantic Versioning. До реализации безопасности выпускаются версии `0.x`.
 
-### Изменение БД
+- рабочая ветка — `develop`;
+- стабильная ветка — `master`;
+- релиз готовится PR из `develop` в `master`;
+- тег формата `vX.Y.Z` ставится только на проверенный commit из `master`;
+- workflow создаёт draft GitHub Release с JAR, OpenAPI и контрольными суммами.
 
-1. добавить Flyway-миграцию в `configurator/src/main/resources/db/migration`
-2. пересобрать проект
-3. адаптировать jOOQ-based persistence слой
-4. обновить тестовые SQL-фикстуры при необходимости
+История изменений: [`CHANGELOG.md`](CHANGELOG.md). Чеклист первого релиза: [
+`docs/release/RELEASE_CHECKLIST.md`](docs/release/RELEASE_CHECKLIST.md).
 
-### Добавление новой backend-фичи
+## Безопасность и поддержка
 
-Ожидаемый маршрут:
+Уязвимости не следует публиковать в обычных issues. Используйте процедуру из [`SECURITY.md`](SECURITY.md). Для ошибок и
+предложений предусмотрены GitHub issue templates.
 
-1. OpenAPI контракт
-2. facade
-3. service
-4. port
-5. infrastructure
-6. unit tests
-7. in-process integration tests
-8. external integration tests
+## Лицензия
 
-## Реализованные API-области
-
-На текущий момент в коде наиболее полно реализованы:
-
-- `Domains`
-- `Component Types`
-- `Attributes`
-- `POST /components`
-
-Часть endpoint’ов из `Components`, а также другие продуктовые области из OpenAPI пока не завершены.
-
-## Git flow
-
-### Ветки
-
-Формат веток:
-
-- задачи: `feature/CON<версия>-<номер>`
-- багфиксы: `bugfix/CON<версия>-<номер>`
-
-Пример:
-
-- `feature/CON1-36`
-- `bugfix/CON1-42`
-
-### Коммиты
-
-Формат commit message:
-
-`CON<версия>-<номер> <description in English, past tense>`
-
-Пример:
-
-`CON1-36 Added integration tests for component creation`
-
-### Merge flow
-
-- прямой push в `main/master` запрещён
-- работа ведётся в отдельных ветках
-- изменения сливаются через PR в `dev`
-- релизная версия сливается из `dev` в `master`
-
-## Полезные команды
-
-### Сборка всего проекта
-
-```bash
-./gradlew build
-```
-
-### Сборка runtime JAR
-
-```bash
-./gradlew :configurator:bootJar
-```
-
-### Пересборка OpenAPI и jOOQ через обычный lifecycle
-
-```bash
-./gradlew :configurator:compileJava
-```
-
-### Только unit-тесты backend-модуля
-
-```bash
-./gradlew :configurator:test
-```
-
-### Только интеграционные тесты
-
-```bash
-./gradlew :configurator-integration-tests:test
-```
-
-### Только внешние интеграционные тесты
-
-```bash
-./gradlew :configurator-integration-tests:externalIntegrationTest
-```
-
-## Важные замечания
-
-- не редактируйте generated-код вручную
-- не воспринимайте весь OpenAPI как полностью реализованный runtime-функционал
-- если меняете БД, не забывайте обновлять миграции и тестовые фикстуры
-- если меняете API, не забывайте обновлять контрактные интеграционные тесты
-
-## Связанные документы
-
-- [AGENTS.md](/Users/eltgm/IdeaProjects/configurator-root/AGENTS.md)
-- [configurator-api.yaml](/Users/eltgm/IdeaProjects/configurator-root/specs/configurator-api.yaml)
-
+Проект распространяется по лицензии [MIT](LICENSE).
