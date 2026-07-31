@@ -184,6 +184,50 @@ abstract class AbstractAttributesControllerContract extends Specification implem
         responseBody.getOrderIndex() == 2
     }
 
+    def "should update attribute definition while keeping its current name"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql", "/sql/insert-test-domain.sql", "/sql/insert-test-component-type.sql", "/sql/insert-test-attribute-definition.sql")
+        def updateRequest = new CreateAttributeDefinitionRequest()
+                .name("original_attribute")
+                .label("Relabeled Attribute")
+                .dataType(CreateAttributeDefinitionRequest.DataTypeEnum.STRING)
+                .isRequired(false)
+                .orderIndex(7)
+
+        when:
+        def updateResult = put("/attributes/1", updateRequest)
+
+        then:
+        updateResult.status == 200
+        def responseBody = objectMapper.readValue(updateResult.body, AttributeDefinition)
+        responseBody.getId() == 1L
+        responseBody.getName() == "original_attribute"
+        responseBody.getLabel() == "Relabeled Attribute"
+        !responseBody.getIsRequired()
+        responseBody.getOrderIndex() == 7
+    }
+
+    def "should reject attribute data type change when persisted values exist"() {
+        given:
+        runSqlScripts(
+                "/sql/clear-db.sql",
+                "/sql/insert-test-domain.sql",
+                "/sql/insert-test-component-type.sql",
+                "/sql/insert-test-attribute-definition.sql",
+                "/sql/insert-test-component.sql",
+                "/sql/insert-attribute-value-for-definition.sql"
+        )
+        def updateRequest = new CreateAttributeDefinitionRequest()
+                .name("original_attribute")
+                .label("Original Attribute")
+                .dataType(CreateAttributeDefinitionRequest.DataTypeEnum.NUMBER)
+                .isRequired(true)
+                .orderIndex(1)
+
+        expect:
+        put("/attributes/1", updateRequest).status == 400
+    }
+
     def "should update attribute definition with enum values successfully"() {
         given:
         runSqlScripts("/sql/clear-db.sql", "/sql/insert-test-domain.sql", "/sql/insert-test-component-type.sql")

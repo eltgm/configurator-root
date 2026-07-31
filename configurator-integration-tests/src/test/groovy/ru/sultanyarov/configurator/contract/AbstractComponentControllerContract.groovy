@@ -771,6 +771,22 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         responseBody.getItems().every { it.getComponentTypeId() in [1L, 2L] }
     }
 
+    def "should use default pagination when component page parameters are omitted"() {
+        given:
+        prepareComponentSearchData()
+
+        when:
+        def result = get("/domains/1/components")
+
+        then:
+        result.status == 200
+        def responseBody = objectMapper.readValue(result.body, ComponentPage)
+        responseBody.getPage() == 0
+        responseBody.getSize() == 10
+        responseBody.getTotalItems() == 3
+        responseBody.getItems()*.getId() == [1L, 2L, 3L]
+    }
+
     def "should filter domain components by component type"() {
         given:
         prepareComponentSearchData()
