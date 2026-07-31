@@ -26,6 +26,7 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ErrorResponse;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
 import ru.sultanyarov.configurator.domain.exception.ComponentArchivedException;
+import ru.sultanyarov.configurator.domain.exception.ConfigurationConflictException;
 import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
 import ru.sultanyarov.configurator.domain.exception.EntityHasRelatedEntitiesException;
 import ru.sultanyarov.configurator.domain.exception.ExternalStorageException;
@@ -60,7 +61,8 @@ public class ControllerExceptionHandler {
   @ExceptionHandler({
     EntityAlreadyExistsException.class,
     EntityHasRelatedEntitiesException.class,
-    ComponentArchivedException.class
+    ComponentArchivedException.class,
+    ConfigurationConflictException.class
   })
   public ResponseEntity<ErrorResponse> handleEntityAlreadyExistsException(
       Exception exception, HttpServletRequest request) {

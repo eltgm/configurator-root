@@ -10,3 +10,6 @@ DELETE FROM component_type;
 DELETE FROM attribute_definition;
 DELETE FROM domain;
 DELETE FROM app_user;
+
+INSERT INTO app_user (id, email, password_hash, display_name)
+VALUES (-1, 'system@configurator.local', 'AUTHENTICATION_NOT_CONFIGURED', 'System User');
