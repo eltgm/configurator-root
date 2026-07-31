@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchRequest;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchResponse;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorIntersectionRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorIntersectionResponse;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorResponse;
 import ru.sultanyarov.configurator.application.mapper.ConfiguratorMapper;
 import ru.sultanyarov.configurator.application.service.ConfiguratorService;
@@ -52,6 +54,27 @@ public class ConfiguratorFacadeImpl implements ConfiguratorFacade {
         );
         return configuratorMapper.toDto(
                 configuratorService.searchCompatibleComponents(
+                        domainId,
+                        request.getComponentIds(),
+                        Boolean.TRUE.equals(request.getIncludeTransitive())
+                )
+        );
+    }
+
+    @Override
+    public ConfiguratorIntersectionResponse intersectCompatibleComponents(
+            Long domainId,
+            ConfiguratorIntersectionRequest request
+    ) {
+        log.info(
+                "Intersecting compatible components in domain with id {} for {} base components, "
+                        + "include transitive: {}",
+                domainId,
+                request.getComponentIds().size(),
+                request.getIncludeTransitive()
+        );
+        return configuratorMapper.toDto(
+                configuratorService.intersectCompatibleComponents(
                         domainId,
                         request.getComponentIds(),
                         Boolean.TRUE.equals(request.getIncludeTransitive())

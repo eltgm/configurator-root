@@ -380,6 +380,131 @@ class ConfiguratorServiceImplTest {
     }
 
     @Test
+    void intersectCompatibleComponents_shouldReturnOnlyCommonCandidatesWithEvidenceByBase() {
+        Domain domain = domain();
+        Component firstBase = component(1L, 10L, "First base", false);
+        Component secondBase = component(2L, 20L, "Second base", false);
+        Component common = component(3L, 30L, "Common", false);
+        Component firstOnly = component(4L, 30L, "First only", false);
+        when(domainService.getById(1L)).thenReturn(domain);
+        when(configuratorRepository.getActiveComponents(1L))
+                .thenReturn(List.of(common, firstBase, secondBase, firstOnly));
+        when(configuratorRepository.getAllManualCompatibilityLinks(1L))
+                .thenReturn(List.of(
+                        link(11L, 1L, 3L, "First to common"),
+                        link(12L, 2L, 3L, "Second to common"),
+                        link(13L, 1L, 4L, "First only")
+                ));
+        when(compatibilityRuleRepository.getEnabledByDomainId(1L)).thenReturn(List.of());
+
+        var result = service.intersectCompatibleComponents(1L, List.of(2L, 1L), false);
+
+        assertThat(result.componentIds()).containsExactly(2L, 1L);
+        assertThat(result.compatibleByType())
+                .singleElement()
+                .satisfies(group -> {
+                    assertThat(group.componentTypeId()).isEqualTo(30L);
+                    assertThat(group.components())
+                            .singleElement()
+                            .satisfies(component -> {
+                                assertThat(component.id()).isEqualTo(3L);
+                                assertThat(component.compatibilityByBase())
+                                        .extracting(compatibility -> compatibility.baseComponentId())
+                                        .containsExactly(2L, 1L);
+                                assertThat(component.compatibilityByBase().getFirst()
+                                        .explanations().getFirst().linkId()).isEqualTo(12L);
+                                assertThat(component.compatibilityByBase().get(1)
+                                        .explanations().getFirst().linkId()).isEqualTo(11L);
+                            });
+                });
+
+        verify(configuratorRepository).getActiveComponents(1L);
+        verify(configuratorRepository).getAllManualCompatibilityLinks(1L);
+        verify(compatibilityRuleRepository).getEnabledByDomainId(1L);
+        verifyNoInteractions(componentService);
+    }
+
+    @Test
+    void intersectCompatibleComponents_shouldUseTransitivePathsForEveryBase() {
+        Domain domain = domain();
+        Component firstBase = component(1L, 10L, "First base", false);
+        Component firstIntermediate = component(2L, 20L, "First intermediate", false);
+        Component common = component(3L, 30L, "Common", false);
+        Component secondBase = component(4L, 10L, "Second base", false);
+        Component secondIntermediate = component(5L, 20L, "Second intermediate", false);
+        when(domainService.getById(1L)).thenReturn(domain);
+        when(configuratorRepository.getActiveComponents(1L)).thenReturn(List.of(
+                common,
+                firstBase,
+                secondBase,
+                firstIntermediate,
+                secondIntermediate
+        ));
+        when(configuratorRepository.getAllManualCompatibilityLinks(1L))
+                .thenReturn(List.of(
+                        link(11L, 1L, 2L, null),
+                        link(12L, 2L, 3L, null),
+                        link(13L, 4L, 5L, null),
+                        link(14L, 5L, 3L, null)
+                ));
+        when(compatibilityRuleRepository.getEnabledByDomainId(1L)).thenReturn(List.of());
+
+        var result = service.intersectCompatibleComponents(1L, List.of(1L, 4L), true);
+
+        assertThat(result.compatibleByType().getFirst().components().getFirst())
+                .satisfies(component -> {
+                    assertThat(component.id()).isEqualTo(3L);
+                    assertThat(component.compatibilityByBase().getFirst()
+                            .explanations().getFirst().pathComponentIds())
+                            .containsExactly(1L, 2L, 3L);
+                    assertThat(component.compatibilityByBase().get(1)
+                            .explanations().getFirst().pathComponentIds())
+                            .containsExactly(4L, 5L, 3L);
+                });
+    }
+
+    @Test
+    void intersectCompatibleComponents_shouldReturnEmptyGroupsWithoutCommonCandidates() {
+        Domain domain = domain();
+        Component firstBase = component(1L, 10L, "First base", false);
+        Component secondBase = component(2L, 20L, "Second base", false);
+        Component firstOnly = component(3L, 30L, "First only", false);
+        Component secondOnly = component(4L, 30L, "Second only", false);
+        when(domainService.getById(1L)).thenReturn(domain);
+        when(configuratorRepository.getActiveComponents(1L))
+                .thenReturn(List.of(firstOnly, secondOnly, firstBase, secondBase));
+        when(configuratorRepository.getAllManualCompatibilityLinks(1L))
+                .thenReturn(List.of(
+                        link(11L, 1L, 3L, null),
+                        link(12L, 2L, 4L, null)
+                ));
+        when(compatibilityRuleRepository.getEnabledByDomainId(1L)).thenReturn(List.of());
+
+        assertThat(service.intersectCompatibleComponents(1L, List.of(1L, 2L), false)
+                .compatibleByType()).isEmpty();
+    }
+
+    @Test
+    void intersectCompatibleComponents_shouldRequireAtLeastTwoIdentifiers() {
+        assertThatThrownBy(() ->
+                service.intersectCompatibleComponents(1L, List.of(), false))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("At least two component ids are required");
+        assertThatThrownBy(() ->
+                service.intersectCompatibleComponents(1L, List.of(1L), false))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("At least two component ids are required");
+
+        verifyNoInteractions(
+                domainService,
+                componentService,
+                configuratorRepository,
+                compatibilityRuleRepository,
+                compatibilityRuleEvaluator
+        );
+    }
+
+    @Test
     void getCompatibleComponents_shouldRejectComponentOutsideDomain() {
         Domain domain = domain();
         Component foreign = component(1L, 99L, "Foreign", false);

@@ -1,6 +1,7 @@
 package ru.sultanyarov.configurator.application.service;
 
 import ru.sultanyarov.configurator.domain.model.ConfiguratorBatchResult;
+import ru.sultanyarov.configurator.domain.model.ConfiguratorIntersectionResult;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorResult;
 
 import java.util.List;
@@ -33,6 +34,20 @@ public interface ConfiguratorService {
      * @return one compatibility result per selected component in request order
      */
     ConfiguratorBatchResult searchCompatibleComponents(
+            Long domainId,
+            List<Long> baseComponentIds,
+            boolean includeTransitive
+    );
+
+    /**
+     * Finds active components compatible with every selected base component.
+     *
+     * @param domainId domain scope
+     * @param baseComponentIds unique selected component identifiers in request order
+     * @param includeTransitive whether components reachable through multiple edges are included
+     * @return intersection grouped by component type with evidence for every base component
+     */
+    ConfiguratorIntersectionResult intersectCompatibleComponents(
             Long domainId,
             List<Long> baseComponentIds,
             boolean includeTransitive

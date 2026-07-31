@@ -7,10 +7,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchRequest;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchResponse;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorIntersectionRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorIntersectionResponse;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorResponse;
 import ru.sultanyarov.configurator.application.mapper.ConfiguratorMapper;
 import ru.sultanyarov.configurator.application.service.ConfiguratorService;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorBatchResult;
+import ru.sultanyarov.configurator.domain.model.ConfiguratorIntersectionResult;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorResult;
 
 import java.util.List;
@@ -53,6 +56,28 @@ class ConfiguratorFacadeImplTest {
 
         assertThat(facade.searchCompatibleComponents(1L, request)).isSameAs(response);
         verify(configuratorService).searchCompatibleComponents(1L, List.of(7L, 8L), true);
+        verify(configuratorMapper).toDto(result);
+    }
+
+    @Test
+    void intersectCompatibleComponents_shouldMapServiceResult() {
+        ConfiguratorIntersectionRequest request = new ConfiguratorIntersectionRequest(
+                List.of(7L, 8L)
+        ).includeTransitive(true);
+        ConfiguratorIntersectionResult result = new ConfiguratorIntersectionResult(
+                List.of(7L, 8L),
+                List.of()
+        );
+        ConfiguratorIntersectionResponse response = new ConfiguratorIntersectionResponse(
+                List.of(7L, 8L),
+                List.of()
+        );
+        when(configuratorService.intersectCompatibleComponents(1L, List.of(7L, 8L), true))
+                .thenReturn(result);
+        when(configuratorMapper.toDto(result)).thenReturn(response);
+
+        assertThat(facade.intersectCompatibleComponents(1L, request)).isSameAs(response);
+        verify(configuratorService).intersectCompatibleComponents(1L, List.of(7L, 8L), true);
         verify(configuratorMapper).toDto(result);
     }
 }
