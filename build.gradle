@@ -1,6 +1,13 @@
 plugins {
     id 'java'
     id 'io.spring.dependency-management' version '1.1.7' apply false
+    id 'com.diffplug.spotless' version '7.2.1' apply false
+}
+
+ext {
+    archUnitVersion = '1.4.1'
+    spockVersion = '2.4-M4-groovy-4.0'
+    testcontainersVersion = '2.0.3'
 }
 
 java {
@@ -12,6 +19,7 @@ java {
 subprojects {
     apply plugin: 'java'
     apply plugin: 'io.spring.dependency-management'
+    apply plugin: 'com.diffplug.spotless'
 
     group = 'ru.sultanyarov'
     version = '0.0.1-SNAPSHOT'
@@ -23,11 +31,23 @@ subprojects {
     dependencyManagement {
         imports {
             mavenBom "org.springframework.boot:spring-boot-dependencies:3.4.11"
+            mavenBom "org.testcontainers:testcontainers-bom:${testcontainersVersion}"
         }
     }
 
     tasks.withType(JavaCompile).configureEach {
         options.encoding = 'UTF-8'
+    }
+
+    spotless {
+        ratchetFrom 'develop'
+        java {
+            target 'src/**/*.java'
+            googleJavaFormat('1.24.0')
+            removeUnusedImports()
+            trimTrailingWhitespace()
+            endWithNewline()
+        }
     }
 
     test {

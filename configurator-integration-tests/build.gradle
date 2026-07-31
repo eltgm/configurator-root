@@ -4,18 +4,6 @@ plugins {
 }
 
 def dockerHost = "unix://${System.getProperty('user.home')}/.docker/run/docker.sock"
-def testcontainersVersion = '2.0.3'
-
-dependencyManagement {
-    dependencies {
-        dependency "org.testcontainers:testcontainers:${testcontainersVersion}"
-        dependency "org.testcontainers:testcontainers-spock:${testcontainersVersion}"
-        dependency "org.testcontainers:testcontainers-jdbc:${testcontainersVersion}"
-        dependency "org.testcontainers:testcontainers-database-commons:${testcontainersVersion}"
-        dependency "org.testcontainers:testcontainers-postgresql:${testcontainersVersion}"
-        dependency "org.testcontainers:testcontainers-junit-jupiter:${testcontainersVersion}"
-    }
-}
 
 sourceSets {
     externalTest {
@@ -37,8 +25,8 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-web'
     testImplementation 'org.springframework:spring-jdbc'
-    testImplementation 'org.spockframework:spock-core:2.4-M4-groovy-4.0'
-    testImplementation 'org.spockframework:spock-spring:2.4-M4-groovy-4.0'
+    testImplementation "org.spockframework:spock-core:${spockVersion}"
+    testImplementation "org.spockframework:spock-spring:${spockVersion}"
     testImplementation "org.testcontainers:testcontainers-spock:${testcontainersVersion}"
     testImplementation "org.testcontainers:testcontainers-jdbc:${testcontainersVersion}"
     testImplementation "org.testcontainers:testcontainers-postgresql:${testcontainersVersion}"
