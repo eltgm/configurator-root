@@ -1,5 +1,7 @@
 package ru.sultanyarov.configurator.application.facade;
 
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchResponse;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorResponse;
 
 /**
@@ -10,5 +12,10 @@ public interface ConfiguratorFacade {
             Long domainId,
             Long baseComponentId,
             boolean includeTransitive
+    );
+
+    ConfiguratorBatchSearchResponse searchCompatibleComponents(
+            Long domainId,
+            ConfiguratorBatchSearchRequest request
     );
 }

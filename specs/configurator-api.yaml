@@ -831,6 +831,36 @@ components:
         - baseComponentId
         - compatibleByType
 
+    ConfiguratorBatchSearchRequest:
+      type: object
+      properties:
+        componentIds:
+          type: array
+          minItems: 1
+          maxItems: 50
+          description: Unique base component identifiers in requested result order
+          items:
+            type: integer
+            format: int64
+            minimum: 1
+        includeTransitive:
+          type: boolean
+          default: false
+          description: Include components reachable through two or more compatibility edges
+      required:
+        - componentIds
+
+    ConfiguratorBatchSearchResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          description: Independent compatibility results in componentIds request order
+          items:
+            $ref: '#/components/schemas/ConfiguratorResponse'
+      required:
+        - results
+
     ### CONFIGURATION ###
     Configuration:
       type: object
@@ -2035,6 +2065,49 @@ paths:
                 $ref: '#/components/schemas/ConfiguratorResponse'
         '400':
           description: Invalid identifier, component outside the domain, or archived base component
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Domain or component not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /domains/{id}/configurator/compatible/search:
+    post:
+      tags: [ Configurator ]
+      summary: Search compatibility independently for multiple selected components
+      description: |
+        Calculates the same direct or transitive compatibility result as the single-component
+        endpoint for every requested active base component. Results preserve componentIds order.
+        Sets are not combined or intersected. Domain components, manual links, enabled automatic
+        rules and the compatibility graph are loaded once for the whole request.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfiguratorBatchSearchRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfiguratorBatchSearchResponse'
+        '400':
+          description: Invalid, duplicate, archived, or out-of-domain base component
           content:
             application/json:
               schema:

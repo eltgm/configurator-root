@@ -16,6 +16,7 @@ import ru.sultanyarov.configurator.domain.model.CompatibleComponent;
 import ru.sultanyarov.configurator.domain.model.CompatibleComponentGroup;
 import ru.sultanyarov.configurator.domain.model.Component;
 import ru.sultanyarov.configurator.domain.model.ComponentType;
+import ru.sultanyarov.configurator.domain.model.ConfiguratorBatchResult;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorResult;
 import ru.sultanyarov.configurator.domain.model.Domain;
 
@@ -33,6 +34,8 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class ConfiguratorServiceImpl implements ConfiguratorService {
+    private static final int MAX_BATCH_COMPONENTS = 50;
+
     private final DomainService domainService;
     private final ComponentService componentService;
     private final ConfiguratorRepository configuratorRepository;
@@ -67,6 +70,55 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
         return ConfiguratorResult.builder()
                 .baseComponentId(baseComponentId)
                 .compatibleByType(toOrderedGroups(domain, compatibleByType))
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ConfiguratorBatchResult searchCompatibleComponents(
+            Long domainId,
+            List<Long> baseComponentIds,
+            boolean includeTransitive
+    ) {
+        log.debug(
+                "search compatible components in domain {} for base components {}, "
+                        + "include transitive: {}",
+                domainId,
+                baseComponentIds,
+                includeTransitive
+        );
+        validateBatchComponentIds(baseComponentIds);
+        Domain domain = domainService.getById(domainId);
+        List<Component> activeComponents = configuratorRepository.getActiveComponents(domainId);
+        Map<Long, Component> activeComponentsById = new HashMap<>();
+        for (Component component : activeComponents) {
+            activeComponentsById.put(component.getId(), component);
+        }
+        validateBatchBaseComponents(domain, baseComponentIds, activeComponentsById);
+        CompatibilityGraphContext context = buildCompatibilityContext(
+                domainId,
+                activeComponents
+        );
+
+        List<ConfiguratorResult> results = new ArrayList<>(baseComponentIds.size());
+        for (Long baseComponentId : baseComponentIds) {
+            Component baseComponent = activeComponentsById.get(baseComponentId);
+            List<Component> candidates = activeComponents.stream()
+                    .filter(component -> !component.getId().equals(baseComponentId))
+                    .toList();
+            Map<Long, List<CompatibleComponent>> compatibleByType = findCompatibilityInGraph(
+                    baseComponent,
+                    candidates,
+                    context,
+                    includeTransitive
+            );
+            results.add(ConfiguratorResult.builder()
+                    .baseComponentId(baseComponentId)
+                    .compatibleByType(toOrderedGroups(domain, compatibleByType))
+                    .build());
+        }
+        return ConfiguratorBatchResult.builder()
+                .results(List.copyOf(results))
                 .build();
     }
 
@@ -120,6 +172,18 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
         activeComponents.add(baseComponent);
         activeComponents.addAll(candidates);
 
+        return findCompatibilityInGraph(
+                baseComponent,
+                candidates,
+                buildCompatibilityContext(domainId, activeComponents),
+                true
+        );
+    }
+
+    private CompatibilityGraphContext buildCompatibilityContext(
+            Long domainId,
+            List<Component> activeComponents
+    ) {
         Map<Long, Component> componentsById = new HashMap<>();
         Map<Long, List<Component>> componentsByType = new HashMap<>();
         Map<Long, Integer> componentOrder = new HashMap<>();
@@ -145,13 +209,24 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
                 componentsByType
         );
 
-        Map<Long, Long> predecessors = findShortestPaths(
-                graph,
-                baseComponent.getId(),
-                componentOrder
-        );
+        return new CompatibilityGraphContext(graph, componentOrder);
+    }
+
+    private static Map<Long, List<CompatibleComponent>> findCompatibilityInGraph(
+            Component baseComponent,
+            List<Component> candidates,
+            CompatibilityGraphContext context,
+            boolean includeTransitive
+    ) {
+        Map<Long, Long> predecessors = includeTransitive
+                ? findShortestPaths(
+                        context.graph(),
+                        baseComponent.getId(),
+                        context.componentOrder()
+                )
+                : Map.of();
         Map<Long, List<CompatibleComponent>> compatibleByType = new HashMap<>();
-        Map<Long, List<CompatibilityExplanation>> baseComponentNeighbours = graph
+        Map<Long, List<CompatibilityExplanation>> baseComponentNeighbours = context.graph()
                 .getOrDefault(baseComponent.getId(), Map.of());
         for (Component candidate : candidates) {
             List<CompatibilityExplanation> directExplanations = baseComponentNeighbours
@@ -171,6 +246,41 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
             }
         }
         return compatibleByType;
+    }
+
+    private static void validateBatchComponentIds(List<Long> componentIds) {
+        if (componentIds == null || componentIds.isEmpty()) {
+            throw new ValidationException("At least one component id is required");
+        }
+        if (componentIds.size() > MAX_BATCH_COMPONENTS) {
+            throw new ValidationException(
+                    "No more than {} component ids are allowed",
+                    MAX_BATCH_COMPONENTS
+            );
+        }
+        if (componentIds.stream().anyMatch(id -> id == null || id <= 0)) {
+            throw new ValidationException("Component identifiers must be positive");
+        }
+        if (new HashSet<>(componentIds).size() != componentIds.size()) {
+            throw new ValidationException("Component identifiers must be unique");
+        }
+    }
+
+    private void validateBatchBaseComponents(
+            Domain domain,
+            List<Long> componentIds,
+            Map<Long, Component> activeComponentsById
+    ) {
+        for (Long componentId : componentIds) {
+            if (activeComponentsById.containsKey(componentId)) {
+                continue;
+            }
+            validateBaseComponent(domain, componentService.getById(componentId));
+            throw new ValidationException(
+                    "Component with id {} is unavailable for configurator search",
+                    componentId
+            );
+        }
     }
 
     private static void addManualEdges(
@@ -412,5 +522,11 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
                     baseComponent.getId()
             );
         }
+    }
+
+    private record CompatibilityGraphContext(
+            Map<Long, Map<Long, List<CompatibilityExplanation>>> graph,
+            Map<Long, Integer> componentOrder
+    ) {
     }
 }

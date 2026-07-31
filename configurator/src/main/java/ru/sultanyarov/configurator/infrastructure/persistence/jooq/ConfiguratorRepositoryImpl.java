@@ -59,6 +59,33 @@ public class ConfiguratorRepositoryImpl implements ConfiguratorRepository {
     }
 
     @Override
+    public List<Component> getActiveComponents(Long domainId) {
+        List<SelectFieldOrAsterisk> fields = new ArrayList<>(List.of(
+                COMPONENT.ID,
+                COMPONENT.COMPONENT_TYPE_ID,
+                COMPONENT.NAME,
+                COMPONENT.BRAND,
+                COMPONENT.DESCRIPTION,
+                COMPONENT.ARCHIVED,
+                COMPONENT.CREATED_AT
+        ));
+        fields.add(attributeValuesField());
+
+        return dslContext.select(fields)
+                .from(COMPONENT)
+                .join(COMPONENT_TYPE)
+                .on(COMPONENT_TYPE.ID.eq(COMPONENT.COMPONENT_TYPE_ID))
+                .where(COMPONENT_TYPE.DOMAIN_ID.eq(domainId))
+                .and(COMPONENT.ARCHIVED.isFalse())
+                .orderBy(
+                        COMPONENT_TYPE.ORDER_INDEX.asc().nullsLast(),
+                        COMPONENT_TYPE.ID.asc(),
+                        COMPONENT.ID.asc()
+                )
+                .fetch(componentMapper());
+    }
+
+    @Override
     public List<CompatibilityLink> getManualCompatibilityLinks(
             Long domainId,
             Long baseComponentId

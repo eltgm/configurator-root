@@ -1,5 +1,7 @@
 package ru.sultanyarov.configurator.contract
 
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchRequest
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchResponse
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorResponse
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ErrorResponse
 import spock.lang.Specification
@@ -109,6 +111,94 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
 
         and: "the base and disconnected active component are not returned"
         responseBody.compatibleByType*.components.flatten()*.id == [2L, 3L, 5L, 9L]
+    }
+
+    def "should search direct compatibility independently for multiple components in request order"() {
+        given:
+        prepareConfiguratorData()
+        def request = new ConfiguratorBatchSearchRequest([3L, 1L])
+
+        when:
+        def result = post("/domains/1/configurator/compatible/search", request)
+
+        then:
+        result.status == 200
+        def responseBody = objectMapper.readValue(result.body, ConfiguratorBatchSearchResponse)
+        responseBody.results*.baseComponentId == [3L, 1L]
+
+        and: "each selected component has its own direct compatibility set"
+        responseBody.results[0].compatibleByType*.componentTypeId == [10L, 30L]
+        responseBody.results[0].compatibleByType[0].components*.id == [1L]
+        responseBody.results[0].compatibleByType[1].components*.id == [9L]
+        responseBody.results[1].compatibleByType*.componentTypeId == [20L, 30L]
+        responseBody.results[1].compatibleByType[0].components*.id == [2L, 3L]
+        responseBody.results[1].compatibleByType[1].components*.id == [5L]
+
+        and: "selected components may appear in each other's independent results"
+        responseBody.results[0].compatibleByType*.components.flatten()*.id.contains(1L)
+        responseBody.results[1].compatibleByType*.components.flatten()*.id.contains(3L)
+    }
+
+    def "should apply transitive mode to every component in batch search"() {
+        given:
+        prepareConfiguratorData()
+        def request = new ConfiguratorBatchSearchRequest([1L, 8L])
+                .includeTransitive(true)
+
+        when:
+        def result = post("/domains/1/configurator/compatible/search", request)
+
+        then:
+        result.status == 200
+        def responseBody = objectMapper.readValue(result.body, ConfiguratorBatchSearchResponse)
+        responseBody.results*.baseComponentId == [1L, 8L]
+        responseBody.results[0].compatibleByType*.components.flatten()*.id == [2L, 3L, 5L, 9L]
+        responseBody.results[0].compatibleByType[1].components[1]
+                .explanations[0].pathComponentIds == [1L, 3L, 9L]
+        responseBody.results[1].compatibleByType == []
+    }
+
+    def "should validate batch configurator request collection"() {
+        given:
+        prepareConfiguratorData()
+
+        expect:
+        post("/domains/1/configurator/compatible/search", [componentIds: []]).status == 400
+        post(
+                "/domains/1/configurator/compatible/search",
+                [componentIds: (1L..51L).toList()]
+        ).status == 400
+        post(
+                "/domains/1/configurator/compatible/search",
+                [componentIds: [1L, 1L]]
+        ).status == 400
+        post(
+                "/domains/1/configurator/compatible/search",
+                [componentIds: [0L]]
+        ).status == 400
+    }
+
+    def "should reject whole batch for missing archived or foreign base component"() {
+        given:
+        prepareConfiguratorData()
+
+        expect:
+        post(
+                "/domains/1/configurator/compatible/search",
+                [componentIds: [1L, 999999L]]
+        ).status == 404
+        post(
+                "/domains/1/configurator/compatible/search",
+                [componentIds: [1L, 4L]]
+        ).status == 400
+        post(
+                "/domains/1/configurator/compatible/search",
+                [componentIds: [1L, 7L]]
+        ).status == 400
+        post(
+                "/domains/999999/configurator/compatible/search",
+                [componentIds: [1L]]
+        ).status == 404
     }
 
     def "should return not found for missing configurator domain"() {

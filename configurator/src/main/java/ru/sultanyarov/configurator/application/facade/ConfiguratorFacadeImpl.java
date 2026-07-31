@@ -3,6 +3,8 @@ package ru.sultanyarov.configurator.application.facade;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchResponse;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorResponse;
 import ru.sultanyarov.configurator.application.mapper.ConfiguratorMapper;
 import ru.sultanyarov.configurator.application.service.ConfiguratorService;
@@ -32,6 +34,27 @@ public class ConfiguratorFacadeImpl implements ConfiguratorFacade {
                         domainId,
                         baseComponentId,
                         includeTransitive
+                )
+        );
+    }
+
+    @Override
+    public ConfiguratorBatchSearchResponse searchCompatibleComponents(
+            Long domainId,
+            ConfiguratorBatchSearchRequest request
+    ) {
+        log.info(
+                "Searching compatible components in domain with id {} for {} base components, "
+                        + "include transitive: {}",
+                domainId,
+                request.getComponentIds().size(),
+                request.getIncludeTransitive()
+        );
+        return configuratorMapper.toDto(
+                configuratorService.searchCompatibleComponents(
+                        domainId,
+                        request.getComponentIds(),
+                        Boolean.TRUE.equals(request.getIncludeTransitive())
                 )
         );
     }

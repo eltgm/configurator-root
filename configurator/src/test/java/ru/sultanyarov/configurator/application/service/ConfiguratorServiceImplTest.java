@@ -18,6 +18,7 @@ import ru.sultanyarov.configurator.domain.model.Component;
 import ru.sultanyarov.configurator.domain.model.ComponentType;
 import ru.sultanyarov.configurator.domain.model.Domain;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -265,6 +266,117 @@ class ConfiguratorServiceImplTest {
                 .allSatisfy(component ->
                         assertThat(component.explanations().getFirst().source())
                                 .isEqualTo(CompatibilityExplanationSource.MANUAL));
+    }
+
+    @Test
+    void searchCompatibleComponents_shouldReuseGraphAndReturnTransitiveResultsInRequestOrder() {
+        Domain domain = domain();
+        Component base = component(1L, 10L, "Base", false);
+        Component intermediate = component(2L, 20L, "Intermediate", false);
+        Component target = component(3L, 30L, "Target", false);
+        when(domainService.getById(1L)).thenReturn(domain);
+        when(configuratorRepository.getActiveComponents(1L))
+                .thenReturn(List.of(target, base, intermediate));
+        when(configuratorRepository.getAllManualCompatibilityLinks(1L))
+                .thenReturn(List.of(
+                        link(11L, 1L, 2L, "First hop"),
+                        link(12L, 2L, 3L, "Second hop")
+                ));
+        when(compatibilityRuleRepository.getEnabledByDomainId(1L)).thenReturn(List.of());
+
+        var result = service.searchCompatibleComponents(1L, List.of(1L, 3L), true);
+
+        assertThat(result.results())
+                .extracting(configuration -> configuration.baseComponentId())
+                .containsExactly(1L, 3L);
+        assertThat(result.results().getFirst().compatibleByType())
+                .extracting(group -> group.componentTypeId())
+                .containsExactly(30L, 20L);
+        assertThat(result.results().getFirst().compatibleByType().getFirst()
+                .components().getFirst().explanations().getFirst().pathComponentIds())
+                .containsExactly(1L, 2L, 3L);
+        assertThat(result.results().get(1).compatibleByType())
+                .extracting(group -> group.componentTypeId())
+                .containsExactly(10L, 20L);
+        assertThat(result.results().get(1).compatibleByType().getFirst()
+                .components().getFirst().explanations().getFirst().pathComponentIds())
+                .containsExactly(3L, 2L, 1L);
+
+        verify(domainService).getById(1L);
+        verify(configuratorRepository).getActiveComponents(1L);
+        verify(configuratorRepository).getAllManualCompatibilityLinks(1L);
+        verify(compatibilityRuleRepository).getEnabledByDomainId(1L);
+        verifyNoInteractions(componentService);
+    }
+
+    @Test
+    void searchCompatibleComponents_shouldReturnOnlyDirectResultsWhenTransitiveIsDisabled() {
+        Domain domain = domain();
+        Component base = component(1L, 10L, "Base", false);
+        Component intermediate = component(2L, 20L, "Intermediate", false);
+        Component target = component(3L, 30L, "Target", false);
+        when(domainService.getById(1L)).thenReturn(domain);
+        when(configuratorRepository.getActiveComponents(1L))
+                .thenReturn(List.of(target, base, intermediate));
+        when(configuratorRepository.getAllManualCompatibilityLinks(1L))
+                .thenReturn(List.of(
+                        link(11L, 1L, 2L, null),
+                        link(12L, 2L, 3L, null)
+                ));
+        when(compatibilityRuleRepository.getEnabledByDomainId(1L)).thenReturn(List.of());
+
+        var result = service.searchCompatibleComponents(1L, List.of(1L, 3L), false);
+
+        assertThat(result.results()).allSatisfy(configuration ->
+                assertThat(configuration.compatibleByType())
+                        .singleElement()
+                        .satisfies(group -> assertThat(group.components())
+                                .extracting(component -> component.id())
+                                .containsExactly(2L))
+        );
+    }
+
+    @Test
+    void searchCompatibleComponents_shouldRejectInvalidIdentifierCollectionsBeforeLoadingDomain() {
+        assertThatThrownBy(() -> service.searchCompatibleComponents(1L, List.of(), false))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("At least one component id is required");
+        assertThatThrownBy(() -> service.searchCompatibleComponents(
+                1L,
+                Collections.nCopies(51, 1L),
+                false
+        ))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("No more than 50 component ids are allowed");
+        assertThatThrownBy(() -> service.searchCompatibleComponents(1L, List.of(1L, 1L), false))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("Component identifiers must be unique");
+
+        verifyNoInteractions(
+                domainService,
+                componentService,
+                configuratorRepository,
+                compatibilityRuleRepository,
+                compatibilityRuleEvaluator
+        );
+    }
+
+    @Test
+    void searchCompatibleComponents_shouldRejectWholeRequestWhenOneComponentIsForeign() {
+        Domain domain = domain();
+        Component base = component(1L, 10L, "Base", false);
+        Component foreign = component(7L, 99L, "Foreign", false);
+        when(domainService.getById(1L)).thenReturn(domain);
+        when(configuratorRepository.getActiveComponents(1L)).thenReturn(List.of(base));
+        when(componentService.getById(7L)).thenReturn(foreign);
+
+        assertThatThrownBy(() ->
+                service.searchCompatibleComponents(1L, List.of(1L, 7L), false))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("Component with id 7 does not belong to domain with id 1");
+
+        verify(configuratorRepository).getActiveComponents(1L);
+        verifyNoInteractions(compatibilityRuleRepository, compatibilityRuleEvaluator);
     }
 
     @Test

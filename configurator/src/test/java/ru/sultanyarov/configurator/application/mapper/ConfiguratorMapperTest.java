@@ -8,6 +8,7 @@ import ru.sultanyarov.configurator.domain.model.CompatibilityExplanationSource;
 import ru.sultanyarov.configurator.domain.model.CompatibilityRuleOperator;
 import ru.sultanyarov.configurator.domain.model.CompatibleComponent;
 import ru.sultanyarov.configurator.domain.model.CompatibleComponentGroup;
+import ru.sultanyarov.configurator.domain.model.ConfiguratorBatchResult;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorResult;
 
 import java.util.List;
@@ -86,6 +87,20 @@ class ConfiguratorMapperTest {
                 });
             });
         });
+    }
+
+    @Test
+    void toDto_shouldMapBatchResultsInSourceOrder() {
+        ConfiguratorBatchResult result = new ConfiguratorBatchResult(List.of(
+                new ConfiguratorResult(3L, List.of()),
+                new ConfiguratorResult(1L, List.of())
+        ));
+
+        var dto = mapper.toDto(result);
+
+        assertThat(dto.getResults())
+                .extracting(response -> response.getBaseComponentId())
+                .containsExactly(3L, 1L);
     }
 
     private static CompatibilityConditionExplanation conditionExplanation() {
