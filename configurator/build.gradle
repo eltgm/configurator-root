@@ -31,7 +31,7 @@ dependencies {
     implementation 'org.mapstruct:mapstruct:1.6.0'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.0'
 
-    implementation "org.springdoc:springdoc-openapi-ui:1.8.0"
+    implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.17"
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation "org.spockframework:spock-core:${spockVersion}"
