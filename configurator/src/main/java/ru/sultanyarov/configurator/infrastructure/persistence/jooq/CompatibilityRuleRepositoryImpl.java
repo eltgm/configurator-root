@@ -114,6 +114,26 @@ public class CompatibilityRuleRepositoryImpl implements CompatibilityRuleReposit
                 .orderBy(COMPATIBILITY_RULE_SET.ID.asc())
                 .fetch(this::mapRuleSet);
     }
+
+    @Override
+    public List<CompatibilityRuleSet> getEnabledByDomainId(Long domainId) {
+        return dslContext.select(
+                        COMPATIBILITY_RULE_SET.ID,
+                        COMPATIBILITY_RULE_SET.DOMAIN_ID,
+                        COMPATIBILITY_RULE_SET.NAME,
+                        COMPATIBILITY_RULE_SET.COMPONENT_TYPE_A_ID,
+                        COMPATIBILITY_RULE_SET.COMPONENT_TYPE_B_ID,
+                        COMPATIBILITY_RULE_SET.ENABLED,
+                        COMPATIBILITY_RULE_SET.CREATED_AT,
+                        conditionsField()
+                )
+                .from(COMPATIBILITY_RULE_SET)
+                .where(COMPATIBILITY_RULE_SET.DOMAIN_ID.eq(domainId))
+                .and(COMPATIBILITY_RULE_SET.ENABLED.isTrue())
+                .orderBy(COMPATIBILITY_RULE_SET.ID.asc())
+                .fetch(this::mapRuleSet);
+    }
+
     @Override
     @Transactional
     public Optional<CompatibilityRuleSet> updateByIdAndDomainId(

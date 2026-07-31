@@ -26,12 +26,24 @@ class ConfiguratorControllerTest {
     @Test
     void domainsIdConfiguratorCompatibleGet_shouldDelegateToFacade() {
         ConfiguratorResponse responseBody = new ConfiguratorResponse(7L, List.of());
-        when(configuratorFacade.getCompatibleComponents(1L, 7L)).thenReturn(responseBody);
+        when(configuratorFacade.getCompatibleComponents(1L, 7L, true)).thenReturn(responseBody);
 
-        var response = controller.domainsIdConfiguratorCompatibleGet(1L, 7L);
+        var response = controller.domainsIdConfiguratorCompatibleGet(1L, 7L, true);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isSameAs(responseBody);
-        verify(configuratorFacade).getCompatibleComponents(1L, 7L);
+        verify(configuratorFacade).getCompatibleComponents(1L, 7L, true);
+    }
+
+    @Test
+    void domainsIdConfiguratorCompatibleGet_shouldDefaultTransitiveFlagToFalse() {
+        ConfiguratorResponse responseBody = new ConfiguratorResponse(7L, List.of());
+        when(configuratorFacade.getCompatibleComponents(1L, 7L, false))
+                .thenReturn(responseBody);
+
+        var response = controller.domainsIdConfiguratorCompatibleGet(1L, 7L, null);
+
+        assertThat(response.getBody()).isSameAs(responseBody);
+        verify(configuratorFacade).getCompatibleComponents(1L, 7L, false);
     }
 }

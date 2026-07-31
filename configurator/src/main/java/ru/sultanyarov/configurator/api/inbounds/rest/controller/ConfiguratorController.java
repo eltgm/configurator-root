@@ -15,10 +15,15 @@ public class ConfiguratorController implements ConfiguratorApi {
     @Override
     public ResponseEntity<ConfiguratorResponse> domainsIdConfiguratorCompatibleGet(
             Long id,
-            Long componentId
+            Long componentId,
+            Boolean includeTransitive
     ) {
         return ResponseEntity.ok(
-                configuratorFacade.getCompatibleComponents(id, componentId)
+                configuratorFacade.getCompatibleComponents(
+                        id,
+                        componentId,
+                        Boolean.TRUE.equals(includeTransitive)
+                )
         );
     }
 }

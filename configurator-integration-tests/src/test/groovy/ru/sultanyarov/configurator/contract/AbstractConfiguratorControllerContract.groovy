@@ -77,6 +77,40 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
         responseBody.compatibleByType == []
     }
 
+    def "should include transitively compatible components with shortest path when requested"() {
+        given:
+        prepareConfiguratorData()
+
+        when:
+        def result = get(
+                "/domains/1/configurator/compatible",
+                [componentId: 1L, includeTransitive: true]
+        )
+
+        then:
+        result.status == 200
+        def responseBody = objectMapper.readValue(result.body, ConfiguratorResponse)
+        responseBody.compatibleByType*.componentTypeId == [20L, 30L]
+        responseBody.compatibleByType[0].components*.id == [2L, 3L]
+        responseBody.compatibleByType[1].components*.id == [5L, 9L]
+
+        and: "direct components keep their direct explanations"
+        responseBody.compatibleByType[1].components[0].explanations*.source*.toString() == ["MANUAL"]
+        responseBody.compatibleByType[1].components[0].explanations[0].linkId == 803L
+
+        and: "transitive-only component contains the deterministic shortest path"
+        def transitive = responseBody.compatibleByType[1].components[1]
+        transitive.name == "Transitive cooler"
+        transitive.explanations*.source*.toString() == ["TRANSITIVE"]
+        transitive.explanations[0].pathComponentIds == [1L, 3L, 9L]
+        transitive.explanations[0].linkId == null
+        transitive.explanations[0].ruleSetId == null
+        transitive.explanations[0].conditions == null
+
+        and: "the base and disconnected active component are not returned"
+        responseBody.compatibleByType*.components.flatten()*.id == [2L, 3L, 5L, 9L]
+    }
+
     def "should return not found for missing configurator domain"() {
         given:
         prepareConfiguratorData()

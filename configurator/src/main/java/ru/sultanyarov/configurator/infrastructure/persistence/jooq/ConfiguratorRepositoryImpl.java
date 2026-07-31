@@ -86,6 +86,27 @@ public class ConfiguratorRepositoryImpl implements ConfiguratorRepository {
                         .build());
     }
 
+    @Override
+    public List<CompatibilityLink> getAllManualCompatibilityLinks(Long domainId) {
+        return dslContext.select(
+                        COMPATIBILITY_LINK.ID,
+                        COMPATIBILITY_LINK.DOMAIN_ID,
+                        COMPATIBILITY_LINK.COMPONENT_A_ID,
+                        COMPATIBILITY_LINK.COMPONENT_B_ID,
+                        COMPATIBILITY_LINK.COMMENT
+                )
+                .from(COMPATIBILITY_LINK)
+                .where(COMPATIBILITY_LINK.DOMAIN_ID.eq(domainId))
+                .orderBy(COMPATIBILITY_LINK.ID.asc())
+                .fetch(record -> CompatibilityLink.builder()
+                        .id(record.get(COMPATIBILITY_LINK.ID))
+                        .domainId(record.get(COMPATIBILITY_LINK.DOMAIN_ID))
+                        .componentAId(record.get(COMPATIBILITY_LINK.COMPONENT_A_ID))
+                        .componentBId(record.get(COMPATIBILITY_LINK.COMPONENT_B_ID))
+                        .comment(record.get(COMPATIBILITY_LINK.COMMENT))
+                        .build());
+    }
+
     private SelectField<List<AttributeValue>> attributeValuesField() {
         return multiset(
                 dslContext.select(

@@ -27,4 +27,12 @@ public interface ConfiguratorRepository {
      * @return links in stable identifier order
      */
     List<CompatibilityLink> getManualCompatibilityLinks(Long domainId, Long baseComponentId);
+
+    /**
+     * Loads all direct manual compatibility links of a domain for graph traversal.
+     *
+     * @param domainId domain identifier
+     * @return links in stable identifier order
+     */
+    List<CompatibilityLink> getAllManualCompatibilityLinks(Long domainId);
 }

@@ -58,6 +58,8 @@ class ConfiguratorRepositoryImplTest extends AbstractJooqRepositoryTest {
                 new CompatibilityLink(1L, 1L, 1L, 2L, "Base on right"),
                 new CompatibilityLink(2L, 1L, 2L, 3L, "Base on left")
         );
+        assertThat(repository.getAllManualCompatibilityLinks(1L))
+                .containsExactlyElementsOf(result);
     }
 
     private void insertDomain(Long id, String name) {

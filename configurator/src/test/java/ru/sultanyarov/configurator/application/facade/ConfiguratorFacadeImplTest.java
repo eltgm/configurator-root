@@ -29,11 +29,11 @@ class ConfiguratorFacadeImplTest {
     void getCompatibleComponents_shouldMapServiceResult() {
         ConfiguratorResult result = new ConfiguratorResult(7L, List.of());
         ConfiguratorResponse response = new ConfiguratorResponse(7L, List.of());
-        when(configuratorService.getCompatibleComponents(1L, 7L)).thenReturn(result);
+        when(configuratorService.getCompatibleComponents(1L, 7L, true)).thenReturn(result);
         when(configuratorMapper.toDto(result)).thenReturn(response);
 
-        assertThat(facade.getCompatibleComponents(1L, 7L)).isSameAs(response);
-        verify(configuratorService).getCompatibleComponents(1L, 7L);
+        assertThat(facade.getCompatibleComponents(1L, 7L, true)).isSameAs(response);
+        verify(configuratorService).getCompatibleComponents(1L, 7L, true);
         verify(configuratorMapper).toDto(result);
     }
 }

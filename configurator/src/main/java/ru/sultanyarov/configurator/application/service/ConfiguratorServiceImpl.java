@@ -19,10 +19,15 @@ import ru.sultanyarov.configurator.domain.model.ComponentType;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorResult;
 import ru.sultanyarov.configurator.domain.model.Domain;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -36,11 +41,16 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
 
     @Override
     @Transactional(readOnly = true)
-    public ConfiguratorResult getCompatibleComponents(Long domainId, Long baseComponentId) {
+    public ConfiguratorResult getCompatibleComponents(
+            Long domainId,
+            Long baseComponentId,
+            boolean includeTransitive
+    ) {
         log.debug(
-                "get compatible components in domain {} for base component {}",
+                "get compatible components in domain {} for base component {}, include transitive: {}",
                 domainId,
-                baseComponentId
+                baseComponentId,
+                includeTransitive
         );
         Domain domain = domainService.getById(domainId);
         Component baseComponent = componentService.getById(baseComponentId);
@@ -50,8 +60,26 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
                 domainId,
                 baseComponentId
         );
+        Map<Long, List<CompatibleComponent>> compatibleByType = includeTransitive
+                ? findTransitiveCompatibility(domainId, baseComponent, candidates)
+                : findDirectCompatibility(domainId, baseComponent, candidates);
+
+        return ConfiguratorResult.builder()
+                .baseComponentId(baseComponentId)
+                .compatibleByType(toOrderedGroups(domain, compatibleByType))
+                .build();
+    }
+
+    private Map<Long, List<CompatibleComponent>> findDirectCompatibility(
+            Long domainId,
+            Component baseComponent,
+            List<Component> candidates
+    ) {
         List<CompatibilityLink> manualLinks =
-                configuratorRepository.getManualCompatibilityLinks(domainId, baseComponentId);
+                configuratorRepository.getManualCompatibilityLinks(
+                        domainId,
+                        baseComponent.getId()
+                );
         List<CompatibilityRuleSet> automaticRules =
                 compatibilityRuleRepository.getEnabledByDomainIdAndComponentTypeId(
                         domainId,
@@ -61,7 +89,7 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
         Map<Long, List<CompatibilityRuleSet>> rulesByCandidateType =
                 indexRulesByCandidateType(automaticRules, baseComponent.getComponentTypeId());
         Map<Long, List<CompatibilityExplanation>> manualExplanations =
-                indexManualExplanations(manualLinks, baseComponentId);
+                indexManualExplanations(manualLinks, baseComponent.getId());
         Map<Long, List<CompatibleComponent>> compatibleByType = new HashMap<>();
 
         for (Component candidate : candidates) {
@@ -80,11 +108,199 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
                 ).add(toCompatibleComponent(candidate, explanations));
             }
         }
+        return compatibleByType;
+    }
 
-        return ConfiguratorResult.builder()
-                .baseComponentId(baseComponentId)
-                .compatibleByType(toOrderedGroups(domain, compatibleByType))
-                .build();
+    private Map<Long, List<CompatibleComponent>> findTransitiveCompatibility(
+            Long domainId,
+            Component baseComponent,
+            List<Component> candidates
+    ) {
+        List<Component> activeComponents = new ArrayList<>(candidates.size() + 1);
+        activeComponents.add(baseComponent);
+        activeComponents.addAll(candidates);
+
+        Map<Long, Component> componentsById = new HashMap<>();
+        Map<Long, List<Component>> componentsByType = new HashMap<>();
+        Map<Long, Integer> componentOrder = new HashMap<>();
+        for (int index = 0; index < activeComponents.size(); index++) {
+            Component component = activeComponents.get(index);
+            componentsById.put(component.getId(), component);
+            componentsByType.computeIfAbsent(
+                    component.getComponentTypeId(),
+                    ignored -> new ArrayList<>()
+            ).add(component);
+            componentOrder.put(component.getId(), index);
+        }
+
+        Map<Long, Map<Long, List<CompatibilityExplanation>>> graph = new HashMap<>();
+        addManualEdges(
+                graph,
+                configuratorRepository.getAllManualCompatibilityLinks(domainId),
+                componentsById.keySet()
+        );
+        addAutomaticEdges(
+                graph,
+                compatibilityRuleRepository.getEnabledByDomainId(domainId),
+                componentsByType
+        );
+
+        Map<Long, Long> predecessors = findShortestPaths(
+                graph,
+                baseComponent.getId(),
+                componentOrder
+        );
+        Map<Long, List<CompatibleComponent>> compatibleByType = new HashMap<>();
+        Map<Long, List<CompatibilityExplanation>> baseComponentNeighbours = graph
+                .getOrDefault(baseComponent.getId(), Map.of());
+        for (Component candidate : candidates) {
+            List<CompatibilityExplanation> directExplanations = baseComponentNeighbours
+                    .getOrDefault(candidate.getId(), List.of());
+            if (!directExplanations.isEmpty()) {
+                addCompatibleComponent(compatibleByType, candidate, directExplanations);
+            } else if (predecessors.containsKey(candidate.getId())) {
+                CompatibilityExplanation explanation = CompatibilityExplanation.builder()
+                        .source(CompatibilityExplanationSource.TRANSITIVE)
+                        .pathComponentIds(buildPath(
+                                predecessors,
+                                baseComponent.getId(),
+                                candidate.getId()
+                        ))
+                        .build();
+                addCompatibleComponent(compatibleByType, candidate, List.of(explanation));
+            }
+        }
+        return compatibleByType;
+    }
+
+    private static void addManualEdges(
+            Map<Long, Map<Long, List<CompatibilityExplanation>>> graph,
+            List<CompatibilityLink> links,
+            Set<Long> activeComponentIds
+    ) {
+        for (CompatibilityLink link : links) {
+            if (!activeComponentIds.contains(link.componentAId())
+                    || !activeComponentIds.contains(link.componentBId())) {
+                continue;
+            }
+            CompatibilityExplanation explanation = CompatibilityExplanation.builder()
+                    .source(CompatibilityExplanationSource.MANUAL)
+                    .linkId(link.id())
+                    .comment(link.comment())
+                    .build();
+            addUndirectedEdge(
+                    graph,
+                    link.componentAId(),
+                    link.componentBId(),
+                    explanation
+            );
+        }
+    }
+
+    private void addAutomaticEdges(
+            Map<Long, Map<Long, List<CompatibilityExplanation>>> graph,
+            List<CompatibilityRuleSet> rules,
+            Map<Long, List<Component>> componentsByType
+    ) {
+        for (CompatibilityRuleSet rule : rules) {
+            List<Component> componentsA =
+                    componentsByType.getOrDefault(rule.componentTypeAId(), List.of());
+            List<Component> componentsB =
+                    componentsByType.getOrDefault(rule.componentTypeBId(), List.of());
+            for (Component componentA : componentsA) {
+                for (Component componentB : componentsB) {
+                    compatibilityRuleEvaluator.evaluate(rule, componentA, componentB)
+                            .map(ConfiguratorServiceImpl::toAutomaticExplanation)
+                            .ifPresent(explanation -> addUndirectedEdge(
+                                    graph,
+                                    componentA.getId(),
+                                    componentB.getId(),
+                                    explanation
+                            ));
+                }
+            }
+        }
+    }
+
+    private static void addUndirectedEdge(
+            Map<Long, Map<Long, List<CompatibilityExplanation>>> graph,
+            Long componentAId,
+            Long componentBId,
+            CompatibilityExplanation explanation
+    ) {
+        addDirectedEdge(graph, componentAId, componentBId, explanation);
+        addDirectedEdge(graph, componentBId, componentAId, explanation);
+    }
+
+    private static void addDirectedEdge(
+            Map<Long, Map<Long, List<CompatibilityExplanation>>> graph,
+            Long sourceId,
+            Long targetId,
+            CompatibilityExplanation explanation
+    ) {
+        graph.computeIfAbsent(sourceId, ignored -> new HashMap<>())
+                .computeIfAbsent(targetId, ignored -> new ArrayList<>())
+                .add(explanation);
+    }
+
+    private static Map<Long, Long> findShortestPaths(
+            Map<Long, Map<Long, List<CompatibilityExplanation>>> graph,
+            Long baseComponentId,
+            Map<Long, Integer> componentOrder
+    ) {
+        Map<Long, Long> predecessors = new HashMap<>();
+        Set<Long> visited = new HashSet<>();
+        ArrayDeque<Long> queue = new ArrayDeque<>();
+        visited.add(baseComponentId);
+        queue.add(baseComponentId);
+
+        Comparator<Long> byComponentOrder = Comparator.comparingInt(
+                id -> componentOrder.getOrDefault(id, Integer.MAX_VALUE)
+        );
+        while (!queue.isEmpty()) {
+            Long current = queue.removeFirst();
+            List<Long> neighbours = graph.getOrDefault(current, Map.of())
+                    .keySet()
+                    .stream()
+                    .sorted(byComponentOrder)
+                    .toList();
+            for (Long neighbour : neighbours) {
+                if (visited.add(neighbour)) {
+                    predecessors.put(neighbour, current);
+                    queue.addLast(neighbour);
+                }
+            }
+        }
+        return predecessors;
+    }
+
+    private static List<Long> buildPath(
+            Map<Long, Long> predecessors,
+            Long baseComponentId,
+            Long targetComponentId
+    ) {
+        List<Long> reversedPath = new ArrayList<>();
+        Long current = targetComponentId;
+        while (current != null) {
+            reversedPath.add(current);
+            if (current.equals(baseComponentId)) {
+                break;
+            }
+            current = predecessors.get(current);
+        }
+        Collections.reverse(reversedPath);
+        return List.copyOf(reversedPath);
+    }
+
+    private static void addCompatibleComponent(
+            Map<Long, List<CompatibleComponent>> compatibleByType,
+            Component component,
+            List<CompatibilityExplanation> explanations
+    ) {
+        compatibleByType.computeIfAbsent(
+                component.getComponentTypeId(),
+                ignored -> new ArrayList<>()
+        ).add(toCompatibleComponent(component, explanations));
     }
 
     private List<CompatibilityExplanation> evaluateRules(
