@@ -3,8 +3,6 @@ plugins {
     id 'groovy'
 }
 
-def dockerHost = "unix://${System.getProperty('user.home')}/.docker/run/docker.sock"
-
 sourceSets {
     externalTest {
         groovy.srcDir file('src/externalTest/groovy')
@@ -44,9 +42,6 @@ java {
 
 test {
     useJUnitPlatform()
-    environment 'DOCKER_HOST', dockerHost
-    systemProperty 'DOCKER_HOST', dockerHost
-    systemProperty 'docker.host', dockerHost
     environment 'TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE', '/var/run/docker.sock'
 }
 
@@ -56,8 +51,5 @@ tasks.register('externalIntegrationTest', Test) {
     testClassesDirs = sourceSets.externalTest.output.classesDirs
     classpath = sourceSets.externalTest.runtimeClasspath
     useJUnitPlatform()
-    environment 'DOCKER_HOST', dockerHost
-    systemProperty 'DOCKER_HOST', dockerHost
-    systemProperty 'docker.host', dockerHost
     environment 'TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE', '/var/run/docker.sock'
 }

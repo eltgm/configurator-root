@@ -20,6 +20,7 @@ import ru.sultanyarov.configurator.api.inbounds.rest.advice.ControllerExceptionH
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ErrorResponse;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
 import ru.sultanyarov.configurator.domain.exception.ComponentArchivedException;
+import ru.sultanyarov.configurator.domain.exception.ConfigurationConflictException;
 import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
 import ru.sultanyarov.configurator.domain.exception.EntityHasRelatedEntitiesException;
 import ru.sultanyarov.configurator.domain.exception.ExternalStorageException;
@@ -70,6 +71,11 @@ class ControllerExceptionHandlerTest {
             new ComponentArchivedException("archived"), request),
         HttpStatus.CONFLICT,
         "archived");
+    assertErrorResponse(
+        handler.handleEntityAlreadyExistsException(
+            new ConfigurationConflictException("incompatible"), request),
+        HttpStatus.CONFLICT,
+        "incompatible");
   }
 
   @Test

@@ -1,5 +1,7 @@
 package ru.sultanyarov.configurator.infrastructure.persistence.jooq;
 
+import java.util.UUID;
+import javax.sql.DataSource;
 import org.h2.jdbcx.JdbcDataSource;
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
@@ -8,31 +10,32 @@ import org.junit.jupiter.api.BeforeEach;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
-import javax.sql.DataSource;
-import java.util.UUID;
-
 abstract class AbstractJooqRepositoryTest {
 
-    protected DSLContext dslContext;
+  protected DSLContext dslContext;
 
-    @BeforeEach
-    void setUpDslContext() {
-        dslContext = DSL.using(createDataSource(), SQLDialect.H2);
-    }
+  @BeforeEach
+  void setUpDslContext() {
+    dslContext = DSL.using(createDataSource(), SQLDialect.H2);
+  }
 
-    private DataSource createDataSource() {
-        JdbcDataSource dataSource = new JdbcDataSource();
-        dataSource.setURL("jdbc:h2:mem:" + UUID.randomUUID() + ";MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1");
-        dataSource.setUser("sa");
-        dataSource.setPassword("sa");
+  private DataSource createDataSource() {
+    JdbcDataSource dataSource = new JdbcDataSource();
+    dataSource.setURL(
+        "jdbc:h2:mem:"
+            + UUID.randomUUID()
+            + ";MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1");
+    dataSource.setUser("sa");
+    dataSource.setPassword("sa");
 
-        ResourceDatabasePopulator populator = new ResourceDatabasePopulator(
-                new ClassPathResource("db/migration/V1__init.sql"),
-                new ClassPathResource("db/migration/V2__CON1-26-remove-constraint.sql"),
-                new ClassPathResource("db/migration/V3__CON1-68-enforce-component-name-uniqueness.sql"),
-                new ClassPathResource("db/migration/V4__CON1-75-create-compatibility-rules.sql")
-        );
-        populator.execute(dataSource);
-        return dataSource;
-    }
+    ResourceDatabasePopulator populator =
+        new ResourceDatabasePopulator(
+            new ClassPathResource("db/migration/V1__init.sql"),
+            new ClassPathResource("db/migration/V2__CON1-26-remove-constraint.sql"),
+            new ClassPathResource("db/migration/V3__CON1-68-enforce-component-name-uniqueness.sql"),
+            new ClassPathResource("db/migration/V4__CON1-75-create-compatibility-rules.sql"),
+            new ClassPathResource("db/migration/V5__CON1-82-create-system-user.sql"));
+    populator.execute(dataSource);
+    return dataSource;
+  }
 }
