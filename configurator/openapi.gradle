@@ -1,0 +1,31 @@
+dependencies {
+    implementation "org.openapitools:jackson-databind-nullable:0.2.6"
+}
+
+openApiGenerate {
+    validateSpec = true
+    generatorName = 'spring'
+    inputSpec = "$rootDir/specs/configurator-api.yaml".toString()
+    outputDir = "$buildDir/generated/openapi".toString()
+    apiPackage = 'ru.sultanyarov.configurator.api.inbounds.rest'
+    modelPackage = 'ru.sultanyarov.configurator.api.inbounds.rest.dto'
+    invokerPackage = 'ru.sultanyarov.configurator.api'
+    configOptions = [
+            dateLibrary         : "java8-localdatetime",
+            skipDefaultInterface: "true",
+            interfaceOnly       : "true",
+            oas3                : "true",
+            useSpringController : "true",
+            useSpringfox        : "false",
+            useTags             : "true",
+            useSpringBoot3      : "true"
+    ]
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir "$buildDir/generated/openapi/src/main/java"
+        }
+    }
+}

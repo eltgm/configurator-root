@@ -1,6 +1,6 @@
 buildscript {
     dependencies {
-        classpath  'org.postgresql:postgresql:42.7.3'
+        classpath 'org.postgresql:postgresql:42.7.3'
     }
 }
 
@@ -8,19 +8,22 @@ plugins {
     id 'org.springframework.boot' version '3.4.11'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'java'
+    id 'jacoco'
     id 'org.openapi.generator' version '7.11.0'
-    id 'org.jooq.jooq-codegen-gradle' version "3.20.9"
+    id 'org.jooq.jooq-codegen-gradle' version "3.19.28"
 }
+
+apply from: "$rootDir/configurator/jooq.gradle"
+apply from: "$rootDir/configurator/openapi.gradle"
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'io.minio:minio:9.0.3'
 
     implementation "org.flywaydb:flyway-core:11.17.0"
     runtimeOnly "org.flywaydb:flyway-database-postgresql:11.17.0"
-    implementation 'org.springframework.boot:spring-boot-starter-jooq'
     implementation 'org.postgresql:postgresql:42.7.3'
-    implementation "org.jooq:jooq-postgres-extensions:3.20.9"
 
     compileOnly 'org.projectlombok:lombok:1.18.42'
     annotationProcessor 'org.projectlombok:lombok:1.18.42'
@@ -28,16 +31,17 @@ dependencies {
     implementation 'org.mapstruct:mapstruct:1.6.0'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.0'
 
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
+    implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.17"
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.spockframework:spock-core:2.4-M4-groovy-4.0'
-    testImplementation 'org.spockframework:spock-spring:2.4-M4-groovy-4.0'
+    testImplementation "org.spockframework:spock-core:${spockVersion}"
+    testImplementation "org.spockframework:spock-spring:${spockVersion}"
+    testImplementation 'org.springframework:spring-jdbc'
+    testImplementation 'com.h2database:h2'
+    testImplementation "com.tngtech.archunit:archunit-junit5:${archUnitVersion}"
 
-    testImplementation 'org.testcontainers:postgresql:1.20.2'
-    testImplementation 'org.testcontainers:junit-jupiter:1.20.2'
-
-    implementation "org.openapitools:jackson-databind-nullable:0.2.6"
+    testImplementation "org.testcontainers:testcontainers-postgresql:${testcontainersVersion}"
+    testImplementation "org.testcontainers:testcontainers-junit-jupiter:${testcontainersVersion}"
 }
 
 java {
@@ -46,68 +50,62 @@ java {
     }
 }
 
-openApiGenerate {
-    generatorName = 'spring'
-    inputSpec = "$rootDir/specs/configurator-api.yaml".toString()
-    outputDir = "$buildDir/generated/openapi".toString()
-    apiPackage = 'ru.sultanyarov.configurator.api.inbounds.rest'
-    modelPackage = 'ru.sultanyarov.configurator.domain.dto'
-    invokerPackage = 'ru.sultanyarov.configurator.api'
-    configOptions = [
-            dateLibrary         : "java8",
-            skipDefaultInterface: "true",
-            interfaceOnly       : "true",
-            oas3                : "true",
-            useSpringController : "true",
-            useSpringfox        : "false",
-            useTags             : "true",
-            useSpringBoot3      : "true"
-    ]
-}
-
 tasks.named('compileJava') {
-    dependsOn tasks.named('openApiGenerate')
+    dependsOn tasks.named('openApiGenerate'), tasks.named('jooqCodegen')
 }
 
-sourceSets {
-    main {
-        java {
-            srcDir "$buildDir/generated/openapi/src/main/java"
-        }
+jacoco {
+    toolVersion = '0.8.12'
+}
+
+tasks.named('test') {
+    finalizedBy tasks.named('jacocoTestReport'), tasks.named('jacocoTestCoverageVerification')
+}
+
+tasks.named('jacocoTestReport') {
+    dependsOn tasks.named('test')
+    reports {
+        xml.required = true
+        html.required = true
     }
+
+    def excludedCoveragePatterns = [
+            '**/build/**',
+            '**/common/util/**',
+            '**/domain/**',
+            '**/domain/entity/jooq/**',
+            '**/api/inbounds/rest/dto/**',
+            '**/api/inbounds/rest/*Api*',
+            '**/api/ApiUtil*',
+            '**/infrastructure/persistence/jooq/config/**'
+    ]
+    classDirectories.setFrom(sourceSets.main.output.asFileTree.matching {
+        exclude excludedCoveragePatterns
+    })
 }
 
-jooq {
-    configuration {
-        jdbc {
-            url = System.getenv('DB_URL') ?: 'jdbc:postgresql://localhost:5432/configurator'
-            user = System.getenv('DB_USER') ?: 'configurator'
-            password = System.getenv('DB_PASSWORD') ?: 'configurator'
-            driver = 'org.postgresql.Driver'
-        }
-        generator {
-            name = 'org.jooq.codegen.DefaultGenerator'
-            database {
-                name = 'org.jooq.meta.postgres.PostgresDatabase'
-                inputSchema = 'public'
-                includes = '.*'
-            }
-            generate {
-                daos = false
-                pojos = true
-            }
-            target {
-                packageName = 'ru.sultanyarov.configurator.domain.entity.jooq'
-                directory = "$buildDir/generated/jooq".toString()
-            }
-        }
-    }
-}
+tasks.named('jacocoTestCoverageVerification') {
+    dependsOn tasks.named('jacocoTestReport')
 
-sourceSets {
-    main {
-        java {
-            srcDir "$buildDir/generated/jooq"
+    def excludedCoveragePatterns = [
+            '**/build/**',
+            '**/common/util/**',
+            '**/domain/**',
+            '**/domain/entity/jooq/**',
+            '**/api/inbounds/rest/dto/**',
+            '**/api/inbounds/rest/*Api*',
+            '**/api/ApiUtil*',
+            '**/infrastructure/persistence/jooq/config/**'
+    ]
+    classDirectories.setFrom(sourceSets.main.output.asFileTree.matching {
+        exclude excludedCoveragePatterns
+    })
+
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.90
+            }
         }
     }
 }

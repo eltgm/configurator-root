@@ -1,0 +1,24 @@
+name: Feature request
+description: Предложить изменение продукта или API
+title: "[Feature]: "
+labels: [ "enhancement", "triage" ]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Проблема
+      description: Какую пользовательскую или техническую проблему нужно решить?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Предлагаемое решение
+      description: Опишите API, сценарий и ожидаемый результат.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Альтернативы и риски
+      description: Какие варианты и ограничения уже рассматривались?

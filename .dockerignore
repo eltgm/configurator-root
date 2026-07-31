@@ -1,0 +1,12 @@
+.git
+.gradle
+.idea
+**/.DS_Store
+build
+configurator-integration-tests/build
+configurator/build/classes
+configurator/build/generated
+configurator/build/reports
+configurator/build/resources
+configurator/build/test-results
+configurator/build/tmp

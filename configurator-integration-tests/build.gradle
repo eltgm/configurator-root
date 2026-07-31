@@ -3,16 +3,35 @@ plugins {
     id 'groovy'
 }
 
+sourceSets {
+    externalTest {
+        groovy.srcDir file('src/externalTest/groovy')
+        resources.srcDir file('src/externalTest/resources')
+        compileClasspath += sourceSets.test.output + configurations.testRuntimeClasspath
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
+configurations {
+    externalTestImplementation.extendsFrom testImplementation
+    externalTestRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
 dependencies {
     implementation project(':configurator')
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.spockframework:spock-core:2.4-M4-groovy-4.0'
-    testImplementation 'org.spockframework:spock-spring:2.4-M4-groovy-4.0'
-    testImplementation 'org.testcontainers:spock:1.21.3'
+    testImplementation 'org.springframework.boot:spring-boot-starter-web'
+    testImplementation 'org.springframework:spring-jdbc'
+    testImplementation "org.spockframework:spock-core:${spockVersion}"
+    testImplementation "org.spockframework:spock-spring:${spockVersion}"
+    testImplementation "org.testcontainers:testcontainers-spock:${testcontainersVersion}"
+    testImplementation "org.testcontainers:testcontainers-jdbc:${testcontainersVersion}"
+    testImplementation "org.testcontainers:testcontainers-postgresql:${testcontainersVersion}"
+    testImplementation "org.testcontainers:testcontainers-junit-jupiter:${testcontainersVersion}"
 
-    testImplementation 'org.testcontainers:postgresql:1.20.2'
-    testImplementation 'org.testcontainers:junit-jupiter:1.20.2'
+    externalTestImplementation 'io.rest-assured:rest-assured:5.5.0'
+    externalTestImplementation 'org.apache.groovy:groovy-sql:4.0.24'
 }
 
 java {
@@ -23,4 +42,14 @@ java {
 
 test {
     useJUnitPlatform()
+    environment 'TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE', '/var/run/docker.sock'
+}
+
+tasks.register('externalIntegrationTest', Test) {
+    description = 'Runs integration tests against an already running service'
+    group = 'verification'
+    testClassesDirs = sourceSets.externalTest.output.classesDirs
+    classpath = sourceSets.externalTest.runtimeClasspath
+    useJUnitPlatform()
+    environment 'TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE', '/var/run/docker.sock'
 }

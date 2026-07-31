@@ -1,0 +1,54 @@
+dependencies {
+    implementation 'org.postgresql:postgresql:42.7.3'
+    implementation "org.jooq:jooq-postgres-extensions:3.19.28"
+    implementation 'org.springframework.boot:spring-boot-starter-jooq'
+    jooqCodegen "org.jooq:jooq-meta-extensions:3.19.28"
+}
+
+jooq {
+    configuration {
+        generator {
+            name = 'org.jooq.codegen.DefaultGenerator'
+            database {
+                name = 'org.jooq.meta.extensions.ddl.DDLDatabase'
+                includes = '.*'
+
+                properties {
+                    property {
+                        key = 'scripts'
+                        value = 'src/main/resources/db/migration'
+                    }
+                    property {
+                        key = 'sort'
+                        value = 'flyway'
+                    }
+                    property {
+                        key = 'dialect'
+                        value = 'POSTGRES'
+                    }
+                    property {
+                        key = 'defaultNameCase'
+                        value = 'lower'
+                    }
+                }
+            }
+            generate {
+                daos = false
+                pojos = true
+                fluentSetters = true
+            }
+            target {
+                packageName = 'ru.sultanyarov.configurator.domain.entity.jooq'
+                directory = "$buildDir/generated/jooq".toString()
+            }
+        }
+    }
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir "$buildDir/generated/jooq"
+        }
+    }
+}
