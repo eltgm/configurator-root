@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.sultanyarov.configurator.application.port.out.CompatibilityRuleRepository;
 import ru.sultanyarov.configurator.application.port.out.ConfiguratorRepository;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
+import ru.sultanyarov.configurator.domain.model.BaseComponentCompatibility;
 import ru.sultanyarov.configurator.domain.model.CompatibilityExplanation;
 import ru.sultanyarov.configurator.domain.model.CompatibilityExplanationSource;
 import ru.sultanyarov.configurator.domain.model.CompatibilityLink;
@@ -17,8 +18,11 @@ import ru.sultanyarov.configurator.domain.model.CompatibleComponentGroup;
 import ru.sultanyarov.configurator.domain.model.Component;
 import ru.sultanyarov.configurator.domain.model.ComponentType;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorBatchResult;
+import ru.sultanyarov.configurator.domain.model.ConfiguratorIntersectionResult;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorResult;
 import ru.sultanyarov.configurator.domain.model.Domain;
+import ru.sultanyarov.configurator.domain.model.IntersectionCompatibleComponent;
+import ru.sultanyarov.configurator.domain.model.IntersectionCompatibleComponentGroup;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -26,6 +30,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -119,6 +124,63 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
         }
         return ConfiguratorBatchResult.builder()
                 .results(List.copyOf(results))
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ConfiguratorIntersectionResult intersectCompatibleComponents(
+            Long domainId,
+            List<Long> baseComponentIds,
+            boolean includeTransitive
+    ) {
+        log.debug(
+                "intersect compatible components in domain {} for base components {}, "
+                        + "include transitive: {}",
+                domainId,
+                baseComponentIds,
+                includeTransitive
+        );
+        validateIntersectionComponentIds(baseComponentIds);
+        Domain domain = domainService.getById(domainId);
+        List<Component> activeComponents = configuratorRepository.getActiveComponents(domainId);
+        Map<Long, Component> activeComponentsById = new HashMap<>();
+        for (Component component : activeComponents) {
+            activeComponentsById.put(component.getId(), component);
+        }
+        validateBatchBaseComponents(domain, baseComponentIds, activeComponentsById);
+
+        Set<Long> selectedComponentIds = new HashSet<>(baseComponentIds);
+        List<Component> candidates = activeComponents.stream()
+                .filter(component -> !selectedComponentIds.contains(component.getId()))
+                .toList();
+        CompatibilityGraphContext context = buildCompatibilityContext(domainId, activeComponents);
+        Map<Long, List<BaseComponentCompatibility>> compatibilityByCandidate =
+                intersectCompatibilityByCandidate(
+                        baseComponentIds,
+                        activeComponentsById,
+                        candidates,
+                        context,
+                        includeTransitive
+                );
+
+        Map<Long, List<IntersectionCompatibleComponent>> intersectionByType = new HashMap<>();
+        for (Component candidate : candidates) {
+            List<BaseComponentCompatibility> compatibilityByBase = compatibilityByCandidate.get(
+                    candidate.getId()
+            );
+            if (compatibilityByBase != null
+                    && compatibilityByBase.size() == baseComponentIds.size()) {
+                intersectionByType.computeIfAbsent(
+                        candidate.getComponentTypeId(),
+                        ignored -> new ArrayList<>()
+                ).add(toIntersectionCompatibleComponent(candidate, compatibilityByBase));
+            }
+        }
+
+        return ConfiguratorIntersectionResult.builder()
+                .componentIds(List.copyOf(baseComponentIds))
+                .compatibleByType(toOrderedIntersectionGroups(domain, intersectionByType))
                 .build();
     }
 
@@ -248,6 +310,62 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
         return compatibleByType;
     }
 
+    private static Map<Long, List<BaseComponentCompatibility>> intersectCompatibilityByCandidate(
+            List<Long> baseComponentIds,
+            Map<Long, Component> activeComponentsById,
+            List<Component> candidates,
+            CompatibilityGraphContext context,
+            boolean includeTransitive
+    ) {
+        Map<Long, List<BaseComponentCompatibility>> compatibilityByCandidate = new HashMap<>();
+        boolean firstBaseComponent = true;
+        for (Long baseComponentId : baseComponentIds) {
+            Map<Long, List<CompatibleComponent>> compatibleByType = findCompatibilityInGraph(
+                    activeComponentsById.get(baseComponentId),
+                    candidates,
+                    context,
+                    includeTransitive
+            );
+            Map<Long, CompatibleComponent> compatibleComponents =
+                    indexCompatibleComponents(compatibleByType);
+            if (firstBaseComponent) {
+                for (Component candidate : candidates) {
+                    CompatibleComponent compatibleComponent = compatibleComponents.get(
+                            candidate.getId()
+                    );
+                    if (compatibleComponent != null) {
+                        compatibilityByCandidate.put(
+                                candidate.getId(),
+                                new ArrayList<>(List.of(toBaseCompatibility(
+                                        baseComponentId,
+                                        compatibleComponent
+                                )))
+                        );
+                    }
+                }
+                firstBaseComponent = false;
+            } else {
+                Iterator<Map.Entry<Long, List<BaseComponentCompatibility>>> iterator =
+                        compatibilityByCandidate.entrySet().iterator();
+                while (iterator.hasNext()) {
+                    Map.Entry<Long, List<BaseComponentCompatibility>> entry = iterator.next();
+                    CompatibleComponent compatibleComponent = compatibleComponents.get(
+                            entry.getKey()
+                    );
+                    if (compatibleComponent == null) {
+                        iterator.remove();
+                    } else {
+                        entry.getValue().add(toBaseCompatibility(
+                                baseComponentId,
+                                compatibleComponent
+                        ));
+                    }
+                }
+            }
+        }
+        return compatibilityByCandidate;
+    }
+
     private static void validateBatchComponentIds(List<Long> componentIds) {
         if (componentIds == null || componentIds.isEmpty()) {
             throw new ValidationException("At least one component id is required");
@@ -264,6 +382,13 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
         if (new HashSet<>(componentIds).size() != componentIds.size()) {
             throw new ValidationException("Component identifiers must be unique");
         }
+    }
+
+    private static void validateIntersectionComponentIds(List<Long> componentIds) {
+        if (componentIds == null || componentIds.size() < 2) {
+            throw new ValidationException("At least two component ids are required");
+        }
+        validateBatchComponentIds(componentIds);
     }
 
     private void validateBatchBaseComponents(
@@ -461,6 +586,16 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
         return result;
     }
 
+    private static BaseComponentCompatibility toBaseCompatibility(
+            Long baseComponentId,
+            CompatibleComponent compatibleComponent
+    ) {
+        return BaseComponentCompatibility.builder()
+                .baseComponentId(baseComponentId)
+                .explanations(compatibleComponent.explanations())
+                .build();
+    }
+
     private static Map<Long, List<CompatibilityRuleSet>> indexRulesByCandidateType(
             List<CompatibilityRuleSet> rules,
             Long baseComponentTypeId
@@ -492,6 +627,35 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
                 .toList();
     }
 
+    private static Map<Long, CompatibleComponent> indexCompatibleComponents(
+            Map<Long, List<CompatibleComponent>> compatibleByType
+    ) {
+        Map<Long, CompatibleComponent> result = new HashMap<>();
+        for (List<CompatibleComponent> compatibleComponents : compatibleByType.values()) {
+            for (CompatibleComponent compatibleComponent : compatibleComponents) {
+                result.put(compatibleComponent.id(), compatibleComponent);
+            }
+        }
+        return result;
+    }
+
+    private static List<IntersectionCompatibleComponentGroup> toOrderedIntersectionGroups(
+            Domain domain,
+            Map<Long, List<IntersectionCompatibleComponent>> compatibleByType
+    ) {
+        List<ComponentType> componentTypes = domain.componentTypes() == null
+                ? List.of()
+                : domain.componentTypes();
+        return componentTypes.stream()
+                .filter(componentType -> compatibleByType.containsKey(componentType.id()))
+                .map(componentType -> IntersectionCompatibleComponentGroup.builder()
+                        .componentTypeId(componentType.id())
+                        .componentTypeName(componentType.name())
+                        .components(List.copyOf(compatibleByType.get(componentType.id())))
+                        .build())
+                .toList();
+    }
+
     private static CompatibleComponent toCompatibleComponent(
             Component component,
             List<CompatibilityExplanation> explanations
@@ -502,6 +666,19 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
                 .brand(component.getBrand())
                 .componentTypeId(component.getComponentTypeId())
                 .explanations(List.copyOf(explanations))
+                .build();
+    }
+
+    private static IntersectionCompatibleComponent toIntersectionCompatibleComponent(
+            Component component,
+            List<BaseComponentCompatibility> compatibilityByBase
+    ) {
+        return IntersectionCompatibleComponent.builder()
+                .id(component.getId())
+                .name(component.getName())
+                .brand(component.getBrand())
+                .componentTypeId(component.getComponentTypeId())
+                .compatibilityByBase(List.copyOf(compatibilityByBase))
                 .build();
     }
 

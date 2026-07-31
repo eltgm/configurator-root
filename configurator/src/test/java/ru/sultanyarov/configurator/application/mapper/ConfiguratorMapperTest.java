@@ -6,10 +6,14 @@ import ru.sultanyarov.configurator.domain.model.CompatibilityConditionExplanatio
 import ru.sultanyarov.configurator.domain.model.CompatibilityExplanation;
 import ru.sultanyarov.configurator.domain.model.CompatibilityExplanationSource;
 import ru.sultanyarov.configurator.domain.model.CompatibilityRuleOperator;
+import ru.sultanyarov.configurator.domain.model.BaseComponentCompatibility;
 import ru.sultanyarov.configurator.domain.model.CompatibleComponent;
 import ru.sultanyarov.configurator.domain.model.CompatibleComponentGroup;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorBatchResult;
+import ru.sultanyarov.configurator.domain.model.ConfiguratorIntersectionResult;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorResult;
+import ru.sultanyarov.configurator.domain.model.IntersectionCompatibleComponent;
+import ru.sultanyarov.configurator.domain.model.IntersectionCompatibleComponentGroup;
 
 import java.util.List;
 
@@ -101,6 +105,38 @@ class ConfiguratorMapperTest {
         assertThat(dto.getResults())
                 .extracting(response -> response.getBaseComponentId())
                 .containsExactly(3L, 1L);
+    }
+
+    @Test
+    void toDto_shouldMapIntersectionEvidenceInBaseComponentOrder() {
+        ConfiguratorIntersectionResult result = new ConfiguratorIntersectionResult(
+                List.of(3L, 1L),
+                List.of(new IntersectionCompatibleComponentGroup(
+                        20L,
+                        "Motherboard",
+                        List.of(new IntersectionCompatibleComponent(
+                                2L,
+                                "Board",
+                                "Brand",
+                                20L,
+                                List.of(
+                                        new BaseComponentCompatibility(3L, List.of()),
+                                        new BaseComponentCompatibility(1L, List.of())
+                                )
+                        ))
+                ))
+        );
+
+        var dto = mapper.toDto(result);
+
+        assertThat(dto.getComponentIds()).containsExactly(3L, 1L);
+        assertThat(dto.getCompatibleByType()).singleElement().satisfies(group ->
+                assertThat(group.getComponents()).singleElement().satisfies(component ->
+                        assertThat(component.getCompatibilityByBase())
+                                .extracting(base -> base.getBaseComponentId())
+                                .containsExactly(3L, 1L)
+                )
+        );
     }
 
     private static CompatibilityConditionExplanation conditionExplanation() {

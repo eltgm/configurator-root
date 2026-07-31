@@ -9,6 +9,8 @@ import org.springframework.http.HttpStatus;
 import ru.sultanyarov.configurator.api.inbounds.rest.controller.ConfiguratorController;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchRequest;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchResponse;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorIntersectionRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorIntersectionResponse;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorResponse;
 import ru.sultanyarov.configurator.application.facade.ConfiguratorFacade;
 
@@ -65,5 +67,24 @@ class ConfiguratorControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isSameAs(responseBody);
         verify(configuratorFacade).searchCompatibleComponents(1L, request);
+    }
+
+    @Test
+    void domainsIdConfiguratorCompatibleIntersectionPost_shouldDelegateToFacade() {
+        ConfiguratorIntersectionRequest request = new ConfiguratorIntersectionRequest(
+                List.of(7L, 8L)
+        );
+        ConfiguratorIntersectionResponse responseBody = new ConfiguratorIntersectionResponse(
+                List.of(7L, 8L),
+                List.of()
+        );
+        when(configuratorFacade.intersectCompatibleComponents(1L, request))
+                .thenReturn(responseBody);
+
+        var response = controller.domainsIdConfiguratorCompatibleIntersectionPost(1L, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isSameAs(responseBody);
+        verify(configuratorFacade).intersectCompatibleComponents(1L, request);
     }
 }

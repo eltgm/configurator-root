@@ -861,6 +861,100 @@ components:
       required:
         - results
 
+    ConfiguratorIntersectionRequest:
+      type: object
+      properties:
+        componentIds:
+          type: array
+          minItems: 2
+          maxItems: 50
+          description: Unique base component identifiers whose compatibility sets are intersected
+          items:
+            type: integer
+            format: int64
+            minimum: 1
+        includeTransitive:
+          type: boolean
+          default: false
+          description: Include components reachable through two or more compatibility edges
+      required:
+        - componentIds
+
+    ConfiguratorBaseCompatibility:
+      type: object
+      properties:
+        baseComponentId:
+          type: integer
+          format: int64
+        explanations:
+          type: array
+          description: Reasons why the candidate is compatible with this base component
+          items:
+            $ref: '#/components/schemas/CompatibilityExplanation'
+      required:
+        - baseComponentId
+        - explanations
+
+    ConfiguratorIntersectionCompatibleComponent:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        brand:
+          type: string
+          nullable: true
+        componentTypeId:
+          type: integer
+          format: int64
+        compatibilityByBase:
+          type: array
+          description: Compatibility evidence for every selected base component in request order
+          items:
+            $ref: '#/components/schemas/ConfiguratorBaseCompatibility'
+      required:
+        - id
+        - name
+        - componentTypeId
+        - compatibilityByBase
+
+    ConfiguratorIntersectionTypeGroup:
+      type: object
+      properties:
+        componentTypeId:
+          type: integer
+          format: int64
+        componentTypeName:
+          type: string
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfiguratorIntersectionCompatibleComponent'
+      required:
+        - componentTypeId
+        - componentTypeName
+        - components
+
+    ConfiguratorIntersectionResponse:
+      type: object
+      properties:
+        componentIds:
+          type: array
+          description: Selected base component identifiers in request order
+          items:
+            type: integer
+            format: int64
+        compatibleByType:
+          type: array
+          description: Components compatible with every selected base component
+          items:
+            $ref: '#/components/schemas/ConfiguratorIntersectionTypeGroup'
+      required:
+        - componentIds
+        - compatibleByType
+
     ### CONFIGURATION ###
     Configuration:
       type: object
@@ -2106,6 +2200,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ConfiguratorBatchSearchResponse'
+        '400':
+          description: Invalid, duplicate, archived, or out-of-domain base component
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Domain or component not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /domains/{id}/configurator/compatible/intersection:
+    post:
+      tags: [ Configurator ]
+      summary: Find components compatible with every selected component
+      description: |
+        Intersects the direct or transitive compatibility sets of all selected active base
+        components. Selected base components are excluded from candidates. Each resulting
+        component contains compatibility evidence for every base component in componentIds
+        request order. Domain components, manual links, enabled automatic rules and the
+        compatibility graph are loaded once for the whole request.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfiguratorIntersectionRequest'
+      responses:
+        '200':
+          description: Success, including an empty intersection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfiguratorIntersectionResponse'
         '400':
           description: Invalid, duplicate, archived, or out-of-domain base component
           content:

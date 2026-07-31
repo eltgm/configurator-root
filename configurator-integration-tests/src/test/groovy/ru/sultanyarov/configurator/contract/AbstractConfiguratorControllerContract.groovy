@@ -2,6 +2,8 @@ package ru.sultanyarov.configurator.contract
 
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchRequest
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchResponse
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorIntersectionRequest
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorIntersectionResponse
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorResponse
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ErrorResponse
 import spock.lang.Specification
@@ -199,6 +201,110 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
                 "/domains/999999/configurator/compatible/search",
                 [componentIds: [1L]]
         ).status == 404
+    }
+
+    def "should intersect direct compatibility and preserve evidence for every base"() {
+        given:
+        prepareConfiguratorData()
+        def request = new ConfiguratorIntersectionRequest([2L, 3L])
+
+        when:
+        def result = post("/domains/1/configurator/compatible/intersection", request)
+
+        then:
+        result.status == 200
+        def responseBody = objectMapper.readValue(result.body, ConfiguratorIntersectionResponse)
+        responseBody.componentIds == [2L, 3L]
+        responseBody.compatibleByType*.componentTypeId == [10L]
+        responseBody.compatibleByType[0].components*.id == [1L]
+
+        and: "compatibility evidence follows the requested base component order"
+        def common = responseBody.compatibleByType[0].components[0]
+        common.compatibilityByBase*.baseComponentId == [2L, 3L]
+        common.compatibilityByBase[0].explanations*.source*.toString() == [
+                "MANUAL",
+                "AUTOMATIC"
+        ]
+        common.compatibilityByBase[0].explanations[0].linkId == 801L
+        common.compatibilityByBase[0].explanations[1].ruleSetId == 701L
+        common.compatibilityByBase[1].explanations*.linkId == [802L]
+
+        and: "selected base components are excluded from the intersection"
+        !responseBody.compatibleByType*.components.flatten()*.id.any { it in [2L, 3L] }
+    }
+
+    def "should intersect transitive compatibility with paths from every base"() {
+        given:
+        prepareConfiguratorData()
+        def request = new ConfiguratorIntersectionRequest([2L, 9L])
+                .includeTransitive(true)
+
+        when:
+        def result = post("/domains/1/configurator/compatible/intersection", request)
+
+        then:
+        result.status == 200
+        def responseBody = objectMapper.readValue(result.body, ConfiguratorIntersectionResponse)
+        responseBody.compatibleByType*.componentTypeId == [10L, 20L, 30L]
+        responseBody.compatibleByType*.components.flatten()*.id == [1L, 3L, 5L]
+
+        and: "a candidate can be direct for one base and transitive for another"
+        def processor = responseBody.compatibleByType[0].components[0]
+        processor.compatibilityByBase*.baseComponentId == [2L, 9L]
+        processor.compatibilityByBase[0].explanations*.source*.toString() == [
+                "MANUAL",
+                "AUTOMATIC"
+        ]
+        processor.compatibilityByBase[1].explanations*.source*.toString() == ["TRANSITIVE"]
+        processor.compatibilityByBase[1].explanations[0].pathComponentIds == [9L, 3L, 1L]
+    }
+
+    def "should return an empty successful intersection when no candidate matches every base"() {
+        given:
+        prepareConfiguratorData()
+
+        when:
+        def result = post(
+                "/domains/1/configurator/compatible/intersection",
+                new ConfiguratorIntersectionRequest([8L, 2L])
+        )
+
+        then:
+        result.status == 200
+        def responseBody = objectMapper.readValue(result.body, ConfiguratorIntersectionResponse)
+        responseBody.componentIds == [8L, 2L]
+        responseBody.compatibleByType == []
+    }
+
+    def "should validate intersection component collection and reject the whole request"() {
+        given:
+        prepareConfiguratorData()
+
+        expect:
+        post(
+                "/domains/1/configurator/compatible/intersection",
+                [componentIds: [1L]]
+        ).status == 400
+        post(
+                "/domains/1/configurator/compatible/intersection",
+                [componentIds: [1L, 1L]]
+        ).status == 400
+        post(
+                "/domains/1/configurator/compatible/intersection",
+                [componentIds: (1L..51L).toList()]
+        ).status == 400
+        post(
+                "/domains/1/configurator/compatible/intersection",
+                [componentIds: [1L, 999999L]]
+        ).status == 404
+        post(
+                "/domains/1/configurator/compatible/intersection",
+                [componentIds: [1L, 4L]]
+        ).status == 400
+        post(
+                "/domains/1/configurator/compatible/intersection",
+                [componentIds: [1L, 7L]]
+        ).status == 400
     }
 
     def "should return not found for missing configurator domain"() {
