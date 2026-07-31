@@ -20,6 +20,14 @@ public interface ConfiguratorRepository {
     List<Component> getActiveCandidates(Long domainId, Long baseComponentId);
 
     /**
+     * Loads all active components of a domain with their attribute values.
+     *
+     * @param domainId domain identifier
+     * @return active components in stable component-type and component order
+     */
+    List<Component> getActiveComponents(Long domainId);
+
+    /**
      * Loads direct manual compatibility links connected to the base component.
      *
      * @param domainId        domain identifier

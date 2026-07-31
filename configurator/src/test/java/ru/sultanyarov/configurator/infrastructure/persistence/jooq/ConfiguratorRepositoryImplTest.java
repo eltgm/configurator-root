@@ -47,6 +47,13 @@ class ConfiguratorRepositoryImplTest extends AbstractJooqRepositoryTest {
     }
 
     @Test
+    void getActiveComponents_shouldIncludeBaseAndExcludeArchivedAndForeignComponents() {
+        assertThat(repository.getActiveComponents(1L))
+                .extracting(Component::getId)
+                .containsExactly(2L, 1L, 3L);
+    }
+
+    @Test
     void getManualCompatibilityLinks_shouldReturnDetailsForBothDirectionsAndDomainScope() {
         insertCompatibilityLink(1L, 1L, 1L, 2L, "Base on right");
         insertCompatibilityLink(2L, 1L, 2L, 3L, "Base on left");

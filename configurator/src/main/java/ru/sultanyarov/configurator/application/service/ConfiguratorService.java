@@ -1,6 +1,9 @@
 package ru.sultanyarov.configurator.application.service;
 
+import ru.sultanyarov.configurator.domain.model.ConfiguratorBatchResult;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorResult;
+
+import java.util.List;
 
 /**
  * Use cases for finding compatible components.
@@ -18,6 +21,20 @@ public interface ConfiguratorService {
     ConfiguratorResult getCompatibleComponents(
             Long domainId,
             Long baseComponentId,
+            boolean includeTransitive
+    );
+
+    /**
+     * Calculates independent compatibility results for multiple active base components.
+     *
+     * @param domainId domain scope
+     * @param baseComponentIds unique selected component identifiers in result order
+     * @param includeTransitive whether components reachable through multiple edges are included
+     * @return one compatibility result per selected component in request order
+     */
+    ConfiguratorBatchResult searchCompatibleComponents(
+            Long domainId,
+            List<Long> baseComponentIds,
             boolean includeTransitive
     );
 }

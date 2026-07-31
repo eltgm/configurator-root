@@ -49,7 +49,12 @@ class ConfiguratorControllerExternalIntegrationSpec extends AbstractConfigurator
 
     @Override
     TestResponse post(String path, Object body) {
-        throw new UnsupportedOperationException()
+        def response = RestAssured.given().baseUri(baseUrl)
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .body(objectMapper.writeValueAsString(body))
+                .when().post(path).then().extract().response()
+        return new TestResponse(response.statusCode(), response.asString())
     }
 
     @Override

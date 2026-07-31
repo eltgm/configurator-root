@@ -5,9 +5,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchResponse;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorResponse;
 import ru.sultanyarov.configurator.application.mapper.ConfiguratorMapper;
 import ru.sultanyarov.configurator.application.service.ConfiguratorService;
+import ru.sultanyarov.configurator.domain.model.ConfiguratorBatchResult;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorResult;
 
 import java.util.List;
@@ -34,6 +37,22 @@ class ConfiguratorFacadeImplTest {
 
         assertThat(facade.getCompatibleComponents(1L, 7L, true)).isSameAs(response);
         verify(configuratorService).getCompatibleComponents(1L, 7L, true);
+        verify(configuratorMapper).toDto(result);
+    }
+
+    @Test
+    void searchCompatibleComponents_shouldMapBatchServiceResult() {
+        ConfiguratorBatchSearchRequest request = new ConfiguratorBatchSearchRequest(
+                List.of(7L, 8L)
+        ).includeTransitive(true);
+        ConfiguratorBatchResult result = new ConfiguratorBatchResult(List.of());
+        ConfiguratorBatchSearchResponse response = new ConfiguratorBatchSearchResponse(List.of());
+        when(configuratorService.searchCompatibleComponents(1L, List.of(7L, 8L), true))
+                .thenReturn(result);
+        when(configuratorMapper.toDto(result)).thenReturn(response);
+
+        assertThat(facade.searchCompatibleComponents(1L, request)).isSameAs(response);
+        verify(configuratorService).searchCompatibleComponents(1L, List.of(7L, 8L), true);
         verify(configuratorMapper).toDto(result);
     }
 }
