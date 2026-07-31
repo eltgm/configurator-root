@@ -94,15 +94,7 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
         for (Component component : activeComponents) {
             activeComponentsById.put(component.getId(), component);
         }
-        for (Long componentId : baseComponentIds) {
-            if (!activeComponentsById.containsKey(componentId)) {
-                validateBaseComponent(domain, componentService.getById(componentId));
-                throw new ValidationException(
-                        "Component with id {} is unavailable for configurator search",
-                        componentId
-                );
-            }
-        }
+        validateBatchBaseComponents(domain, baseComponentIds, activeComponentsById);
         CompatibilityGraphContext context = buildCompatibilityContext(
                 domainId,
                 activeComponents
@@ -271,6 +263,23 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
         }
         if (new HashSet<>(componentIds).size() != componentIds.size()) {
             throw new ValidationException("Component identifiers must be unique");
+        }
+    }
+
+    private void validateBatchBaseComponents(
+            Domain domain,
+            List<Long> componentIds,
+            Map<Long, Component> activeComponentsById
+    ) {
+        for (Long componentId : componentIds) {
+            if (activeComponentsById.containsKey(componentId)) {
+                continue;
+            }
+            validateBaseComponent(domain, componentService.getById(componentId));
+            throw new ValidationException(
+                    "Component with id {} is unavailable for configurator search",
+                    componentId
+            );
         }
     }
 
