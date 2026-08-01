@@ -47,7 +47,10 @@ jobs:
           echo "version=${TAG#v}" >> "${GITHUB_OUTPUT}"
 
       - name: Build and verify release candidate
-        run: ./gradlew --no-daemon clean build -PreleaseVersion=${{ steps.release.outputs.version }}
+        run: >-
+          ./gradlew --no-daemon clean build
+          -PreleaseVersion=${{ steps.release.outputs.version }}
+          -PspotlessRatchetFrom=origin/develop
 
       - name: Start external environment
         env:
