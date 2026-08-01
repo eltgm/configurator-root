@@ -16,6 +16,9 @@ java {
     }
 }
 
+def spotlessRatchetReference = providers.gradleProperty('spotlessRatchetFrom')
+        .orElse('develop')
+
 subprojects {
     apply plugin: 'java'
     apply plugin: 'io.spring.dependency-management'
@@ -40,7 +43,7 @@ subprojects {
     }
 
     spotless {
-        ratchetFrom 'develop'
+        ratchetFrom spotlessRatchetReference.get()
         java {
             target 'src/**/*.java'
             googleJavaFormat('1.24.0')
