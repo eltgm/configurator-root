@@ -9,8 +9,13 @@ updates:
       time: "07:00"
       timezone: Europe/Moscow
     groups:
-      gradle-dependencies:
+      gradle-minor-and-patch:
+        applies-to: version-updates
         patterns: [ "*" ]
+        update-types: [ "minor", "patch" ]
+    ignore:
+      - dependency-name: "*"
+        update-types: [ "version-update:semver-major" ]
     labels: [ "dependencies", "gradle" ]
     open-pull-requests-limit: 5
 
@@ -22,6 +27,9 @@ updates:
       day: monday
       time: "07:30"
       timezone: Europe/Moscow
+    ignore:
+      - dependency-name: eclipse-temurin
+        update-types: [ "version-update:semver-major" ]
     labels: [ "dependencies", "docker" ]
     open-pull-requests-limit: 3
 
