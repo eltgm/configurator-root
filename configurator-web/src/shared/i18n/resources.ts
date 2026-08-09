@@ -13,6 +13,10 @@ export const resources = {
         cancel: 'Отмена',
         save: 'Сохранить',
         create: 'Создать',
+        validation: {
+          integer: 'Введите целое число',
+          nonNegative: 'Значение не может быть отрицательным',
+        },
       },
       domains: {
         states: {
@@ -72,6 +76,112 @@ export const resources = {
           description: 'Область «{{name}}» будет удалена.',
           warning:
             'Действие необратимо. Если в области есть связанные данные, сервер безопасно отклонит удаление.',
+        },
+      },
+      componentTypes: {
+        page: {
+          title: 'Типы и атрибуты',
+          description: 'Структура компонентов предметной области «{{domain}}».',
+        },
+        states: {
+          loading: 'Загрузка типов компонентов',
+          emptyTitle: 'Типов компонентов пока нет',
+          emptyDescription: 'Создайте первый тип, чтобы определить структуру компонентов.',
+        },
+        list: {
+          title: 'Типы компонентов',
+          noCode: 'Код не задан',
+          noDescription: 'Описание не задано',
+          orderIndex: 'Порядок: {{value}}',
+        },
+        actions: {
+          create: 'Новый тип',
+          edit: 'Редактировать тип',
+          editNamed: 'Редактировать тип {{name}}',
+          delete: 'Удалить тип',
+          deleteNamed: 'Удалить тип {{name}}',
+        },
+        form: {
+          createTitle: 'Новый тип компонента',
+          editTitle: 'Редактирование типа',
+          name: 'Название',
+          namePlaceholder: 'Например, Видеокарта',
+          code: 'Код',
+          codePlaceholder: 'Например, GPU',
+          description: 'Описание',
+          descriptionPlaceholder: 'Кратко опишите назначение типа',
+          orderIndex: 'Индекс порядка',
+          orderIndexHint: 'Меньшие значения показываются раньше',
+          validation: {
+            nameRequired: 'Введите название',
+            nameTooLong: 'Название должно содержать не более 255 символов',
+            codeTooLong: 'Код должен содержать не более 100 символов',
+          },
+        },
+        notifications: {
+          created: 'Тип компонента создан',
+          updated: 'Тип компонента обновлён',
+          deleted: 'Тип компонента удалён',
+        },
+        delete: {
+          title: 'Удалить тип компонента?',
+          description: 'Тип «{{name}}» будет удалён.',
+          warning:
+            'Действие необратимо. Тип с атрибутами или компонентами удалить нельзя — сервер безопасно отклонит запрос.',
+        },
+      },
+      attributes: {
+        states: {
+          loading: 'Загрузка атрибутов',
+          emptyTitle: 'Атрибутов пока нет',
+          emptyDescription:
+            'Добавьте характеристики, которыми будут описываться компоненты этого типа.',
+        },
+        list: {
+          title: 'Атрибуты',
+          description: 'Определения полей для компонентов выбранного типа.',
+          required: 'Обязательный',
+          enumValues: 'Варианты: {{values}}',
+          orderIndex: 'Порядок: {{value}}',
+        },
+        actions: {
+          create: 'Добавить атрибут',
+          edit: 'Редактировать атрибут',
+          editNamed: 'Редактировать атрибут {{name}}',
+        },
+        dataTypes: {
+          STRING: 'Текст',
+          NUMBER: 'Число',
+          BOOLEAN: 'Да/нет',
+          ENUM: 'Список',
+        },
+        form: {
+          createTitle: 'Новый атрибут',
+          editTitle: 'Редактирование атрибута',
+          name: 'Системное имя',
+          nameHint: 'Стабильное имя для API и правил совместимости',
+          namePlaceholder: 'Например, memory_size',
+          label: 'Название для пользователя',
+          labelPlaceholder: 'Например, Объём памяти',
+          dataType: 'Тип данных',
+          enumValues: 'Допустимые значения',
+          enumValuesHint: 'Введите значение и нажмите Enter; можно разделять запятыми',
+          enumValuesPlaceholder: 'Например, DDR4, DDR5',
+          isRequired: 'Обязательный атрибут',
+          orderIndex: 'Индекс порядка',
+          orderIndexHint: 'Меньшие значения показываются раньше',
+          validation: {
+            nameRequired: 'Введите системное имя',
+            nameTooLong: 'Системное имя должно содержать не более 255 символов',
+            labelRequired: 'Введите название для пользователя',
+            labelTooLong: 'Название должно содержать не более 255 символов',
+            enumRequired: 'Добавьте хотя бы одно допустимое значение',
+            enumUnique: 'Допустимые значения не должны повторяться',
+          },
+        },
+        notifications: {
+          created: 'Атрибут создан',
+          updated: 'Атрибут обновлён',
         },
       },
       navigation: {
@@ -191,6 +301,10 @@ export const resources = {
         cancel: 'Cancel',
         save: 'Save',
         create: 'Create',
+        validation: {
+          integer: 'Enter an integer',
+          nonNegative: 'The value cannot be negative',
+        },
       },
       domains: {
         states: {
@@ -250,6 +364,111 @@ export const resources = {
           description: 'The “{{name}}” domain will be deleted.',
           warning:
             'This action cannot be undone. If the domain has related data, the server will safely reject deletion.',
+        },
+      },
+      componentTypes: {
+        page: {
+          title: 'Types and attributes',
+          description: 'Component structure for the “{{domain}}” domain.',
+        },
+        states: {
+          loading: 'Loading component types',
+          emptyTitle: 'There are no component types yet',
+          emptyDescription: 'Create the first type to define the component structure.',
+        },
+        list: {
+          title: 'Component types',
+          noCode: 'No code',
+          noDescription: 'No description',
+          orderIndex: 'Order: {{value}}',
+        },
+        actions: {
+          create: 'New type',
+          edit: 'Edit type',
+          editNamed: 'Edit type {{name}}',
+          delete: 'Delete type',
+          deleteNamed: 'Delete type {{name}}',
+        },
+        form: {
+          createTitle: 'New component type',
+          editTitle: 'Edit component type',
+          name: 'Name',
+          namePlaceholder: 'For example, Graphics card',
+          code: 'Code',
+          codePlaceholder: 'For example, GPU',
+          description: 'Description',
+          descriptionPlaceholder: 'Briefly describe the purpose of this type',
+          orderIndex: 'Order index',
+          orderIndexHint: 'Lower values are shown first',
+          validation: {
+            nameRequired: 'Enter a name',
+            nameTooLong: 'The name must contain no more than 255 characters',
+            codeTooLong: 'The code must contain no more than 100 characters',
+          },
+        },
+        notifications: {
+          created: 'Component type created',
+          updated: 'Component type updated',
+          deleted: 'Component type deleted',
+        },
+        delete: {
+          title: 'Delete component type?',
+          description: 'The “{{name}}” type will be deleted.',
+          warning:
+            'This action cannot be undone. A type with attributes or components cannot be deleted; the server will safely reject the request.',
+        },
+      },
+      attributes: {
+        states: {
+          loading: 'Loading attributes',
+          emptyTitle: 'There are no attributes yet',
+          emptyDescription: 'Add the properties that describe components of this type.',
+        },
+        list: {
+          title: 'Attributes',
+          description: 'Field definitions for components of the selected type.',
+          required: 'Required',
+          enumValues: 'Options: {{values}}',
+          orderIndex: 'Order: {{value}}',
+        },
+        actions: {
+          create: 'Add attribute',
+          edit: 'Edit attribute',
+          editNamed: 'Edit attribute {{name}}',
+        },
+        dataTypes: {
+          STRING: 'Text',
+          NUMBER: 'Number',
+          BOOLEAN: 'Yes/no',
+          ENUM: 'List',
+        },
+        form: {
+          createTitle: 'New attribute',
+          editTitle: 'Edit attribute',
+          name: 'System name',
+          nameHint: 'A stable name for the API and compatibility rules',
+          namePlaceholder: 'For example, memory_size',
+          label: 'User-facing name',
+          labelPlaceholder: 'For example, Memory size',
+          dataType: 'Data type',
+          enumValues: 'Allowed values',
+          enumValuesHint: 'Enter a value and press Enter; commas can be used as separators',
+          enumValuesPlaceholder: 'For example, DDR4, DDR5',
+          isRequired: 'Required attribute',
+          orderIndex: 'Order index',
+          orderIndexHint: 'Lower values are shown first',
+          validation: {
+            nameRequired: 'Enter a system name',
+            nameTooLong: 'The system name must contain no more than 255 characters',
+            labelRequired: 'Enter a user-facing name',
+            labelTooLong: 'The name must contain no more than 255 characters',
+            enumRequired: 'Add at least one allowed value',
+            enumUnique: 'Allowed values must be unique',
+          },
+        },
+        notifications: {
+          created: 'Attribute created',
+          updated: 'Attribute updated',
         },
       },
       navigation: {
