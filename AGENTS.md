@@ -38,6 +38,7 @@ Frontend:
 
 - Node.js 24 LTS, npm 11;
 - React 19.2, TypeScript 6.0 strict, Vite 8.2;
+- React Router 7.18, Mantine 9.5, i18next/react-i18next;
 - ESLint flat config, Prettier, Stylelint;
 - Vitest, Testing Library, MSW, Playwright.
 
@@ -94,6 +95,11 @@ Frontend API client генерируется из `specs/configurator-api.yaml` 
 Прикладной frontend импортирует SDK и типы только через `configurator-web/src/shared/api`. Изменение OpenAPI всегда
 сначала вносится в спецификацию, затем отражается и в backend, и во frontend client; `npm run api:check` проверяет
 отсутствие drift.
+
+Глобальные frontend providers находятся в `configurator-web/src/app/providers`, route objects — в `src/app/router`,
+AppShell и единая desktop/mobile navigation model — в `src/app/layout`. Предметные страницы не создают собственные
+Router/Mantine/i18next providers. Пользовательские строки shell и общих страниц должны находиться в translation
+resources, а прикладная тема — использовать Mantine tokens вместо hardcoded light-only цветов.
 
 ### База данных
 

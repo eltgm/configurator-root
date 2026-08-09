@@ -5,6 +5,36 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: 'react-vendor',
+              test: /node_modules[\\/](react|react-dom|react-router|react-router-dom)[\\/]/,
+              priority: 10,
+            },
+            {
+              name: 'mantine-vendor',
+              test: /node_modules[\\/]@mantine[\\/]/,
+              priority: 9,
+            },
+            {
+              name: 'i18n-vendor',
+              test: /node_modules[\\/](i18next|react-i18next)[\\/]/,
+              priority: 8,
+            },
+            {
+              name: 'icons-vendor',
+              test: /node_modules[\\/]@tabler[\\/]/,
+              priority: 7,
+            },
+          ],
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
