@@ -1282,6 +1282,27 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /domains/demo:
+    post:
+      tags: [ Domains ]
+      summary: Create the complete demo PC domain
+      description: |
+        Atomically creates the deterministic demo catalog, compatibility data and saved
+        configuration. Repeated creation returns a domain-name conflict.
+      responses:
+        '201':
+          description: Demo domain created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Domain'
+        '409':
+          description: Demo domain already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /domains/{id}:
     get:
       tags: [ Domains ]

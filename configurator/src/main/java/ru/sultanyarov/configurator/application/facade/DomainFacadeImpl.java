@@ -1,5 +1,7 @@
 package ru.sultanyarov.configurator.application.facade;
 
+import static org.springframework.util.StringUtils.hasText;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -8,74 +10,72 @@ import ru.sultanyarov.configurator.api.inbounds.rest.dto.Domain;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.DomainPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateDomainRequest;
 import ru.sultanyarov.configurator.application.mapper.DomainMapper;
+import ru.sultanyarov.configurator.application.service.DemoDomainService;
 import ru.sultanyarov.configurator.application.service.DomainService;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
-
-import static org.springframework.util.StringUtils.hasText;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class DomainFacadeImpl implements DomainFacade {
-    private final DomainService domainService;
-    private final DomainMapper domainMapper;
+  private final DomainService domainService;
+  private final DemoDomainService demoDomainService;
+  private final DomainMapper domainMapper;
 
-    @Override
-    public Domain createDomain(CreateDomainRequest createDomainRequest) {
-        log.info("Start create domain");
-        validateCreateDomainRequest(createDomainRequest);
+  @Override
+  public Domain createDemoDomain() {
+    log.info("Start create demo domain");
+    return domainMapper.toDomainDto(demoDomainService.createDemoDomain());
+  }
 
-        return domainMapper.toDomainDto(
-                domainService.create(
-                        domainMapper.toDomain(createDomainRequest)
-                )
-        );
+  @Override
+  public Domain createDomain(CreateDomainRequest createDomainRequest) {
+    log.info("Start create domain");
+    validateCreateDomainRequest(createDomainRequest);
+
+    return domainMapper.toDomainDto(
+        domainService.create(domainMapper.toDomain(createDomainRequest)));
+  }
+
+  private void validateCreateDomainRequest(CreateDomainRequest createDomainRequest) {
+    String name = createDomainRequest.getName();
+    validateName(name);
+  }
+
+  private static void validateName(String name) {
+    if (!hasText(name)) {
+      throw new ValidationException("Name is required");
     }
+  }
 
-    private void validateCreateDomainRequest(CreateDomainRequest createDomainRequest) {
-        String name = createDomainRequest.getName();
-        validateName(name);
-    }
+  @Override
+  public Domain getDomainById(Long id) {
+    return domainMapper.toDomainDto(domainService.getById(id));
+  }
 
-    private static void validateName(String name) {
-        if (!hasText(name)) {
-            throw new ValidationException("Name is required");
-        }
-    }
+  @Override
+  public void deleteDomainById(Long id) {
+    log.info("Start delete domain by id: {}", id);
+    domainService.deleteById(id);
+  }
 
-    @Override
-    public Domain getDomainById(Long id) {
-        return domainMapper.toDomainDto(
-                domainService.getById(id)
-        );
-    }
+  @Override
+  public Domain updateDomain(Long id, UpdateDomainRequest updateDomainRequest) {
+    log.info("Start update domain by id: {}", id);
+    validateUpdateDomainRequest(updateDomainRequest);
 
-    @Override
-    public void deleteDomainById(Long id) {
-        log.info("Start delete domain by id: {}", id);
-        domainService.deleteById(id);
-    }
+    return domainMapper.toDomainDto(
+        domainService.update(id, domainMapper.toDomain(updateDomainRequest)));
+  }
 
-    @Override
-    public Domain updateDomain(Long id, UpdateDomainRequest updateDomainRequest) {
-        log.info("Start update domain by id: {}", id);
-        validateUpdateDomainRequest(updateDomainRequest);
+  private void validateUpdateDomainRequest(UpdateDomainRequest updateDomainRequest) {
+    String name = updateDomainRequest.getName();
+    validateName(name);
+  }
 
-        return domainMapper.toDomainDto(
-                domainService.update(id, domainMapper.toDomain(updateDomainRequest))
-        );
-    }
-
-    private void validateUpdateDomainRequest(UpdateDomainRequest updateDomainRequest) {
-        String name = updateDomainRequest.getName();
-        validateName(name);
-    }
-
-    @Override
-    public DomainPage getDomains(int page, int pageSize) {
-        log.info("Start get domains");
-        return domainMapper.toDomainPageDto(
-                domainService.getPage(page, pageSize)
-        );
-    }
+  @Override
+  public DomainPage getDomains(int page, int pageSize) {
+    log.info("Start get domains");
+    return domainMapper.toDomainPageDto(domainService.getPage(page, pageSize));
+  }
 }
