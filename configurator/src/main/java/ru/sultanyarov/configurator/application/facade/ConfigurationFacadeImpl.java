@@ -33,6 +33,12 @@ public class ConfigurationFacadeImpl implements ConfigurationFacade {
   }
 
   @Override
+  public void delete(Long id) {
+    log.info("Deleting configuration {}", id);
+    configurationService.delete(id);
+  }
+
+  @Override
   public ConfigurationPage getPage(Long domainId, Integer page, Integer size) {
     log.info("Getting configurations in domain {}, page {}, size {}", domainId, page, size);
     return configurationMapper.toDto(configurationService.getPage(domainId, page, size));

@@ -11,6 +11,8 @@ public interface ConfigurationFacade {
 
   ModelConfiguration update(Long id, UpdateConfigurationRequest request);
 
+  void delete(Long id);
+
   ConfigurationPage getPage(Long domainId, Integer page, Integer size);
 
   ModelConfiguration getById(Long id);

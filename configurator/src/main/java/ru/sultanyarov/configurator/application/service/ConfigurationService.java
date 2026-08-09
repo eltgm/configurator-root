@@ -10,6 +10,8 @@ public interface ConfigurationService {
 
   Configuration update(Long id, ConfigurationDraft draft);
 
+  void delete(Long id);
+
   Page<Configuration> getPage(Long domainId, Integer page, Integer size);
 
   Configuration getById(Long id);

@@ -189,6 +189,46 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         put("/configurations/0", request("Invalid", null, [1L])).status == 400
     }
 
+    def "should permanently delete configuration without affecting catalog or other configurations"() {
+        given:
+        prepareData()
+        def deleted = createConfiguration("Deleted", [1L, 3L])
+        def retained = createConfiguration("Retained", [1L, 2L])
+
+        when:
+        def result = delete("/configurations/${deleted.id}")
+
+        then:
+        result.status == 204
+        result.body.isEmpty()
+
+        and:
+        get("/configurations/${deleted.id}").status == 404
+        get("/configurations/${deleted.id}/export/json").status == 404
+        get("/configurations/${retained.id}").status == 200
+        get("/components/1").status == 200
+        def page = objectMapper.readValue(
+                get("/domains/1/configurations").body,
+                ConfigurationPage
+        )
+        page.totalItems == 1
+        page.items*.id == [retained.id]
+    }
+
+    def "should return not found for repeated missing or foreign-owned configuration deletion"() {
+        given:
+        prepareData()
+        def configuration = createConfiguration("Deleted once", [1L, 3L])
+        runSqlScripts("/sql/insert-foreign-owned-configuration.sql")
+
+        expect:
+        delete("/configurations/${configuration.id}").status == 204
+        delete("/configurations/${configuration.id}").status == 404
+        delete("/configurations/999").status == 404
+        delete("/configurations/900").status == 404
+        delete("/configurations/0").status == 400
+    }
+
     def "should return newest owned configurations with pagination"() {
         given:
         prepareData()

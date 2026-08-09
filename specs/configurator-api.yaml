@@ -2782,6 +2782,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+    delete:
+      tags: [ Configurations ]
+      summary: Permanently delete configuration
+      description: |
+        Permanently deletes a configuration owned by the current user. Component links are removed
+        together with the configuration, while catalog components and other configurations remain
+        unchanged. A missing, foreign-owned or already deleted configuration is returned as 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '204':
+          description: Configuration deleted
+        '400':
+          description: Invalid configuration identifier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Configuration not found or not owned by the current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /configurations/{id}/export/json:
     get:
       tags: [ Configurations ]
