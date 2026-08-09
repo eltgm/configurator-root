@@ -36,3 +36,10 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Frontend ###
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
