@@ -17,18 +17,23 @@ export default defineConfig({
             },
             {
               name: 'mantine-vendor',
-              test: /node_modules[\\/]@mantine[\\/]/,
+              test: /node_modules[\\/](@mantine|@floating-ui)[\\/]/,
               priority: 9,
+            },
+            {
+              name: 'query-vendor',
+              test: /node_modules[\\/]@tanstack[\\/]/,
+              priority: 8,
             },
             {
               name: 'i18n-vendor',
               test: /node_modules[\\/](i18next|react-i18next)[\\/]/,
-              priority: 8,
+              priority: 7,
             },
             {
               name: 'icons-vendor',
               test: /node_modules[\\/]@tabler[\\/]/,
-              priority: 7,
+              priority: 6,
             },
           ],
         },

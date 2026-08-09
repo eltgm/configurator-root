@@ -38,7 +38,7 @@ Frontend:
 
 - Node.js 24 LTS, npm 11;
 - React 19.2, TypeScript 6.0 strict, Vite 8.2;
-- React Router 7.18, Mantine 9.5, i18next/react-i18next;
+- React Router 7.18, Mantine 9.5, TanStack Query 5, i18next/react-i18next;
 - ESLint flat config, Prettier, Stylelint;
 - Vitest, Testing Library, MSW, Playwright.
 
@@ -100,6 +100,10 @@ Frontend API client генерируется из `specs/configurator-api.yaml` 
 AppShell и единая desktop/mobile navigation model — в `src/app/layout`. Предметные страницы не создают собственные
 Router/Mantine/i18next providers. Пользовательские строки shell и общих страниц должны находиться в translation
 resources, а прикладная тема — использовать Mantine tokens вместо hardcoded light-only цветов.
+
+Server state хранится через общий TanStack Query provider; предметные страницы не дублируют API-данные в глобальных
+context/store. Ошибки generated client нормализуются через `src/shared/api`, а loading/empty/error состояния собираются
+из `src/shared/ui`. Мутации автоматически не повторяются; success-уведомление вызывается предметным сценарием явно.
 
 ### База данных
 
