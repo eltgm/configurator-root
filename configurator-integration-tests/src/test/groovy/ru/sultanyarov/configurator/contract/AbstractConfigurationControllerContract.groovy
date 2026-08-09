@@ -80,6 +80,113 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         expect:
         post("/domains/1/configurations", request("Empty", null, [])).status == 400
         post("/domains/1/configurations", request("   ", null, [1L])).status == 400
+        post("/domains/1/configurations", request("Duplicate", null, [1L, 1L])).status == 400
+    }
+
+    def "should fully update configuration and preserve immutable metadata"() {
+        given:
+        prepareData()
+        def original = createConfiguration("Initial", [1L, 3L])
+
+        when:
+        def result = put(
+                "/configurations/${original.id}",
+                request("  Updated build  ", "  Updated description  ", [1L, 2L])
+        )
+
+        then:
+        result.status == 200
+        def body = objectMapper.readValue(result.body, ModelConfiguration)
+        body.id == original.id
+        body.domainId == original.domainId
+        body.createdAt == original.createdAt
+        body.name == "Updated build"
+        body.description == "Updated description"
+        body.components*.id == [1L, 2L]
+
+        and: "the complete replacement is visible on a subsequent read"
+        def persisted = objectMapper.readValue(
+                get("/configurations/${original.id}").body,
+                ModelConfiguration
+        )
+        persisted.name == "Updated build"
+        persisted.components*.id == [1L, 2L]
+    }
+
+    def "should normalize blank description during configuration update"() {
+        given:
+        prepareData()
+        def original = createConfiguration("Initial", [1L, 3L])
+
+        when:
+        def result = put(
+                "/configurations/${original.id}",
+                request("Updated", "   ", [1L, 3L])
+        )
+
+        then:
+        result.status == 200
+        objectMapper.readValue(result.body, ModelConfiguration).description == null
+    }
+
+    def "should strictly reject archived component already present in configuration"() {
+        given:
+        prepareData()
+        def original = createConfiguration("Initial", [1L, 3L])
+        runSqlScripts("/sql/archive-configurator-component-3.sql")
+
+        when:
+        def result = put(
+                "/configurations/${original.id}",
+                request("Must not persist", null, [1L, 3L])
+        )
+
+        then:
+        result.status == 409
+
+        and: "validation failure leaves the original configuration unchanged"
+        def persisted = objectMapper.readValue(
+                get("/configurations/${original.id}").body,
+                ModelConfiguration
+        )
+        persisted.name == "Initial"
+        persisted.components*.id == [1L, 3L]
+        persisted.components.find { it.id == 3L }.archived
+    }
+
+    def "should reject invalid component sets without partially updating configuration"() {
+        given:
+        prepareData()
+        def original = createConfiguration("Initial", [1L, 3L])
+
+        expect:
+        put("/configurations/${original.id}", request("Foreign", null, [1L, 7L])).status == 400
+        put("/configurations/${original.id}", request("Missing", null, [1L, 999L])).status == 404
+        put("/configurations/${original.id}", request("Archived", null, [1L, 4L])).status == 409
+        put("/configurations/${original.id}", request("Same type", null, [2L, 3L])).status == 409
+        put("/configurations/${original.id}", request("Incompatible", null, [1L, 8L])).status == 409
+        put("/configurations/${original.id}", request("Empty", null, [])).status == 400
+        put("/configurations/${original.id}", request("   ", null, [1L])).status == 400
+        put("/configurations/${original.id}", request("Duplicate", null, [1L, 1L])).status == 400
+
+        and:
+        def persisted = objectMapper.readValue(
+                get("/configurations/${original.id}").body,
+                ModelConfiguration
+        )
+        persisted.name == "Initial"
+        persisted.components*.id == [1L, 3L]
+    }
+
+    def "should hide missing and foreign-owned configuration during update"() {
+        given:
+        prepareData()
+        runSqlScripts("/sql/insert-foreign-owned-configuration.sql")
+
+        expect:
+        put("/configurations/999", request("Missing", null, [1L])).status == 404
+        put("/configurations/900", request("Foreign", null, [1L])).status == 404
+        put("/configurations/0", request("Invalid", null, [1L])).status == 400
     }
 
     def "should return newest owned configurations with pagination"() {
