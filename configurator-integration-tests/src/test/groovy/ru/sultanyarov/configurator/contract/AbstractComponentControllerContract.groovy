@@ -2,6 +2,7 @@ package ru.sultanyarov.configurator.contract
 
 
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.AttributeValueInput
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.Component
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentImage
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentPage
@@ -65,7 +66,30 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         then:
         result.status == 400
         def errorResponse = objectMapper.readValue(result.body, ErrorResponse)
-        errorResponse.getMessage() != null
+        errorResponse.getStatus() == 400
+        errorResponse.getError() == "Bad Request"
+        errorResponse.getCode() == ApiErrorCode.VALIDATION_ERROR
+        errorResponse.getMessage()
+        errorResponse.getPath() == "/components"
+        errorResponse.getTimestamp()
+        errorResponse.getDetails().size() == 1
+        errorResponse.getDetails().first().getField() == "name"
+        errorResponse.getDetails().first().getCode() == "PATTERN"
+        errorResponse.getDetails().first().getMessage()
+    }
+
+    def "should return structured malformed request error"() {
+        when:
+        def result = post("/components", "not an object")
+
+        then:
+        result.status == 400
+        def errorResponse = objectMapper.readValue(result.body, ErrorResponse)
+        errorResponse.getCode() == ApiErrorCode.VALIDATION_ERROR
+        errorResponse.getMessage() == "Malformed request body"
+        errorResponse.getDetails()*.getField() == [null]
+        errorResponse.getDetails()*.getCode() == ["MALFORMED_REQUEST"]
+        errorResponse.getDetails()*.getMessage() == ["Malformed request body"]
     }
 
     def "should return not found when creating component for non-existent component type"() {
@@ -80,6 +104,9 @@ abstract class AbstractComponentControllerContract extends Specification impleme
 
         then:
         result.status == 404
+        def errorResponse = objectMapper.readValue(result.body, ErrorResponse)
+        errorResponse.getCode() == ApiErrorCode.NOT_FOUND
+        errorResponse.getDetails().isEmpty()
     }
 
     def "should return conflict when creating component with duplicate name in same component type"() {
@@ -99,6 +126,9 @@ abstract class AbstractComponentControllerContract extends Specification impleme
 
         then:
         result.status == 409
+        def errorResponse = objectMapper.readValue(result.body, ErrorResponse)
+        errorResponse.getCode() == ApiErrorCode.ENTITY_ALREADY_EXISTS
+        errorResponse.getDetails().isEmpty()
     }
 
     def "should return bad request when request contains duplicate attribute ids"() {
