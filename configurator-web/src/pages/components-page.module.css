@@ -1,0 +1,26 @@
+.filters {
+  display: grid;
+  grid-template-columns: minmax(13rem, 2fr) minmax(12rem, 1fr) minmax(14rem, 1fr);
+  gap: var(--mantine-spacing-md);
+  align-items: end;
+}
+
+@media (width <= 62em) {
+  .filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filters > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (width <= 48em) {
+  .filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .filters > :first-child {
+    grid-column: auto;
+  }
+}

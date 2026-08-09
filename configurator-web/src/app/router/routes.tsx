@@ -1,6 +1,5 @@
 import {
   IconAssembly,
-  IconBox,
   IconCirclesRelation,
   IconFileDescription,
   IconGitBranch,
@@ -11,6 +10,7 @@ import { Navigate, type RouteObject } from 'react-router-dom';
 
 import { AppLayout } from '@/app/layout/AppLayout';
 import { RequireDomain } from '@/features/domains/ui/RequireDomain';
+import { ComponentsPage } from '@/pages/ComponentsPage';
 import { ComponentTypesPage } from '@/pages/ComponentTypesPage';
 import { DomainSettingsPage } from '@/pages/DomainSettingsPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -40,11 +40,7 @@ export const appRoutes: RouteObject[] = [
         path: 'components',
         element: (
           <RequireDomain>
-            <RoutePlaceholder
-              icon={IconBox}
-              titleKey="pages.components.title"
-              descriptionKey="pages.components.description"
-            />
+            <ComponentsPage />
           </RequireDomain>
         ),
       },

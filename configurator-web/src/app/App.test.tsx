@@ -96,6 +96,7 @@ describe('application shell', () => {
   it('switches and persists the interface language', async () => {
     const user = userEvent.setup();
     renderRoute('/components');
+    await screen.findByRole('heading', { level: 2, name: 'Каталог пока пуст' });
 
     await user.click(screen.getByRole('button', { name: 'Настройки интерфейса' }));
     await user.click(await screen.findByRole('menuitem', { name: 'English' }));
