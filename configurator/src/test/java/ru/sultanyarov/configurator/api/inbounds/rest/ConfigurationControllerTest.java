@@ -72,6 +72,15 @@ class ConfigurationControllerTest {
   }
 
   @Test
+  void shouldDeleteConfiguration() {
+    var response = controller.configurationsIdDelete(7L);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(response.getBody()).isNull();
+    verify(configurationFacade).delete(7L);
+  }
+
+  @Test
   void shouldExportConfigurationAsAttachment() {
     ConfigurationExport body = new ConfigurationExport(1, LocalDateTime.now(), configuration(7L));
     when(configurationFacade.export(7L)).thenReturn(body);

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.COMPONENT;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.COMPONENT_TYPE;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.CONFIGURATION;
+import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.CONFIGURATION_COMPONENT;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.DOMAIN;
 
 import java.util.List;
@@ -137,6 +138,41 @@ class ConfigurationRepositoryImplTest extends AbstractJooqRepositoryTest {
                 .where(CONFIGURATION.ID.eq(created.id()))
                 .fetchOne(0, int.class))
         .isEqualTo(1);
+  }
+
+  @Test
+  void shouldDeleteOwnedConfigurationWithLinksWithoutDeletingCatalogComponents() {
+    Configuration deleted =
+        repository
+            .create(configuration("Deleted", List.of(component(100L), component(200L))))
+            .orElseThrow();
+    Configuration retained =
+        repository.create(configuration("Retained", List.of(component(100L)))).orElseThrow();
+
+    assertThat(repository.deleteByIdAndUserId(deleted.id(), -1L)).isTrue();
+
+    assertThat(repository.findByIdAndUserId(deleted.id(), -1L)).isEmpty();
+    assertThat(repository.findByIdAndUserId(retained.id(), -1L)).isPresent();
+    assertThat(
+            dslContext
+                .selectCount()
+                .from(CONFIGURATION_COMPONENT)
+                .where(CONFIGURATION_COMPONENT.CONFIGURATION_ID.eq(deleted.id()))
+                .fetchOne(0, int.class))
+        .isZero();
+    assertThat(dslContext.fetchCount(COMPONENT)).isEqualTo(2);
+  }
+
+  @Test
+  void shouldNotDeleteMissingForeignOwnedOrAlreadyDeletedConfiguration() {
+    Configuration created =
+        repository.create(configuration("Owned", List.of(component(100L)))).orElseThrow();
+
+    assertThat(repository.deleteByIdAndUserId(created.id(), 999L)).isFalse();
+    assertThat(repository.findByIdAndUserId(created.id(), -1L)).isPresent();
+    assertThat(repository.deleteByIdAndUserId(999999L, -1L)).isFalse();
+    assertThat(repository.deleteByIdAndUserId(created.id(), -1L)).isTrue();
+    assertThat(repository.deleteByIdAndUserId(created.id(), -1L)).isFalse();
   }
 
   private void insertComponent(Long id, Long typeId, String name, boolean archived) {

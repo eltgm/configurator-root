@@ -73,6 +73,16 @@ public class ConfigurationRepositoryImpl implements ConfigurationRepository {
   }
 
   @Override
+  public boolean deleteByIdAndUserId(Long id, Long userId) {
+    return dslContext
+            .deleteFrom(CONFIGURATION)
+            .where(CONFIGURATION.ID.eq(id))
+            .and(CONFIGURATION.CREATED_BY_USER_ID.eq(userId))
+            .execute()
+        > 0;
+  }
+
+  @Override
   public Optional<Configuration> findByIdAndUserId(Long id, Long userId) {
     return dslContext
         .select(configurationFields())

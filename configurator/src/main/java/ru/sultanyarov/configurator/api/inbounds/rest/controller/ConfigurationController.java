@@ -37,6 +37,12 @@ public class ConfigurationController implements ConfigurationsApi {
   }
 
   @Override
+  public ResponseEntity<Void> configurationsIdDelete(Long id) {
+    configurationFacade.delete(id);
+    return ResponseEntity.noContent().build();
+  }
+
+  @Override
   public ResponseEntity<ModelConfiguration> configurationsIdPut(
       Long id, UpdateConfigurationRequest updateConfigurationRequest) {
     return ResponseEntity.ok(configurationFacade.update(id, updateConfigurationRequest));

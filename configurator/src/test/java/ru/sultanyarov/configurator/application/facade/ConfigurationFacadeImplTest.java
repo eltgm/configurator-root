@@ -57,6 +57,13 @@ class ConfigurationFacadeImplTest {
   }
 
   @Test
+  void shouldDeleteConfiguration() {
+    facade.delete(7L);
+
+    verify(configurationService).delete(7L);
+  }
+
+  @Test
   void shouldGetPageAndConfiguration() {
     Configuration configuration = configuration(7L);
     Page<Configuration> page = new Page<>(List.of(configuration), 0, 10, 1);

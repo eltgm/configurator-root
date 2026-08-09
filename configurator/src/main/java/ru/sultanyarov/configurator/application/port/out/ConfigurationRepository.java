@@ -9,6 +9,8 @@ public interface ConfigurationRepository {
 
   Optional<Configuration> update(Long id, Long userId, Configuration configuration);
 
+  boolean deleteByIdAndUserId(Long id, Long userId);
+
   Optional<Configuration> findByIdAndUserId(Long id, Long userId);
 
   Page<Configuration> findPageByDomainIdAndUserId(Long domainId, Long userId, int page, int size);

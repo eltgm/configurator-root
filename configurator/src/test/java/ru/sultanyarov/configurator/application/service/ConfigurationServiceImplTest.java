@@ -171,6 +171,26 @@ class ConfigurationServiceImplTest {
   }
 
   @Test
+  void shouldDeleteConfigurationForCurrentUser() {
+    when(currentUserProvider.getCurrentUserId()).thenReturn(42L);
+    when(configurationRepository.deleteByIdAndUserId(7L, 42L)).thenReturn(true);
+
+    service.delete(7L);
+
+    verify(configurationRepository).deleteByIdAndUserId(7L, 42L);
+  }
+
+  @Test
+  void shouldReturnNotFoundWhenConfigurationCannotBeDeleted() {
+    when(currentUserProvider.getCurrentUserId()).thenReturn(42L);
+    when(configurationRepository.deleteByIdAndUserId(7L, 42L)).thenReturn(false);
+
+    assertThatThrownBy(() -> service.delete(7L))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessageContaining("7");
+  }
+
+  @Test
   void shouldRejectDuplicateComponentIdsBeforeLoadingDomain() {
     assertThatThrownBy(
             () -> service.create(1L, new ConfigurationDraft("Build", null, List.of(1L, 1L))))

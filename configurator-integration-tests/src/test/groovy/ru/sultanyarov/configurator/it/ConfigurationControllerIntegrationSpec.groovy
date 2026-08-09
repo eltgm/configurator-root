@@ -77,6 +77,7 @@ class ConfigurationControllerIntegrationSpec extends AbstractConfigurationContro
 
     @Override
     TestResponse delete(String path) {
-        throw new UnsupportedOperationException()
+        def response = mockMvc.perform(MockMvcRequestBuilders.delete(path)).andReturn().response
+        return new TestResponse(response.status, response.contentAsString)
     }
 }

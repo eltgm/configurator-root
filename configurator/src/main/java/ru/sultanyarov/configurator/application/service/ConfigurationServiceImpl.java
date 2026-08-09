@@ -88,6 +88,16 @@ public class ConfigurationServiceImpl implements ConfigurationService {
   }
 
   @Override
+  @Transactional
+  public void delete(Long id) {
+    log.info("Deleting configuration {}", id);
+    Long currentUserId = currentUserProvider.getCurrentUserId();
+    if (!configurationRepository.deleteByIdAndUserId(id, currentUserId)) {
+      throw new NotFoundException("Configuration with id {} not found", id);
+    }
+  }
+
+  @Override
   @Transactional(readOnly = true)
   public Page<Configuration> getPage(Long domainId, Integer page, Integer size) {
     int resolvedPage = page == null ? DEFAULT_PAGE : page;

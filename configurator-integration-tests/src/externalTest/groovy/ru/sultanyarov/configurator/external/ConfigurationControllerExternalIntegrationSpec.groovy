@@ -71,6 +71,8 @@ class ConfigurationControllerExternalIntegrationSpec extends AbstractConfigurati
 
     @Override
     TestResponse delete(String path) {
-        throw new UnsupportedOperationException()
+        def response = RestAssured.given().baseUri(baseUrl).accept(ContentType.JSON)
+                .when().delete(path).then().extract().response()
+        return new TestResponse(response.statusCode(), response.asString())
     }
 }
