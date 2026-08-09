@@ -29,7 +29,7 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
 - React 19.2;
 - TypeScript 6.0 (последняя версия, поддерживаемая актуальным typescript-eslint);
 - Vite 8.2;
-- React Router 8;
+- React Router 7.18 (актуальная стабильная линия; версия 8 ещё не опубликована);
 - Mantine 9;
 - TanStack Query;
 - React Hook Form и Zod 4;
@@ -216,6 +216,32 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
   допускается только узко для конкретной исправленной транзитивной версии и документируется в `package.json`;
 - TanStack Query hooks, единая модель ошибок и auth interceptor не входят в 9.9 и добавляются в 9.11 и задаче
   авторизации соответственно.
+
+#### 9.10 — Маршрутизация, AppShell, темы и локализация
+
+- React Router использует стабильные человекочитаемые маршруты `/configurator`, `/components`, `/configurations` и
+  `/settings/*`; выбранная предметная область остаётся глобальным контекстом и не кодируется в URL;
+- `/` перенаправляет на `/configurator`, неизвестный адрес показывает локализованную страницу 404 с возвратом в
+  конфигуратор;
+- настройки разделены на `/settings/types`, `/settings/compatibility/manual`,
+  `/settings/compatibility/rules`, `/settings/compatibility/graph` и `/settings/domain`;
+- в 9.10 маршруты отображают информативные placeholder-экраны; загрузка предметных данных начинается с 9.12;
+- Mantine AppShell содержит header, desktop sidebar, main content и mobile bottom navigation; layout поддерживает
+  ширину от 360 px без горизонтальной прокрутки;
+- desktop navigation показывает все разделы и вложенные настройки, mobile navigation — четыре верхнеуровневых пункта:
+  конфигуратор, компоненты, конфигурации и настройки;
+- текущий маршрут визуально выделен и обозначен `aria-current`; навигация и controls доступны с клавиатуры и имеют
+  доступные имена;
+- header показывает название приложения, текущий placeholder предметной области и меню пользовательских настроек;
+  реальный выбор и сохранение последней предметной области реализуются в 9.12;
+- тема поддерживает режимы `system`, `light` и `dark`, по умолчанию следует системной настройке и сохраняется в
+  `localStorage` через Mantine color scheme manager;
+- локализация реализована на i18next/react-i18next; русский является языком по умолчанию, английский подтверждает
+  расширяемость структуры, выбранный язык сохраняется локально;
+- все пользовательские строки AppShell, навигации, placeholder-экранов, document title и 404 берутся из translation
+  resources;
+- route tree, desktop/mobile navigation, 404, тема и переключение языка покрываются component tests;
+- API, TanStack Query, server state, notifications и общая обработка ошибок не входят в 9.10.
 
 ### Каталог
 

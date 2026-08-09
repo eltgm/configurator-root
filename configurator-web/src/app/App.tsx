@@ -1,11 +1,18 @@
-export function App() {
+import { RouterProvider, type createBrowserRouter } from 'react-router-dom';
+
+import { AppProviders } from '@/app/providers/AppProviders';
+import { appRouter } from '@/app/router/router';
+
+type AppRouter = ReturnType<typeof createBrowserRouter>;
+
+interface AppProps {
+  router?: AppRouter;
+}
+
+export function App({ router = appRouter }: AppProps) {
   return (
-    <main className="app-shell">
-      <section className="welcome-card" aria-labelledby="welcome-title">
-        <p className="eyebrow">Configurator</p>
-        <h1 id="welcome-title">Конфигуратор компонентов</h1>
-        <p>Основа пользовательского интерфейса готова к подключению предметных экранов.</p>
-      </section>
-    </main>
+    <AppProviders>
+      <RouterProvider router={router} />
+    </AppProviders>
   );
 }
