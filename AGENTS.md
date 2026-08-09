@@ -89,9 +89,11 @@ Generated packages:
 - `ru.sultanyarov.configurator.api.inbounds.rest`;
 - `ru.sultanyarov.configurator.api.inbounds.rest.dto`.
 
-Frontend API client должен генерироваться из `specs/configurator-api.yaml`; ручные дубликаты transport DTO и правки
-generated client запрещены. Генерация клиента вводится задачей 9.9. Изменение OpenAPI всегда сначала вносится в
-спецификацию, затем отражается и в backend, и во frontend client.
+Frontend API client генерируется из `specs/configurator-api.yaml` командой `npm run api:generate` в
+`configurator-web/src/shared/api/generated`; ручные дубликаты transport DTO и правки generated client запрещены.
+Прикладной frontend импортирует SDK и типы только через `configurator-web/src/shared/api`. Изменение OpenAPI всегда
+сначала вносится в спецификацию, затем отражается и в backend, и во frontend client; `npm run api:check` проверяет
+отсутствие drift.
 
 ### База данных
 
@@ -137,6 +139,7 @@ Local и external сценарии должны оставаться едины�
 ```bash
 cd configurator-web
 npm ci
+npm run api:check
 npm run check
 npm run test:coverage
 ```

@@ -191,6 +191,32 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
 - OpenAPI client и связанные dependencies не входят в 9.8 и добавляются в 9.9;
 - полный frontend quality gate: `npm ci && npm run check`; E2E запускаются отдельно после `npx playwright install`.
 
+#### 9.9 — Генерация типизированного клиента из OpenAPI
+
+- единственным источником REST-контракта остаётся `specs/configurator-api.yaml`; ручные frontend DTO и ручное описание
+  endpoint-функций запрещены;
+- `@hey-api/openapi-ts` генерирует TypeScript-модели, типизированные SDK-функции и Fetch-клиент в
+  `src/shared/api/generated`;
+- generated-каталог коммитится для воспроизводимой сборки, полностью очищается при повторной генерации и не
+  редактируется вручную;
+- сгенерированный клиент использует относительный `baseUrl=/api`, чтобы dev-запросы проходили через Vite proxy, а
+  production deployment мог обслуживать UI и API на одном origin;
+- handwritten boundary `src/shared/api/index.ts` является единственной точкой импорта generated API для прикладного
+  frontend-кода и экспортирует SDK, типы и singleton клиента;
+- команда `npm run api:generate` пересоздаёт клиент, `npm run api:check` выполняет генерацию во временный каталог и
+  завершается ошибкой при расхождении со committed output;
+- drift-check входит в `npm run check`; изменение OpenAPI требует локально выполнить `npm run api:generate` и
+  закоммитить результат вместе с изменением спецификации;
+- generated-код исключается из ESLint и получает воспроизводимый `@ts-nocheck` как внешний артефакт, чтобы внутренние
+  шаблоны клиента не ослабляли `exactOptionalPropertyTypes` для handwritten-кода; output форматируется Prettier, а
+  API boundary и потребители проходят общий TypeScript build; generated runtime также исключается из метрики unit
+  test coverage;
+- runtime-тест через MSW подтверждает относительный base URL, сериализацию query-параметров и типизированный ответ;
+- генератор и его транзитивные зависимости не должны добавлять известные high/critical уязвимости; security override
+  допускается только узко для конкретной исправленной транзитивной версии и документируется в `package.json`;
+- TanStack Query hooks, единая модель ошибок и auth interceptor не входят в 9.9 и добавляются в 9.11 и задаче
+  авторизации соответственно.
+
 ### Каталог
 
 | Пункт | Требование |
