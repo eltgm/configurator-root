@@ -9,6 +9,7 @@
 
 - `configurator` — Spring Boot runtime;
 - `configurator-integration-tests` — единые local/external integration contracts;
+- `configurator-web` — независимый React/Vite frontend;
 - `specs/configurator-api.yaml` — source of truth REST API.
 
 Реализованные области: домены, типы компонентов, атрибуты, компоненты, изображения в MinIO, ручная и автоматическая
@@ -32,6 +33,13 @@ OpenAPI содержит `POST /auth/register`, `POST /auth/login` и Bearer JWT
 - JUnit 5, Spock, ArchUnit, Testcontainers, MockMvc, RestAssured;
 - Spotless/Google Java Format;
 - JaCoCo с minimum line coverage `0.90` после исключения generated/domain boilerplate.
+
+Frontend:
+
+- Node.js 24 LTS, npm 11;
+- React 19.2, TypeScript 6.0 strict, Vite 8.2;
+- ESLint flat config, Prettier, Stylelint;
+- Vitest, Testing Library, MSW, Playwright.
 
 ## 3. Архитектурный инвариант
 
@@ -81,6 +89,10 @@ Generated packages:
 - `ru.sultanyarov.configurator.api.inbounds.rest`;
 - `ru.sultanyarov.configurator.api.inbounds.rest.dto`.
 
+Frontend API client должен генерироваться из `specs/configurator-api.yaml`; ручные дубликаты transport DTO и правки
+generated client запрещены. Генерация клиента вводится задачей 9.9. Изменение OpenAPI всегда сначала вносится в
+спецификацию, затем отражается и в backend, и во frontend client.
+
 ### База данных
 
 1. Добавить новую versioned migration в `configurator/src/main/resources/db/migration`.
@@ -120,6 +132,19 @@ External transport использует RestAssured, а setup — PostgreSQL SQL
 Local и external сценарии должны оставаться единым контрактом. Нельзя дублировать одинаковый кейс с разной логикой.
 Общие deterministic fixtures находятся в `configurator-integration-tests/src/test/resources/sql`.
 
+### Frontend
+
+```bash
+cd configurator-web
+npm ci
+npm run check
+npm run test:coverage
+```
+
+`npm run check` объединяет format check, ESLint, Stylelint, unit tests, TypeScript typecheck и production build. E2E
+запускаются отдельно после однократного `npx playwright install`; browser binaries не скачиваются автоматически при
+`npm ci`.
+
 ### Definition of Done
 
 Для значимых изменений обязательны:
@@ -131,6 +156,9 @@ Local и external сценарии должны оставаться едины�
 
 Если внешний контур недоступен, явно указать непроверенный статус. Не выдавать тесты за выполненные без фактического
 запуска.
+
+Для изменения только frontend toolchain/UI обязательны `npm ci` и `npm run check`; backend и external integration
+проверяются дополнительно, если меняются OpenAPI, backend, Docker delivery или общий runtime-контракт.
 
 ## 6. Локальное окружение
 
@@ -148,6 +176,9 @@ Local и external сценарии должны оставаться едины�
 - `DB_URL`, `DB_USER`, `DB_PASSWORD`;
 - `IMAGE_STORAGE_ENDPOINT`, `IMAGE_STORAGE_ACCESS_KEY`, `IMAGE_STORAGE_SECRET_KEY`;
 - `IMAGE_STORAGE_BUCKET`.
+
+Frontend dev server запускается из `configurator-web` командой `npm run dev` на `http://127.0.0.1:5173`. Запросы
+`/api/*` проксируются на `http://127.0.0.1:8080/*` с удалением префикса `/api`.
 
 ## 7. Git и релизы
 

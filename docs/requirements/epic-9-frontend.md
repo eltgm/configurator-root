@@ -27,8 +27,8 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
 ## Технологический стек frontend
 
 - React 19.2;
-- TypeScript 6;
-- Vite 8.1;
+- TypeScript 6.0 (последняя версия, поддерживаемая актуальным typescript-eslint);
+- Vite 8.2;
 - React Router 8;
 - Mantine 9;
 - TanStack Query;
@@ -171,6 +171,25 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
 | 9.9 | Генерация типизированного клиента из OpenAPI |
 | 9.10 | Маршрутизация, AppShell, темы и локализация |
 | 9.11 | Серверное состояние, обработка ошибок и базовые UI-компоненты |
+
+#### 9.8 — Создание `configurator-web` и настройка toolchain
+
+- frontend создаётся в отдельном каталоге `configurator-web` и не включается в Gradle multi-project;
+- используется Node.js 24 LTS, npm и committed `package-lock.json`; `package.json` ограничивает поддерживаемые версии
+  Node/npm через `engines`;
+- React 19.2 собирается Vite 8.2, TypeScript работает в strict mode и не генерирует JavaScript через `tsc`;
+- TypeScript 6.0 используется до появления официальной поддержки TypeScript 7 в актуальном typescript-eslint;
+- настроены алиас `@/`, dev server на `127.0.0.1:5173` и proxy `/api/*` на локальный backend с удалением префикса
+  `/api`;
+- ESLint flat config, Prettier и Stylelint запускаются отдельными командами и входят в единый `npm run check`;
+- Vitest работает в jsdom, Testing Library и MSW подключены через общий test setup;
+- Playwright получает smoke-конфигурацию для Chromium, Firefox и WebKit, но установка browser binaries остаётся явной
+  командой разработчика;
+- production build создаётся в `configurator-web/dist`, а generated reports и зависимости игнорируются Git;
+- минимальный экран и тест подтверждают работоспособность React entrypoint; AppShell, темы, локализация и маршрутизация
+  относятся к 9.10;
+- OpenAPI client и связанные dependencies не входят в 9.8 и добавляются в 9.9;
+- полный frontend quality gate: `npm ci && npm run check`; E2E запускаются отдельно после `npx playwright install`.
 
 ### Каталог
 
