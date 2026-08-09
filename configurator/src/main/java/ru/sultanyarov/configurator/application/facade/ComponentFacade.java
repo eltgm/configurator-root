@@ -87,6 +87,22 @@ public interface ComponentFacade {
   ComponentImageContent getComponentImageContent(Long imageId);
 
   /**
+   * Permanently deletes a component image.
+   *
+   * @param imageId the component image identifier
+   */
+  void deleteComponentImage(Long imageId);
+
+  /**
+   * Replaces the complete image order for a component.
+   *
+   * @param componentId the component identifier
+   * @param orderedImageIds complete image identifiers in target order
+   * @return images with their persisted target indexes
+   */
+  List<ComponentImage> reorderComponentImages(Long componentId, List<Long> orderedImageIds);
+
+  /**
    * Retrieves a paginated list of components belonging to the specified domain.
    *
    * @param domainId the unique identifier of the domain

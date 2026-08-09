@@ -364,6 +364,44 @@ class ComponentRepositoryImplTest extends AbstractJooqRepositoryTest {
   }
 
   @Test
+  void shouldDeleteComponentImageMetadataById() {
+    insertComponent(7L, 1L, "Switch");
+    insertImage(42L, 7L, "components/7/image.webp", 4);
+
+    assertThat(repository.deleteImageById(42L)).isTrue();
+    assertThat(repository.getImageById(42L)).isEmpty();
+  }
+
+  @Test
+  void shouldReturnFalseWhenDeletingMissingComponentImageMetadata() {
+    assertThat(repository.deleteImageById(404L)).isFalse();
+  }
+
+  @Test
+  void shouldUpdateCompleteComponentImageOrderWithoutTouchingForeignImages() {
+    insertComponent(7L, 1L, "Switch");
+    insertComponent(8L, 1L, "Other switch");
+    insertImage(41L, 7L, "components/7/first.webp", 5);
+    insertImage(42L, 7L, "components/7/second.webp", null);
+    insertImage(43L, 7L, "components/7/third.webp", 2);
+    insertImage(44L, 8L, "components/8/foreign.webp", 9);
+
+    assertThat(repository.updateImageOrder(7L, java.util.List.of(43L, 41L, 42L))).isEqualTo(3);
+    assertThat(repository.getById(7L).orElseThrow().getImages())
+        .extracting(ComponentImage::id, ComponentImage::orderIndex)
+        .containsExactly(
+            org.assertj.core.groups.Tuple.tuple(43L, 0),
+            org.assertj.core.groups.Tuple.tuple(41L, 1),
+            org.assertj.core.groups.Tuple.tuple(42L, 2));
+    assertThat(repository.getImageById(44L).orElseThrow().orderIndex()).isEqualTo(9);
+  }
+
+  @Test
+  void shouldReturnZeroWhenUpdatingEmptyComponentImageOrder() {
+    assertThat(repository.updateImageOrder(7L, java.util.List.of())).isZero();
+  }
+
+  @Test
   void shouldCalculateNextComponentImageOrderIndex() {
     insertComponent(7L, 1L, "Switch");
     assertThat(repository.getNextImageOrderIndex(7L)).isZero();

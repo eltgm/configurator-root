@@ -318,6 +318,149 @@ class ComponentServiceImplTest {
   }
 
   @Test
+  void deleteImage_shouldDeleteStoredObjectBeforeMetadata() {
+    ComponentImage image = new ComponentImage(42L, 7L, "components/7/image.webp", 0);
+    Component component = Component.builder().id(7L).archived(false).images(List.of(image)).build();
+    when(componentRepository.getImageById(42L)).thenReturn(Optional.of(image));
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+    when(componentRepository.deleteImageById(42L)).thenReturn(true);
+
+    componentService.deleteImage(42L);
+
+    InOrder deletionOrder = inOrder(componentImageStorage, componentRepository);
+    deletionOrder.verify(componentImageStorage).delete("components/7/image.webp");
+    deletionOrder.verify(componentRepository).deleteImageById(42L);
+  }
+
+  @Test
+  void deleteImage_shouldThrowNotFoundBeforeStorageWhenImageDoesNotExist() {
+    when(componentRepository.getImageById(404L)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> componentService.deleteImage(404L))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessageContaining("404");
+
+    verifyNoInteractions(componentImageStorage);
+    verify(componentRepository, never()).deleteImageById(anyLong());
+  }
+
+  @Test
+  void deleteImage_shouldRejectArchivedComponentBeforeStorage() {
+    ComponentImage image = new ComponentImage(42L, 7L, "components/7/image.webp", 0);
+    Component component = Component.builder().id(7L).archived(true).images(List.of(image)).build();
+    when(componentRepository.getImageById(42L)).thenReturn(Optional.of(image));
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+
+    assertThatThrownBy(() -> componentService.deleteImage(42L))
+        .isInstanceOf(ComponentArchivedException.class)
+        .hasMessageContaining("7");
+
+    verifyNoInteractions(componentImageStorage);
+    verify(componentRepository, never()).deleteImageById(anyLong());
+  }
+
+  @Test
+  void deleteImage_shouldKeepMetadataWhenStorageDeletionFails() {
+    ComponentImage image = new ComponentImage(42L, 7L, "components/7/image.webp", 0);
+    Component component = Component.builder().id(7L).archived(false).images(List.of(image)).build();
+    ExternalStorageException storageException =
+        new ExternalStorageException(new IllegalStateException("offline"), "unavailable");
+    when(componentRepository.getImageById(42L)).thenReturn(Optional.of(image));
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+    doThrow(storageException).when(componentImageStorage).delete(image.objectKey());
+
+    assertThatThrownBy(() -> componentService.deleteImage(42L)).isSameAs(storageException);
+
+    verify(componentRepository, never()).deleteImageById(anyLong());
+  }
+
+  @Test
+  void deleteImage_shouldThrowBusinessExceptionWhenMetadataWasNotDeleted() {
+    ComponentImage image = new ComponentImage(42L, 7L, "components/7/image.webp", 0);
+    Component component = Component.builder().id(7L).archived(false).images(List.of(image)).build();
+    when(componentRepository.getImageById(42L)).thenReturn(Optional.of(image));
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+    when(componentRepository.deleteImageById(42L)).thenReturn(false);
+
+    assertThatThrownBy(() -> componentService.deleteImage(42L))
+        .isInstanceOf(BusinessException.class)
+        .hasMessageContaining("42");
+  }
+
+  @Test
+  void reorderImages_shouldPersistAndReturnContiguousTargetOrder() {
+    ComponentImage first = new ComponentImage(41L, 7L, "components/7/first.webp", 5);
+    ComponentImage second = new ComponentImage(42L, 7L, "components/7/second.webp", null);
+    Component component =
+        Component.builder().id(7L).archived(false).images(List.of(first, second)).build();
+    List<Long> targetOrder = List.of(42L, 41L);
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+    when(componentRepository.updateImageOrder(7L, targetOrder)).thenReturn(2);
+
+    List<ComponentImage> result = componentService.reorderImages(7L, targetOrder);
+
+    assertThat(result)
+        .extracting(ComponentImage::id, ComponentImage::orderIndex)
+        .containsExactly(
+            org.assertj.core.groups.Tuple.tuple(42L, 0),
+            org.assertj.core.groups.Tuple.tuple(41L, 1));
+    verify(componentImageValidator).validateOrder(component.getImages(), targetOrder);
+    verify(componentRepository).updateImageOrder(7L, targetOrder);
+  }
+
+  @Test
+  void reorderImages_shouldAcceptEmptyOrderForEmptyGalleryWithoutPersistenceCall() {
+    Component component = Component.builder().id(7L).archived(false).images(List.of()).build();
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+
+    assertThat(componentService.reorderImages(7L, List.of())).isEmpty();
+
+    verify(componentImageValidator).validateOrder(List.of(), List.of());
+    verify(componentRepository, never()).updateImageOrder(anyLong(), anyList());
+  }
+
+  @Test
+  void reorderImages_shouldRejectArchivedComponentBeforeValidation() {
+    Component component = Component.builder().id(7L).archived(true).images(List.of()).build();
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+
+    assertThatThrownBy(() -> componentService.reorderImages(7L, List.of()))
+        .isInstanceOf(ComponentArchivedException.class)
+        .hasMessageContaining("7");
+
+    verifyNoInteractions(componentImageValidator);
+    verify(componentRepository, never()).updateImageOrder(anyLong(), anyList());
+  }
+
+  @Test
+  void reorderImages_shouldNotPersistWhenValidationFails() {
+    ComponentImage image = new ComponentImage(41L, 7L, "components/7/first.webp", 0);
+    Component component = Component.builder().id(7L).archived(false).images(List.of(image)).build();
+    List<Long> invalidOrder = List.of(99L);
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+    doThrow(new ValidationException("invalid order"))
+        .when(componentImageValidator)
+        .validateOrder(component.getImages(), invalidOrder);
+
+    assertThatThrownBy(() -> componentService.reorderImages(7L, invalidOrder))
+        .isInstanceOf(ValidationException.class);
+
+    verify(componentRepository, never()).updateImageOrder(anyLong(), anyList());
+  }
+
+  @Test
+  void reorderImages_shouldThrowWhenRepositoryDidNotUpdateEveryImage() {
+    ComponentImage image = new ComponentImage(41L, 7L, "components/7/first.webp", 0);
+    Component component = Component.builder().id(7L).archived(false).images(List.of(image)).build();
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+    when(componentRepository.updateImageOrder(7L, List.of(41L))).thenReturn(0);
+
+    assertThatThrownBy(() -> componentService.reorderImages(7L, List.of(41L)))
+        .isInstanceOf(BusinessException.class)
+        .hasMessageContaining("7");
+  }
+
+  @Test
   void getByPageByDomainId_shouldDelegateSearchWithoutComponentTypeFilter() {
     Domain domain = Domain.builder().id(1L).componentTypes(List.of()).build();
     Page<Component> page = new Page<>(List.of(), 0, 10, 0);

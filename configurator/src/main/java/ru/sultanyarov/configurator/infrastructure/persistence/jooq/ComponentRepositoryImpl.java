@@ -103,6 +103,31 @@ public class ComponentRepositoryImpl implements ComponentRepository {
   }
 
   @Override
+  public boolean deleteImageById(Long id) {
+    var componentImage = Tables.COMPONENT_IMAGE;
+    return dslContext.deleteFrom(componentImage).where(componentImage.ID.eq(id)).execute() > 0;
+  }
+
+  @Override
+  public int updateImageOrder(Long componentId, List<Long> orderedImageIds) {
+    if (orderedImageIds.isEmpty()) {
+      return 0;
+    }
+
+    var componentImage = Tables.COMPONENT_IMAGE;
+    List<Query> updates = new ArrayList<>(orderedImageIds.size());
+    for (int orderIndex = 0; orderIndex < orderedImageIds.size(); orderIndex++) {
+      updates.add(
+          dslContext
+              .update(componentImage)
+              .set(componentImage.ORDER_INDEX, orderIndex)
+              .where(componentImage.COMPONENT_ID.eq(componentId))
+              .and(componentImage.ID.eq(orderedImageIds.get(orderIndex))));
+    }
+    return Arrays.stream(dslContext.batch(updates).execute()).sum();
+  }
+
+  @Override
   public int getNextImageOrderIndex(Long componentId) {
     var componentImage = Tables.COMPONENT_IMAGE;
     Field<Integer> maximumOrderIndexField = max(componentImage.ORDER_INDEX);

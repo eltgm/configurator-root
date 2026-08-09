@@ -24,6 +24,15 @@ class ComponentImageControllerTest {
   @InjectMocks private ComponentImageController controller;
 
   @Test
+  void componentImagesIdDelete_shouldDelegateAndReturnNoContent() {
+    ResponseEntity<Void> response = controller.componentImagesIdDelete(42L);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(response.getBody()).isNull();
+    verify(componentFacade).deleteComponentImage(42L);
+  }
+
+  @Test
   void componentImagesIdContentGet_shouldReturnOriginalContentAndSafeHeaders() throws Exception {
     byte[] bytes = new byte[] {1, 2, 3};
     when(componentFacade.getComponentImageContent(42L))

@@ -59,6 +59,23 @@ public interface ComponentRepository {
   Optional<ComponentImage> getImageById(Long id);
 
   /**
+   * Permanently deletes image metadata.
+   *
+   * @param id the component image identifier
+   * @return {@code true} when a row was deleted
+   */
+  boolean deleteImageById(Long id);
+
+  /**
+   * Replaces image display indexes for the supplied component.
+   *
+   * @param componentId the component identifier
+   * @param orderedImageIds complete image identifiers in the target order
+   * @return number of updated rows
+   */
+  int updateImageOrder(Long componentId, List<Long> orderedImageIds);
+
+  /**
    * Returns the next display order after the maximum existing image order.
    *
    * @param componentId the component identifier
