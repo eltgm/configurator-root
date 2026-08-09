@@ -349,6 +349,20 @@ components:
         - id
         - url
 
+    ReorderComponentImagesRequest:
+      type: object
+      description: Full ordered set of image identifiers currently attached to the component
+      properties:
+        imageIds:
+          type: array
+          description: Image identifiers in the desired display order; an empty array is valid for an empty gallery
+          items:
+            type: integer
+            format: int64
+            minimum: 1
+      required:
+        - imageIds
+
     ### COMPONENT ###
     Component:
       type: object
@@ -1733,6 +1747,50 @@ paths:
   # COMPONENT IMAGES
   ###################################
 
+  /component-images/{id}:
+    delete:
+      tags: [ Component Images ]
+      summary: Delete component image
+      description: |
+        Permanently deletes an image attached to an active component. The object is removed from
+        external storage before its metadata is deleted. If object storage is unavailable, metadata
+        remains unchanged so deletion can be retried. Images of archived components cannot be deleted.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '204':
+          description: Component image deleted
+        '400':
+          description: Invalid component image identifier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Component image not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Parent component is archived
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: External object storage is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /component-images/{id}/content:
     get:
       tags: [ Component Images ]
@@ -1911,6 +1969,56 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Component not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /components/{id}/images/order:
+    put:
+      tags: [ Components ]
+      summary: Replace component image order
+      description: |
+        Atomically replaces the display order of all images attached to an active component.
+        The request must contain every current image identifier exactly once and no foreign image
+        identifiers. The first identifier receives orderIndex 0, the second 1, and so on.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReorderComponentImagesRequest'
+      responses:
+        '200':
+          description: Image order replaced
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ComponentImage'
+        '400':
+          description: Invalid identifier list or list does not exactly match current component images
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Component not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Component is archived
           content:
             application/json:
               schema:

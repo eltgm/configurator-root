@@ -80,6 +80,20 @@ public class ComponentFacadeImpl implements ComponentFacade {
   }
 
   @Override
+  public void deleteComponentImage(Long imageId) {
+    log.info("Deleting component image with id {}", imageId);
+    componentService.deleteImage(imageId);
+  }
+
+  @Override
+  public List<ComponentImage> reorderComponentImages(Long componentId, List<Long> orderedImageIds) {
+    log.info("Replacing image order for component with id {}", componentId);
+    return componentService.reorderImages(componentId, orderedImageIds).stream()
+        .map(componentMapper::toDto)
+        .toList();
+  }
+
+  @Override
   public ComponentPage getComponentsByDomainId(
       Long domainId, Long componentTypeId, String name, Integer page, Integer size) {
     log.info("Getting components by domain");

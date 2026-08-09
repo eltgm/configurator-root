@@ -80,6 +80,22 @@ public interface ComponentService {
   ComponentImageContent getImageContent(Long id);
 
   /**
+   * Permanently deletes an image from an active component and external storage.
+   *
+   * @param id the component image identifier
+   */
+  void deleteImage(Long id);
+
+  /**
+   * Replaces the complete image order for an active component.
+   *
+   * @param id the component identifier
+   * @param orderedImageIds complete image identifiers in target order
+   * @return images with contiguous target order indexes
+   */
+  List<ComponentImage> reorderImages(Long id, List<Long> orderedImageIds);
+
+  /**
    * Retrieves a component by its unique identifier.
    *
    * @param id the unique identifier of the component to retrieve

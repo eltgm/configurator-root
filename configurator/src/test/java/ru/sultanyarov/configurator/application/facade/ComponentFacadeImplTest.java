@@ -192,4 +192,33 @@ class ComponentFacadeImplTest {
     assertThat(componentFacade.getComponentImageContent(42L)).isSameAs(content);
     verify(componentService).getImageContent(42L);
   }
+
+  @Test
+  void deleteComponentImage_shouldDelegateToService() {
+    componentFacade.deleteComponentImage(42L);
+
+    verify(componentService).deleteImage(42L);
+  }
+
+  @Test
+  void reorderComponentImages_shouldDelegateToServiceAndMapEveryImage() {
+    ru.sultanyarov.configurator.domain.model.ComponentImage firstEntity =
+        new ru.sultanyarov.configurator.domain.model.ComponentImage(42L, 7L, "first.webp", 0);
+    ru.sultanyarov.configurator.domain.model.ComponentImage secondEntity =
+        new ru.sultanyarov.configurator.domain.model.ComponentImage(41L, 7L, "second.webp", 1);
+    ComponentImage firstDto = new ComponentImage(42L, "/component-images/42/content").orderIndex(0);
+    ComponentImage secondDto =
+        new ComponentImage(41L, "/component-images/41/content").orderIndex(1);
+    List<Long> targetOrder = List.of(42L, 41L);
+    when(componentService.reorderImages(7L, targetOrder))
+        .thenReturn(List.of(firstEntity, secondEntity));
+    when(componentMapper.toDto(firstEntity)).thenReturn(firstDto);
+    when(componentMapper.toDto(secondEntity)).thenReturn(secondDto);
+
+    assertThat(componentFacade.reorderComponentImages(7L, targetOrder))
+        .containsExactly(firstDto, secondDto);
+    verify(componentService).reorderImages(7L, targetOrder);
+    verify(componentMapper).toDto(firstEntity);
+    verify(componentMapper).toDto(secondEntity);
+  }
 }

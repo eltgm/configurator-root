@@ -19,6 +19,12 @@ public class ComponentImageController implements ComponentImagesApi {
   private final ComponentFacade componentFacade;
 
   @Override
+  public ResponseEntity<Void> componentImagesIdDelete(Long id) {
+    componentFacade.deleteComponentImage(id);
+    return ResponseEntity.noContent().build();
+  }
+
+  @Override
   public ResponseEntity<Resource> componentImagesIdContentGet(Long id) {
     ComponentImageContent image = componentFacade.getComponentImageContent(id);
     byte[] content = image.content();

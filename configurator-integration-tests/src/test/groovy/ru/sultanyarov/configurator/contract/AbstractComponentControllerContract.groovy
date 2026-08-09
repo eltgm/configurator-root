@@ -591,6 +591,144 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         getBinary("/component-images/0/content").status == 400
     }
 
+    def "should permanently delete uploaded component image"() {
+        given:
+        prepareComponentImageData()
+        def uploadResult = postMultipart(
+                "/components/1/images",
+                "delete-me.png",
+                "image/png",
+                pngBytes(),
+                0
+        )
+        def image = objectMapper.readValue(uploadResult.body, ComponentImage)
+
+        when:
+        def deleteResult = delete("/component-images/${image.getId()}")
+
+        then:
+        uploadResult.status == 201
+        deleteResult.status == 204
+        getBinary(image.getUrl()).status == 404
+        objectMapper.readerForListOf(ComponentImage)
+                .readValue(get("/components/1/images").body)
+                .isEmpty()
+    }
+
+    def "should return not found when deleting missing component image"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        expect:
+        delete("/component-images/999999").status == 404
+    }
+
+    def "should return bad request when component image id for deletion is not positive"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        expect:
+        delete("/component-images/0").status == 400
+    }
+
+    def "should return conflict and preserve image when deleting it from archived component"() {
+        given:
+        prepareComponentImageData()
+        def uploadResult = postMultipart(
+                "/components/1/images",
+                "archived.png",
+                "image/png",
+                pngBytes(),
+                0
+        )
+        def image = objectMapper.readValue(uploadResult.body, ComponentImage)
+        delete("/components/1").status == 204
+
+        expect:
+        delete("/component-images/${image.getId()}").status == 409
+        getBinary(image.getUrl()).status == 200
+    }
+
+    def "should atomically replace complete component image order"() {
+        given:
+        prepareComponentImagesReadData()
+
+        when:
+        def result = put("/components/1/images/order", [imageIds: [601L, 604L, 603L, 602L]])
+
+        then:
+        result.status == 200
+        List<ComponentImage> responseBody = objectMapper.readerForListOf(ComponentImage)
+                .readValue(result.body)
+        responseBody*.getId() == [601L, 604L, 603L, 602L]
+        responseBody*.getOrderIndex() == [0, 1, 2, 3]
+
+        and:
+        List<ComponentImage> persistedImages = objectMapper.readerForListOf(ComponentImage)
+                .readValue(get("/components/1/images").body)
+        persistedImages*.getId() == [601L, 604L, 603L, 602L]
+        persistedImages*.getOrderIndex() == [0, 1, 2, 3]
+    }
+
+    def "should reject #caseName image order and keep persisted order unchanged"() {
+        given:
+        prepareComponentImagesReadData()
+
+        when:
+        def result = put("/components/1/images/order", [imageIds: imageIds])
+
+        then:
+        result.status == 400
+        List<ComponentImage> persistedImages = objectMapper.readerForListOf(ComponentImage)
+                .readValue(get("/components/1/images").body)
+        persistedImages*.getId() == [602L, 603L, 604L, 601L]
+        persistedImages*.getOrderIndex() == [0, 2, 2, null]
+
+        where:
+        caseName                 | imageIds
+        "duplicate identifiers" | [602L, 602L, 604L, 601L]
+        "omitted identifier"    | [602L, 603L, 604L]
+        "foreign identifier"    | [602L, 603L, 604L, 605L]
+        "non-positive id"       | [0L, 603L, 604L, 601L]
+    }
+
+    def "should return conflict when reordering images of archived component"() {
+        given:
+        prepareComponentImagesReadData()
+        delete("/components/1").status == 204
+
+        expect:
+        put("/components/1/images/order", [imageIds: [602L, 603L, 604L, 601L]]).status == 409
+    }
+
+    def "should reorder empty component gallery with an empty list"() {
+        given:
+        prepareComponentImageData()
+
+        when:
+        def result = put("/components/1/images/order", [imageIds: []])
+
+        then:
+        result.status == 200
+        objectMapper.readerForListOf(ComponentImage).readValue(result.body).isEmpty()
+    }
+
+    def "should return not found when reordering images of missing component"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        expect:
+        put("/components/999999/images/order", [imageIds: []]).status == 404
+    }
+
+    def "should return bad request when component id for image reorder is not positive"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        expect:
+        put("/components/0/images/order", [imageIds: []]).status == 400
+    }
+
     def "should assign next image order index when it is omitted"() {
         given:
         prepareComponentImageData()
