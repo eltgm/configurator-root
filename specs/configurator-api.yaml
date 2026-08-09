@@ -29,16 +29,58 @@ components:
           type: integer
         error:
           type: string
+        code:
+          $ref: '#/components/schemas/ApiErrorCode'
         message:
           type: string
         path:
           type: string
+        details:
+          type: array
+          description: Structured error details; empty when the error has no additional details
+          items:
+            $ref: '#/components/schemas/ApiErrorDetail'
       required:
         - timestamp
         - status
         - error
+        - code
         - message
         - path
+        - details
+
+    ApiErrorCode:
+      type: string
+      description: Stable machine-readable error category
+      enum:
+        - BUSINESS_ERROR
+        - INTERNAL_ERROR
+        - NOT_FOUND
+        - ENTITY_ALREADY_EXISTS
+        - ENTITY_HAS_RELATED_ENTITIES
+        - COMPONENT_ARCHIVED
+        - CONFIGURATION_CONFLICT
+        - VALIDATION_ERROR
+        - IMAGE_TOO_LARGE
+        - UNSUPPORTED_IMAGE_FORMAT
+        - EXTERNAL_STORAGE_UNAVAILABLE
+
+    ApiErrorDetail:
+      type: object
+      properties:
+        field:
+          type: string
+          nullable: true
+          description: Request field or parameter path; absent for object-level errors
+        code:
+          type: string
+          description: Stable detail or validation constraint code in UPPER_SNAKE_CASE
+        message:
+          type: string
+          description: Human-readable detail without rejected values or internal diagnostics
+      required:
+        - code
+        - message
 
     ### Pagination ###
     DomainPage:
