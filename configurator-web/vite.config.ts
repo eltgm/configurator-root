@@ -34,6 +34,7 @@ export default defineConfig({
     css: true,
     coverage: {
       provider: 'v8',
+      exclude: ['src/shared/api/generated/**'],
       reporter: ['text', 'html', 'lcov'],
       reportsDirectory: './coverage',
     },

@@ -12,6 +12,7 @@ Frontend Configurator на React, TypeScript и Vite. На этапе 9.8 про
 
 ```bash
 npm ci
+npm run api:generate
 npm run dev
 npm run check
 npm run test:coverage
@@ -28,3 +29,16 @@ npm run test:e2e
 ```
 
 Production build создаётся в `dist/`.
+
+## OpenAPI client
+
+Типы, SDK-функции и Fetch-клиент генерируются только из `../specs/configurator-api.yaml`:
+
+```bash
+npm run api:generate
+npm run api:check
+```
+
+Generated output находится в `src/shared/api/generated`, коммитится и не редактируется вручную. Прикладной код должен
+импортировать API из `@/shared/api`. `api:check` входит в общий `npm run check` и обнаруживает рассинхронизацию со
+спецификацией.
