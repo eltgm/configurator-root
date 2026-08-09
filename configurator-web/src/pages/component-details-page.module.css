@@ -1,0 +1,17 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(18rem, 2fr);
+  gap: var(--mantine-spacing-lg);
+  align-items: start;
+}
+
+.image {
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+@media (width <= 62em) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -5,6 +5,10 @@
   align-items: end;
 }
 
+.header-actions {
+  max-width: 100%;
+}
+
 @media (width <= 62em) {
   .filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -16,6 +20,14 @@
 }
 
 @media (width <= 48em) {
+  .header-actions {
+    width: 100%;
+  }
+
+  .header-actions > * {
+    flex: 1 1 100%;
+  }
+
   .filters {
     grid-template-columns: minmax(0, 1fr);
   }

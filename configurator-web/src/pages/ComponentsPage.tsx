@@ -12,9 +12,10 @@ import {
   TextInput,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
-import { IconCards, IconList, IconSearch } from '@tabler/icons-react';
+import { IconCards, IconList, IconPlus, IconSearch } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 
 import { useComponentTypesQuery } from '@/features/component-types/api/component-types';
 import {
@@ -121,31 +122,38 @@ export function ComponentsPage() {
         title={title}
         description={t('components.page.description', { domain: selectedDomain?.name ?? '' })}
         actions={
-          <SegmentedControl
-            aria-label={t('components.view.label')}
-            value={view}
-            onChange={changeView}
-            data={[
-              {
-                value: 'cards',
-                label: (
-                  <Group gap={6} wrap="nowrap">
-                    <IconCards size={16} />
-                    <span>{t('components.view.cards')}</span>
-                  </Group>
-                ),
-              },
-              {
-                value: 'table',
-                label: (
-                  <Group gap={6} wrap="nowrap">
-                    <IconList size={16} />
-                    <span>{t('components.view.table')}</span>
-                  </Group>
-                ),
-              },
-            ]}
-          />
+          <Group className={classes['header-actions']}>
+            <SegmentedControl
+              aria-label={t('components.view.label')}
+              value={view}
+              onChange={changeView}
+              data={[
+                {
+                  value: 'cards',
+                  label: (
+                    <Group gap={6} wrap="nowrap">
+                      <IconCards size={16} />
+                      <span>{t('components.view.cards')}</span>
+                    </Group>
+                  ),
+                },
+                {
+                  value: 'table',
+                  label: (
+                    <Group gap={6} wrap="nowrap">
+                      <IconList size={16} />
+                      <span>{t('components.view.table')}</span>
+                    </Group>
+                  ),
+                },
+              ]}
+            />
+            {!archived ? (
+              <Button component={Link} to="/components/new" leftSection={<IconPlus size={16} />}>
+                {t('components.actions.create')}
+              </Button>
+            ) : null}
+          </Group>
         }
       />
 
@@ -241,6 +249,10 @@ export function ComponentsPage() {
             hasFilters ? (
               <Button variant="light" onClick={resetFilters}>
                 {t('components.filters.reset')}
+              </Button>
+            ) : !archived ? (
+              <Button component={Link} to="/components/new">
+                {t('components.actions.create')}
               </Button>
             ) : undefined
           }

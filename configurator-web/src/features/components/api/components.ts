@@ -4,9 +4,15 @@ import {
   apiData,
   client,
   deleteComponentsById,
+  getComponentsById,
   getDomainsByDomainIdComponents,
+  postComponents,
   postComponentsByIdRestore,
+  putComponentsById,
+  type Component,
   type ComponentPage,
+  type CreateComponentRequest,
+  type UpdateComponentRequest,
 } from '@/shared/api';
 
 export const componentCatalogPageSize = 12;
@@ -42,9 +48,63 @@ export function normalizeComponentCatalogFilters(
 
 export const componentKeys = {
   byDomain: (domainId: number | null) => ['domains', domainId, 'components'] as const,
+  detail: (domainId: number | null, id: number | null) =>
+    [...componentKeys.byDomain(domainId), 'detail', id] as const,
   catalog: (domainId: number | null, filters: ComponentCatalogFilters) =>
     [...componentKeys.byDomain(domainId), normalizeComponentCatalogFilters(filters)] as const,
 };
+
+export function useComponentQuery(domainId: number | null, id: number | null) {
+  return useQuery({
+    queryKey: componentKeys.detail(domainId, id),
+    queryFn: () =>
+      id === null
+        ? Promise.resolve(null)
+        : apiData(getComponentsById({ client, path: { id }, throwOnError: true })),
+    enabled: domainId !== null && id !== null,
+  });
+}
+
+interface CreateComponentVariables {
+  domainId: number;
+  body: CreateComponentRequest;
+}
+
+export function useCreateComponentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ body }: CreateComponentVariables) =>
+      apiData(postComponents({ client, body, throwOnError: true })),
+    onSuccess: async (createdComponent, { domainId }) => {
+      queryClient.setQueryData<Component>(
+        componentKeys.detail(domainId, createdComponent.id),
+        createdComponent,
+      );
+      await queryClient.invalidateQueries({ queryKey: componentKeys.byDomain(domainId) });
+    },
+  });
+}
+
+interface UpdateComponentVariables {
+  domainId: number;
+  id: number;
+  body: UpdateComponentRequest;
+}
+
+export function useUpdateComponentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: UpdateComponentVariables) =>
+      apiData(putComponentsById({ client, path: { id }, body, throwOnError: true })),
+    onSuccess: async (updatedComponent, { domainId }) => {
+      queryClient.setQueryData<Component>(
+        componentKeys.detail(domainId, updatedComponent.id),
+        updatedComponent,
+      );
+      await queryClient.invalidateQueries({ queryKey: componentKeys.byDomain(domainId) });
+    },
+  });
+}
 
 export async function fetchComponents(
   domainId: number,
@@ -84,7 +144,10 @@ export function useArchiveComponentMutation() {
   return useMutation({
     mutationFn: ({ id }: ComponentMutationVariables) =>
       apiData(deleteComponentsById({ client, path: { id }, throwOnError: true })),
-    onSuccess: async (_response, { domainId }) => {
+    onSuccess: async (_response, { domainId, id }) => {
+      queryClient.setQueryData<Component>(componentKeys.detail(domainId, id), (component) =>
+        component ? { ...component, archived: true } : component,
+      );
       await queryClient.invalidateQueries({ queryKey: componentKeys.byDomain(domainId) });
     },
   });
@@ -95,7 +158,8 @@ export function useRestoreComponentMutation() {
   return useMutation({
     mutationFn: ({ id }: ComponentMutationVariables) =>
       apiData(postComponentsByIdRestore({ client, path: { id }, throwOnError: true })),
-    onSuccess: async (_component, { domainId }) => {
+    onSuccess: async (component, { domainId }) => {
+      queryClient.setQueryData<Component>(componentKeys.detail(domainId, component.id), component);
       await queryClient.invalidateQueries({ queryKey: componentKeys.byDomain(domainId) });
     },
   });

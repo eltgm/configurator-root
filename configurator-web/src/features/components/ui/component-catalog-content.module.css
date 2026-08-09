@@ -36,6 +36,15 @@
   display: none;
 }
 
+.link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
 @media (width <= 48em) {
   .desktop-table {
     display: none;

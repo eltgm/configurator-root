@@ -9,7 +9,10 @@ import {
   fetchComponents,
   normalizeComponentCatalogFilters,
   useArchiveComponentMutation,
+  useComponentQuery,
+  useCreateComponentMutation,
   useRestoreComponentMutation,
+  useUpdateComponentMutation,
 } from '@/features/components/api/components';
 import {
   isComponentCatalogView,
@@ -102,6 +105,70 @@ describe('component catalog API', () => {
 
     expect(invalidate).toHaveBeenNthCalledWith(1, { queryKey: componentKeys.byDomain(7) });
     expect(invalidate).toHaveBeenNthCalledWith(2, { queryKey: componentKeys.byDomain(7) });
+  });
+
+  it('loads a domain-scoped component detail and caches create and update responses', async () => {
+    const requests: Array<{ method: string; body?: unknown }> = [];
+    let component = {
+      id: 101,
+      componentTypeId: 11,
+      name: 'Ryzen',
+      archived: false,
+      createdAt: '2026-08-09T12:00:00Z',
+      attributes: [],
+    };
+    server.use(
+      http.get(`${testApiBaseUrl}/components/:id`, () => HttpResponse.json(component)),
+      http.post(`${testApiBaseUrl}/components`, async ({ request }) => {
+        const body = await request.json();
+        requests.push({ method: request.method, body });
+        component = { ...component, ...(body as object) };
+        return HttpResponse.json(component, { status: 201 });
+      }),
+      http.put(`${testApiBaseUrl}/components/:id`, async ({ request }) => {
+        const body = await request.json();
+        requests.push({ method: request.method, body });
+        component = { ...component, ...(body as object) };
+        return HttpResponse.json(component);
+      }),
+    );
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+    const wrapper = createWrapper(queryClient);
+    const detail = renderHook(() => useComponentQuery(7, 101), { wrapper });
+
+    await waitFor(() => expect(detail.result.current.data?.name).toBe('Ryzen'));
+    expect(componentKeys.detail(7, 101)).toEqual(['domains', 7, 'components', 'detail', 101]);
+
+    const create = renderHook(() => useCreateComponentMutation(), { wrapper });
+    create.result.current.mutate({
+      domainId: 7,
+      body: { componentTypeId: 11, name: 'Ryzen', attributes: [] },
+    });
+    await waitFor(() => expect(create.result.current.isSuccess).toBe(true));
+
+    const update = renderHook(() => useUpdateComponentMutation(), { wrapper });
+    update.result.current.mutate({
+      domainId: 7,
+      id: 101,
+      body: { componentTypeId: 11, name: 'Ryzen Pro', attributes: [] },
+    });
+    await waitFor(() => expect(update.result.current.isSuccess).toBe(true));
+
+    expect(requests).toEqual([
+      {
+        method: 'POST',
+        body: { componentTypeId: 11, name: 'Ryzen', attributes: [] },
+      },
+      {
+        method: 'PUT',
+        body: { componentTypeId: 11, name: 'Ryzen Pro', attributes: [] },
+      },
+    ]);
+    expect(queryClient.getQueryData(componentKeys.detail(7, 101))).toMatchObject({
+      name: 'Ryzen Pro',
+    });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: componentKeys.byDomain(7) });
   });
 });
 

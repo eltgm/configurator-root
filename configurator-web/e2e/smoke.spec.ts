@@ -75,6 +75,20 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/domains/*/components*', async (route) => {
     await route.fulfill({ json: componentPage });
   });
+  await page.route('**/api/components/*', async (route) => {
+    await route.fulfill({ json: componentPage.items[0] });
+  });
+  await page.route('**/api/components', async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.fallback();
+      return;
+    }
+    const body = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({
+      status: 201,
+      json: { ...componentPage.items[0], ...body, id: 202 },
+    });
+  });
 });
 
 test('opens the configurator frontend with the selected domain', async ({ page }) => {
@@ -121,4 +135,25 @@ test('shows the component catalog and replaces the table with a compact mobile l
   await expect(
     page.getByTestId('mobile-component-list').getByText('Ryzen 7 7800X3D', { exact: true }),
   ).toBeVisible();
+});
+
+test('opens component details and creates a component with dynamic attributes', async ({
+  page,
+}) => {
+  await page.goto('/components');
+  await page.getByRole('link', { name: 'Ryzen 7 7800X3D' }).first().click();
+  await expect(page).toHaveURL(/\/components\/101$/);
+  await expect(page.getByRole('heading', { level: 2, name: 'Характеристики' })).toBeVisible();
+  await expect(page.getByText('Количество ядер')).toBeVisible();
+
+  await page.getByRole('link', { name: 'К каталогу' }).click();
+  await page.getByRole('link', { name: 'Новый компонент' }).click();
+  await page.getByRole('combobox', { name: 'Тип компонента' }).click();
+  await page.getByRole('option', { name: 'Процессор' }).click();
+  await page.getByRole('textbox', { name: 'Название' }).fill('Ryzen 9 9950X3D');
+  await page.getByRole('textbox', { name: 'Количество ядер' }).fill('16');
+  await page.getByRole('button', { name: 'Создать' }).click();
+
+  await expect(page).toHaveURL(/\/components\/202$/);
+  await expect(page.getByText('Компонент создан')).toBeVisible();
 });

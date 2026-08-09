@@ -1,7 +1,8 @@
 # Configurator Web
 
-Frontend Configurator на React, TypeScript и Vite. На этапе 9.14 доступны application shell,
-первый запуск, управление областями, типами, атрибутами и каталог с поиском, фильтрами и архивом.
+Frontend Configurator на React, TypeScript и Vite. На этапе 9.15 доступны application shell,
+первый запуск, управление областями, типами, атрибутами, каталог с поиском, фильтрами и архивом, а также создание,
+просмотр и редактирование компонентов с динамическими характеристиками.
 
 ## Требования для разработки
 
@@ -36,6 +37,8 @@ Production build создаётся в `dist/`.
 
 - `/configurator` — конфигуратор;
 - `/components` — каталог компонентов;
+- `/components/new` — создание компонента;
+- `/components/:componentId` и `/components/:componentId/edit` — карточка и редактирование компонента;
 - `/configurations` — сохранённые конфигурации;
 - `/settings/*` — типы, совместимость, граф и параметры предметной области.
 
