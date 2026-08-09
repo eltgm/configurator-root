@@ -69,7 +69,10 @@ class ConfigurationControllerIntegrationSpec extends AbstractConfigurationContro
 
     @Override
     TestResponse put(String path, Object body) {
-        throw new UnsupportedOperationException()
+        def response = mockMvc.perform(MockMvcRequestBuilders.put(path)
+                .contentType("application/json")
+                .content(objectMapper.writeValueAsString(body))).andReturn().response
+        return new TestResponse(response.status, response.contentAsString)
     }
 
     @Override

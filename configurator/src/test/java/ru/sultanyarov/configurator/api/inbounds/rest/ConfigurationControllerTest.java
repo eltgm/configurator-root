@@ -6,7 +6,6 @@ import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,6 +18,7 @@ import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfigurationExport;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfigurationPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateConfigurationRequest;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ModelConfiguration;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateConfigurationRequest;
 import ru.sultanyarov.configurator.application.facade.ConfigurationFacade;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,7 +28,7 @@ class ConfigurationControllerTest {
 
   @Test
   void shouldCreateConfiguration() {
-    CreateConfigurationRequest request = new CreateConfigurationRequest("Build", Set.of(1L));
+    CreateConfigurationRequest request = new CreateConfigurationRequest("Build", List.of(1L));
     ModelConfiguration body = configuration(7L);
     when(configurationFacade.create(1L, request)).thenReturn(body);
 
@@ -56,6 +56,19 @@ class ConfigurationControllerTest {
     when(configurationFacade.getById(7L)).thenReturn(body);
 
     assertThat(controller.configurationsIdGet(7L).getBody()).isSameAs(body);
+  }
+
+  @Test
+  void shouldFullyUpdateConfiguration() {
+    UpdateConfigurationRequest request = new UpdateConfigurationRequest("Updated", List.of(2L));
+    ModelConfiguration body = configuration(7L);
+    when(configurationFacade.update(7L, request)).thenReturn(body);
+
+    var response = controller.configurationsIdPut(7L, request);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).isSameAs(body);
+    verify(configurationFacade).update(7L, request);
   }
 
   @Test

@@ -50,25 +50,41 @@ public class ConfigurationServiceImpl implements ConfigurationService {
   @Transactional
   public Configuration create(Long domainId, ConfigurationDraft draft) {
     log.info("Creating configuration in domain {}", domainId);
-    ConfigurationDraft normalizedDraft = normalizeAndValidateDraft(draft);
-    Domain domain = domainService.getById(domainId);
-    List<Component> selectedComponents =
-        resolveActiveDomainComponents(domain, normalizedDraft.componentIds());
-    validateDistinctComponentTypes(selectedComponents);
-    compatibilityValidator.validatePairwiseDirectCompatibility(domainId, selectedComponents);
-
+    ValidatedConfiguration validated = validateConfiguration(domainId, draft);
     Long currentUserId = currentUserProvider.getCurrentUserId();
     Configuration configuration =
         Configuration.builder()
             .domainId(domainId)
-            .name(normalizedDraft.name())
-            .description(normalizedDraft.description())
+            .name(validated.name())
+            .description(validated.description())
             .createdByUserId(currentUserId)
-            .components(toConfigurationComponents(domain, selectedComponents))
+            .components(validated.components())
             .build();
     return configurationRepository
         .create(configuration)
         .orElseThrow(() -> new BusinessException("Failed to create configuration"));
+  }
+
+  @Override
+  @Transactional
+  public Configuration update(Long id, ConfigurationDraft draft) {
+    log.info("Updating configuration {}", id);
+    Long currentUserId = currentUserProvider.getCurrentUserId();
+    Configuration existing = findOwnedConfiguration(id, currentUserId);
+    ValidatedConfiguration validated = validateConfiguration(existing.domainId(), draft);
+    Configuration configuration =
+        Configuration.builder()
+            .id(existing.id())
+            .domainId(existing.domainId())
+            .name(validated.name())
+            .description(validated.description())
+            .createdByUserId(existing.createdByUserId())
+            .createdAt(existing.createdAt())
+            .components(validated.components())
+            .build();
+    return configurationRepository
+        .update(id, currentUserId, configuration)
+        .orElseThrow(() -> new BusinessException("Failed to update configuration with id {}", id));
   }
 
   @Override
@@ -85,9 +101,7 @@ public class ConfigurationServiceImpl implements ConfigurationService {
   @Override
   @Transactional(readOnly = true)
   public Configuration getById(Long id) {
-    return configurationRepository
-        .findByIdAndUserId(id, currentUserProvider.getCurrentUserId())
-        .orElseThrow(() -> new NotFoundException("Configuration with id {} not found", id));
+    return findOwnedConfiguration(id, currentUserProvider.getCurrentUserId());
   }
 
   @Override
@@ -95,6 +109,25 @@ public class ConfigurationServiceImpl implements ConfigurationService {
   public ConfigurationExport export(Long id) {
     return new ConfigurationExport(
         EXPORT_SCHEMA_VERSION, LocalDateTime.now(ZoneOffset.UTC), getById(id));
+  }
+
+  private Configuration findOwnedConfiguration(Long id, Long currentUserId) {
+    return configurationRepository
+        .findByIdAndUserId(id, currentUserId)
+        .orElseThrow(() -> new NotFoundException("Configuration with id {} not found", id));
+  }
+
+  private ValidatedConfiguration validateConfiguration(Long domainId, ConfigurationDraft draft) {
+    ConfigurationDraft normalizedDraft = normalizeAndValidateDraft(draft);
+    Domain domain = domainService.getById(domainId);
+    List<Component> selectedComponents =
+        resolveActiveDomainComponents(domain, normalizedDraft.componentIds());
+    validateDistinctComponentTypes(selectedComponents);
+    compatibilityValidator.validatePairwiseDirectCompatibility(domainId, selectedComponents);
+    return new ValidatedConfiguration(
+        normalizedDraft.name(),
+        normalizedDraft.description(),
+        toConfigurationComponents(domain, selectedComponents));
   }
 
   private static ConfigurationDraft normalizeAndValidateDraft(ConfigurationDraft draft) {
@@ -205,4 +238,7 @@ public class ConfigurationServiceImpl implements ConfigurationService {
       throw new ValidationException("Size must be between 1 and {}", MAX_SIZE);
     }
   }
+
+  private record ValidatedConfiguration(
+      String name, String description, List<ConfigurationComponent> components) {}
 }

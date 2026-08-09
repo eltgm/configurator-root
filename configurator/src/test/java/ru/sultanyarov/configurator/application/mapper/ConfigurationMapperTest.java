@@ -4,10 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateConfigurationRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateConfigurationRequest;
 import ru.sultanyarov.configurator.domain.model.Configuration;
 import ru.sultanyarov.configurator.domain.model.ConfigurationComponent;
 import ru.sultanyarov.configurator.domain.model.Page;
@@ -18,13 +18,25 @@ class ConfigurationMapperTest {
   @Test
   void shouldMapCreateRequestToDomainDraft() {
     CreateConfigurationRequest request =
-        new CreateConfigurationRequest("Build", Set.of(1L)).description("Description");
+        new CreateConfigurationRequest("Build", List.of(1L)).description("Description");
 
     var draft = mapper.toDomain(request);
 
     assertThat(draft.name()).isEqualTo("Build");
     assertThat(draft.description()).isEqualTo("Description");
     assertThat(draft.componentIds()).containsExactly(1L);
+  }
+
+  @Test
+  void shouldMapUpdateRequestToDomainDraft() {
+    UpdateConfigurationRequest request =
+        new UpdateConfigurationRequest("Updated", List.of(2L)).description("New description");
+
+    var draft = mapper.toDomain(request);
+
+    assertThat(draft.name()).isEqualTo("Updated");
+    assertThat(draft.description()).isEqualTo("New description");
+    assertThat(draft.componentIds()).containsExactly(2L);
   }
 
   @Test

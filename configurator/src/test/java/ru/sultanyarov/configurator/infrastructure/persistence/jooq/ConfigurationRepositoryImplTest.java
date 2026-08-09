@@ -3,6 +3,7 @@ package ru.sultanyarov.configurator.infrastructure.persistence.jooq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.COMPONENT;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.COMPONENT_TYPE;
+import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.CONFIGURATION;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.DOMAIN;
 
 import java.util.List;
@@ -82,6 +83,60 @@ class ConfigurationRepositoryImplTest extends AbstractJooqRepositoryTest {
                 .get(0)
                 .archived())
         .isTrue();
+  }
+
+  @Test
+  void shouldFullyUpdateOwnedConfigurationAndPreserveImmutableMetadata() {
+    Configuration created =
+        repository.create(configuration("Initial", List.of(component(100L)))).orElseThrow();
+
+    Configuration updated =
+        repository
+            .update(
+                created.id(),
+                -1L,
+                Configuration.builder()
+                    .name("Updated")
+                    .description(null)
+                    .components(List.of(component(200L)))
+                    .build())
+            .orElseThrow();
+
+    assertThat(updated.name()).isEqualTo("Updated");
+    assertThat(updated.description()).isNull();
+    assertThat(updated.domainId()).isEqualTo(created.domainId());
+    assertThat(updated.createdByUserId()).isEqualTo(created.createdByUserId());
+    assertThat(updated.createdAt()).isEqualTo(created.createdAt());
+    assertThat(updated.components()).extracting(ConfigurationComponent::id).containsExactly(200L);
+  }
+
+  @Test
+  void shouldNotUpdateConfigurationOwnedByAnotherUser() {
+    Configuration created =
+        repository.create(configuration("Initial", List.of(component(100L)))).orElseThrow();
+
+    assertThat(
+            repository.update(
+                created.id(),
+                999L,
+                Configuration.builder()
+                    .name("Foreign update")
+                    .description(null)
+                    .components(List.of(component(200L)))
+                    .build()))
+        .isEmpty();
+
+    Configuration unchanged = repository.findByIdAndUserId(created.id(), -1L).orElseThrow();
+    assertThat(unchanged.name()).isEqualTo("Initial");
+    assertThat(unchanged.description()).isEqualTo("Description");
+    assertThat(unchanged.components()).extracting(ConfigurationComponent::id).containsExactly(100L);
+    assertThat(
+            dslContext
+                .selectCount()
+                .from(CONFIGURATION)
+                .where(CONFIGURATION.ID.eq(created.id()))
+                .fetchOne(0, int.class))
+        .isEqualTo(1);
   }
 
   private void insertComponent(Long id, Long typeId, String name, boolean archived) {

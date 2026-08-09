@@ -7,6 +7,7 @@ import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfigurationExport;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfigurationPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateConfigurationRequest;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ModelConfiguration;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateConfigurationRequest;
 import ru.sultanyarov.configurator.application.mapper.ConfigurationMapper;
 import ru.sultanyarov.configurator.application.service.ConfigurationService;
 
@@ -22,6 +23,13 @@ public class ConfigurationFacadeImpl implements ConfigurationFacade {
     log.info("Creating configuration in domain {}", domainId);
     return configurationMapper.toDto(
         configurationService.create(domainId, configurationMapper.toDomain(request)));
+  }
+
+  @Override
+  public ModelConfiguration update(Long id, UpdateConfigurationRequest request) {
+    log.info("Updating configuration {}", id);
+    return configurationMapper.toDto(
+        configurationService.update(id, configurationMapper.toDomain(request)));
   }
 
   @Override
