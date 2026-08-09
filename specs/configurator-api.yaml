@@ -340,6 +340,8 @@ components:
           format: int64
         url:
           type: string
+          description: Relative backend URL for retrieving the image content
+          example: /component-images/42/content
         orderIndex:
           type: integer
           nullable: true
@@ -1730,6 +1732,73 @@ paths:
   ###################################
   # COMPONENT IMAGES
   ###################################
+
+  /component-images/{id}/content:
+    get:
+      tags: [ Component Images ]
+      summary: Get component image content
+      description: |
+        Returns the original JPEG, PNG, or WebP bytes through the backend so object storage can
+        remain private. Images attached to archived components remain available. The response is
+        never redirected to an object-storage URL.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '200':
+          description: Original image content
+          headers:
+            Cache-Control:
+              description: Private response that must be revalidated before reuse
+              schema:
+                type: string
+                example: private, no-cache
+            Content-Disposition:
+              description: Displays the image inline
+              schema:
+                type: string
+                example: inline
+            Content-Length:
+              description: Image size in bytes
+              schema:
+                type: integer
+                format: int64
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid component image identifier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Component image not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: External object storage is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /components/{id}/images:
     post:

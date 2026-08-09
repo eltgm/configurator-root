@@ -87,17 +87,19 @@ public class ComponentRepositoryImpl implements ComponentRepository {
     return dslContext
         .insertInto(componentImage)
         .set(componentImage.COMPONENT_ID, image.componentId())
-        .set(componentImage.FILE_PATH, image.url())
+        .set(componentImage.FILE_PATH, image.objectKey())
         .set(componentImage.ORDER_INDEX, image.orderIndex())
         .returning()
-        .fetchOptional(
-            record ->
-                ComponentImage.builder()
-                    .id(record.get(componentImage.ID))
-                    .componentId(record.get(componentImage.COMPONENT_ID))
-                    .url(record.get(componentImage.FILE_PATH))
-                    .orderIndex(record.get(componentImage.ORDER_INDEX))
-                    .build());
+        .fetchOptional(this::mapComponentImage);
+  }
+
+  @Override
+  public Optional<ComponentImage> getImageById(Long id) {
+    var componentImage = Tables.COMPONENT_IMAGE;
+    return dslContext
+        .selectFrom(componentImage)
+        .where(componentImage.ID.eq(id))
+        .fetchOptional(this::mapComponentImage);
   }
 
   @Override
@@ -218,16 +220,17 @@ public class ComponentRepositoryImpl implements ComponentRepository {
                 .from(componentImage)
                 .where(componentImage.COMPONENT_ID.eq(COMPONENT.ID))
                 .orderBy(componentImage.ORDER_INDEX.asc().nullsLast(), componentImage.ID.asc()))
-        .convertFrom(
-            result ->
-                result.map(
-                    record ->
-                        ComponentImage.builder()
-                            .id(record.get(componentImage.ID))
-                            .componentId(record.get(componentImage.COMPONENT_ID))
-                            .url(record.get(componentImage.FILE_PATH))
-                            .orderIndex(record.get(componentImage.ORDER_INDEX))
-                            .build()))
+        .convertFrom(result -> result.map(this::mapComponentImage))
         .as("images");
+  }
+
+  private ComponentImage mapComponentImage(Record record) {
+    var componentImage = Tables.COMPONENT_IMAGE;
+    return ComponentImage.builder()
+        .id(record.get(componentImage.ID))
+        .componentId(record.get(componentImage.COMPONENT_ID))
+        .objectKey(record.get(componentImage.FILE_PATH))
+        .orderIndex(record.get(componentImage.ORDER_INDEX))
+        .build();
   }
 }

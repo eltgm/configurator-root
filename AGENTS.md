@@ -147,7 +147,7 @@ Local и external сценарии должны оставаться едины�
 
 - `DB_URL`, `DB_USER`, `DB_PASSWORD`;
 - `IMAGE_STORAGE_ENDPOINT`, `IMAGE_STORAGE_ACCESS_KEY`, `IMAGE_STORAGE_SECRET_KEY`;
-- `IMAGE_STORAGE_BUCKET`, `IMAGE_STORAGE_PUBLIC_URL`.
+- `IMAGE_STORAGE_BUCKET`.
 
 ## 7. Git и релизы
 

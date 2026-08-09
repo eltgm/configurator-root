@@ -20,6 +20,7 @@ import ru.sultanyarov.configurator.domain.model.AttributeDefinition;
 import ru.sultanyarov.configurator.domain.model.AttributeValue;
 import ru.sultanyarov.configurator.domain.model.Component;
 import ru.sultanyarov.configurator.domain.model.ComponentImage;
+import ru.sultanyarov.configurator.domain.model.ComponentImageContent;
 import ru.sultanyarov.configurator.domain.model.ComponentImageUpload;
 import ru.sultanyarov.configurator.domain.model.ComponentType;
 import ru.sultanyarov.configurator.domain.model.Domain;
@@ -163,7 +164,7 @@ public class ComponentServiceImpl implements ComponentService {
           .createImage(
               ComponentImage.builder()
                   .componentId(id)
-                  .url(storedImage.url())
+                  .objectKey(storedImage.objectKey())
                   .orderIndex(resolvedOrderIndex)
                   .build())
           .orElseThrow(
@@ -181,6 +182,16 @@ public class ComponentServiceImpl implements ComponentService {
     log.debug("get images for component with id {}", id);
     Component component = getById(id);
     return component.getImages() == null ? List.of() : List.copyOf(component.getImages());
+  }
+
+  @Override
+  public ComponentImageContent getImageContent(Long id) {
+    log.debug("get content for component image with id {}", id);
+    ComponentImage image =
+        componentRepository
+            .getImageById(id)
+            .orElseThrow(() -> new NotFoundException("Component image with id {} not found", id));
+    return componentImageStorage.read(image.objectKey());
   }
 
   private void compensateStoredImage(StoredImage storedImage, RuntimeException originalException) {

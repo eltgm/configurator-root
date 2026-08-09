@@ -45,10 +45,18 @@ public interface ComponentRepository {
   /**
    * Persists image metadata for a component.
    *
-   * @param image image metadata containing component, URL and display order
+   * @param image image metadata containing component, object key and display order
    * @return the created image with generated identifier, or empty if creation failed
    */
   Optional<ComponentImage> createImage(ComponentImage image);
+
+  /**
+   * Retrieves image metadata by its unique identifier.
+   *
+   * @param id the component image identifier
+   * @return image metadata, or empty when it does not exist
+   */
+  Optional<ComponentImage> getImageById(Long id);
 
   /**
    * Returns the next display order after the maximum existing image order.

@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
 import ru.sultanyarov.configurator.ConfiguratorApplication
 import ru.sultanyarov.configurator.contract.AbstractComponentControllerContract
+import ru.sultanyarov.configurator.contract.BinaryTestResponse
 import ru.sultanyarov.configurator.contract.TestResponse
 
 import javax.sql.DataSource
@@ -56,6 +57,19 @@ class ComponentControllerIntegrationSpec extends AbstractComponentControllerCont
         queryParams.each { key, value -> requestBuilder.param(key, String.valueOf(value)) }
         def result = mockMvc.perform(requestBuilder).andReturn()
         return new TestResponse(result.response.status, result.response.contentAsString)
+    }
+
+    @Override
+    BinaryTestResponse getBinary(String path) {
+        def result = mockMvc.perform(MockMvcRequestBuilders.get(path)).andReturn()
+        def headers = result.response.headerNames.collectEntries { name ->
+            [(name): result.response.getHeader(name)]
+        }
+        return new BinaryTestResponse(
+                result.response.status,
+                result.response.contentAsByteArray,
+                headers
+        )
     }
 
     @Override

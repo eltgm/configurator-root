@@ -250,7 +250,7 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         responseBody.getAttributes()*.getValue().toSet() == ["ISO", "TKL"].toSet()
         responseBody.getImages().size() == 1
         responseBody.getImages().first().getId() == 501L
-        responseBody.getImages().first().getUrl() == "/files/components/1/main.jpg"
+        responseBody.getImages().first().getUrl() == "/component-images/501/content"
     }
 
     def "should clear nullable fields when updating component"() {
@@ -455,7 +455,7 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         responseBody.getAttributes()*.getAttributeDefinitionId().containsAll([101L, 102L, 103L])
         responseBody.getImages().size() == 1
         responseBody.getImages().first().getId() == 501L
-        responseBody.getImages().first().getUrl() == "/files/components/1/main.jpg"
+        responseBody.getImages().first().getUrl() == "/component-images/501/content"
     }
 
     def "should return no content when archiving component repeatedly"() {
@@ -506,8 +506,7 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         def responseBody = objectMapper.readValue(result.body, ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentImage)
         responseBody.getId() != null
         responseBody.getOrderIndex() == 3
-        responseBody.getUrl().contains("/configurator-components/components/1/")
-        responseBody.getUrl().endsWith(extension)
+        responseBody.getUrl() == "/component-images/${responseBody.getId()}/content"
 
         and:
         def componentResult = get("/components/1")
@@ -519,10 +518,77 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         component.getImages().first().getOrderIndex() == 3
 
         where:
-        filename     | contentType  | content     | extension
-        "image.jpg"  | "image/jpeg" | jpegBytes() | ".jpg"
-        "image.png"  | "image/png"  | pngBytes()  | ".png"
-        "image.webp" | "image/webp" | webpBytes() | ".webp"
+        filename     | contentType  | content
+        "image.jpg"  | "image/jpeg" | jpegBytes()
+        "image.png"  | "image/png"  | pngBytes()
+        "image.webp" | "image/webp" | webpBytes()
+    }
+
+    def "should return original uploaded component image content"() {
+        given:
+        prepareComponentImageData()
+        def content = pngBytes()
+        def uploadResult = postMultipart(
+                "/components/1/images",
+                "image.png",
+                "image/png",
+                content,
+                0
+        )
+        def image = objectMapper.readValue(uploadResult.body, ComponentImage)
+
+        when:
+        def result = getBinary(image.getUrl())
+
+        then:
+        uploadResult.status == 201
+        result.status == 200
+        result.body == content
+        result.headers["Content-Type"] == "image/png"
+        result.headers["Content-Length"] == String.valueOf(content.length)
+        result.headers["Cache-Control"] == "private, no-cache"
+        result.headers["Content-Disposition"] == "inline"
+    }
+
+    def "should return image content after component is archived"() {
+        given:
+        prepareComponentImageData()
+        def uploadResult = postMultipart(
+                "/components/1/images",
+                "image.webp",
+                "image/webp",
+                webpBytes(),
+                null
+        )
+        def image = objectMapper.readValue(uploadResult.body, ComponentImage)
+        delete("/components/1").status == 204
+
+        expect:
+        getBinary(image.getUrl()).status == 200
+    }
+
+    def "should return not found for missing component image content"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        expect:
+        getBinary("/component-images/999999/content").status == 404
+    }
+
+    def "should return service unavailable when component image object is missing from storage"() {
+        given:
+        prepareComponentUpdateData()
+
+        expect:
+        getBinary("/component-images/501/content").status == 503
+    }
+
+    def "should return bad request for non-positive component image id"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        expect:
+        getBinary("/component-images/0/content").status == 400
     }
 
     def "should assign next image order index when it is omitted"() {
@@ -699,10 +765,10 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         responseBody*.getId() == [602L, 603L, 604L, 601L]
         responseBody*.getOrderIndex() == [0, 2, 2, null]
         responseBody*.getUrl() == [
-                "/files/components/1/zero.png",
-                "/files/components/1/first-two.png",
-                "/files/components/1/second-two.png",
-                "/files/components/1/unordered.png"
+                "/component-images/602/content",
+                "/component-images/603/content",
+                "/component-images/604/content",
+                "/component-images/601/content"
         ]
     }
 

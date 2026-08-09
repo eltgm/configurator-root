@@ -4,9 +4,12 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
 import ru.sultanyarov.configurator.application.port.out.ComponentImageStorage
+import ru.sultanyarov.configurator.domain.exception.ExternalStorageException
+import ru.sultanyarov.configurator.domain.model.ComponentImageContent
 import ru.sultanyarov.configurator.domain.model.ComponentImageUpload
 import ru.sultanyarov.configurator.domain.model.StoredImage
 
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 @TestConfiguration
@@ -15,6 +18,7 @@ class ComponentImageStorageTestConfiguration {
     @Primary
     ComponentImageStorage componentImageStorage() {
         def sequence = new AtomicLong()
+        def contents = new ConcurrentHashMap<String, ComponentImageContent>()
         return new ComponentImageStorage() {
             @Override
             StoredImage store(Long componentId, ComponentImageUpload image) {
@@ -24,16 +28,27 @@ class ComponentImageStorageTestConfiguration {
                     case "image/webp" -> "webp"
                     default -> "bin"
                 }
-                def objectKey = "components/${componentId}/test-${sequence.incrementAndGet()}.${extension}"
-                return new StoredImage(
-                        objectKey,
-                        "http://storage.test/configurator-components/${objectKey}"
-                )
+                String objectKey =
+                        "components/${componentId}/test-${sequence.incrementAndGet()}.${extension}"
+                contents.put(objectKey, new ComponentImageContent(image.content(), image.contentType()))
+                return new StoredImage(objectKey)
+            }
+
+            @Override
+            ComponentImageContent read(String objectKey) {
+                def content = contents.get(objectKey)
+                if (content == null) {
+                    throw new ExternalStorageException(
+                            new IllegalStateException("Missing in-memory object"),
+                            "Failed to read component image from external storage"
+                    )
+                }
+                return content
             }
 
             @Override
             void delete(String objectKey) {
-                // No external resource is allocated by this in-memory test adapter.
+                contents.remove(objectKey)
             }
         }
     }

@@ -3,6 +3,7 @@ package ru.sultanyarov.configurator.application.service;
 import java.util.List;
 import ru.sultanyarov.configurator.domain.model.Component;
 import ru.sultanyarov.configurator.domain.model.ComponentImage;
+import ru.sultanyarov.configurator.domain.model.ComponentImageContent;
 import ru.sultanyarov.configurator.domain.model.ComponentImageUpload;
 import ru.sultanyarov.configurator.domain.model.Page;
 
@@ -67,6 +68,16 @@ public interface ComponentService {
    *     not exist
    */
   List<ComponentImage> getImagesByComponentId(Long id);
+
+  /**
+   * Retrieves original image content by component image identifier.
+   *
+   * @param id the component image identifier
+   * @return original bytes and media type
+   * @throws ru.sultanyarov.configurator.domain.exception.NotFoundException if the image metadata
+   *     does not exist
+   */
+  ComponentImageContent getImageContent(Long id);
 
   /**
    * Retrieves a component by its unique identifier.

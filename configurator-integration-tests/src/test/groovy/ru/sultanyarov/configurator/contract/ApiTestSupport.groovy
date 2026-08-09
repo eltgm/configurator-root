@@ -11,6 +11,10 @@ interface ApiTestSupport {
 
     TestResponse get(String path, Map<String, ?> queryParams)
 
+    default BinaryTestResponse getBinary(String path) {
+        throw new UnsupportedOperationException("Binary requests are not supported by this transport")
+    }
+
     TestResponse post(String path, Object body)
 
     TestResponse put(String path, Object body)

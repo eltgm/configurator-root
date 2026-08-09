@@ -120,9 +120,10 @@ docker compose up -d postgres minio
 | `IMAGE_STORAGE_ACCESS_KEY` | `minioadmin`                                    | access key                       |
 | `IMAGE_STORAGE_SECRET_KEY` | `minioadmin`                                    | secret key                       |
 | `IMAGE_STORAGE_BUCKET`     | `configurator-components`                       | bucket изображений               |
-| `IMAGE_STORAGE_PUBLIC_URL` | `http://localhost:9000`                         | публичная основа URL изображений |
 
 Лимит одного загружаемого файла — 10 MB.
+Содержимое изображений выдаётся через `GET /component-images/{id}/content`; MinIO не требуется публиковать для
+браузера.
 
 ## Проверка проекта
 

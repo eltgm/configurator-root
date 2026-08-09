@@ -94,7 +94,12 @@ class ComponentServiceImplTest {
   @Test
   void update_shouldReplaceEditableStateAndAttributesWhilePreservingImages() {
     ComponentImage image =
-        ComponentImage.builder().id(30L).componentId(7L).url("/image.jpg").orderIndex(1).build();
+        ComponentImage.builder()
+            .id(30L)
+            .componentId(7L)
+            .objectKey("components/7/image.jpg")
+            .orderIndex(1)
+            .build();
     Component existingComponent =
         Component.builder()
             .id(7L)
@@ -243,9 +248,19 @@ class ComponentServiceImplTest {
   @Test
   void getImagesByComponentId_shouldReturnImagesForArchivedComponent() {
     ComponentImage firstImage =
-        ComponentImage.builder().id(9L).componentId(7L).url("/first.png").orderIndex(0).build();
+        ComponentImage.builder()
+            .id(9L)
+            .componentId(7L)
+            .objectKey("components/7/first.png")
+            .orderIndex(0)
+            .build();
     ComponentImage secondImage =
-        ComponentImage.builder().id(10L).componentId(7L).url("/second.png").orderIndex(1).build();
+        ComponentImage.builder()
+            .id(10L)
+            .componentId(7L)
+            .objectKey("components/7/second.png")
+            .orderIndex(1)
+            .build();
     Component component =
         Component.builder().id(7L).archived(true).images(List.of(firstImage, secondImage)).build();
     when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
@@ -272,6 +287,34 @@ class ComponentServiceImplTest {
     assertThatThrownBy(() -> componentService.getImagesByComponentId(7L))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining("7");
+  }
+
+  @Test
+  void getImageContent_shouldReadStoredObjectByImageId() {
+    ComponentImage image =
+        ComponentImage.builder()
+            .id(42L)
+            .componentId(7L)
+            .objectKey("components/7/image.webp")
+            .build();
+    ComponentImageContent content = new ComponentImageContent(new byte[] {1, 2, 3}, "image/webp");
+    when(componentRepository.getImageById(42L)).thenReturn(Optional.of(image));
+    when(componentImageStorage.read("components/7/image.webp")).thenReturn(content);
+
+    assertThat(componentService.getImageContent(42L)).isSameAs(content);
+    verify(componentRepository).getImageById(42L);
+    verify(componentImageStorage).read("components/7/image.webp");
+  }
+
+  @Test
+  void getImageContent_shouldThrowNotFoundExceptionBeforeStorageWhenImageDoesNotExist() {
+    when(componentRepository.getImageById(404L)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> componentService.getImageContent(404L))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessageContaining("404");
+
+    verifyNoInteractions(componentImageStorage);
   }
 
   @Test
@@ -416,17 +459,18 @@ class ComponentServiceImplTest {
   void uploadImage_shouldStoreAndPersistImageWithNextOrderIndex() {
     Component component = Component.builder().id(7L).archived(false).build();
     ComponentImageUpload upload = new ComponentImageUpload(new byte[] {1, 2, 3}, "image/png");
-    StoredImage storedImage =
-        new StoredImage(
-            "components/7/image.png",
-            "http://storage/configurator-components/components/7/image.png");
+    StoredImage storedImage = new StoredImage("components/7/image.png");
     ComponentImage expectedMetadata =
-        ComponentImage.builder().componentId(7L).url(storedImage.url()).orderIndex(4).build();
+        ComponentImage.builder()
+            .componentId(7L)
+            .objectKey(storedImage.objectKey())
+            .orderIndex(4)
+            .build();
     ComponentImage createdImage =
         ComponentImage.builder()
             .id(12L)
             .componentId(7L)
-            .url(storedImage.url())
+            .objectKey(storedImage.objectKey())
             .orderIndex(4)
             .build();
 
@@ -448,7 +492,7 @@ class ComponentServiceImplTest {
   void uploadImage_shouldUseExplicitOrderIndex() {
     Component component = Component.builder().id(7L).archived(false).build();
     ComponentImageUpload upload = new ComponentImageUpload(new byte[] {1, 2, 3}, "image/png");
-    StoredImage storedImage = new StoredImage("components/7/image.png", "http://storage/image.png");
+    StoredImage storedImage = new StoredImage("components/7/image.png");
     ComponentImage createdImage =
         ComponentImage.builder().id(12L).componentId(7L).orderIndex(9).build();
 
@@ -462,7 +506,11 @@ class ComponentServiceImplTest {
     verify(componentRepository, never()).getNextImageOrderIndex(anyLong());
     verify(componentRepository)
         .createImage(
-            ComponentImage.builder().componentId(7L).url(storedImage.url()).orderIndex(9).build());
+            ComponentImage.builder()
+                .componentId(7L)
+                .objectKey(storedImage.objectKey())
+                .orderIndex(9)
+                .build());
   }
 
   @Test
@@ -499,7 +547,7 @@ class ComponentServiceImplTest {
   void uploadImage_shouldDeleteStoredObjectWhenMetadataPersistenceFails() {
     Component component = Component.builder().id(7L).archived(false).build();
     ComponentImageUpload upload = new ComponentImageUpload(new byte[] {1, 2, 3}, "image/png");
-    StoredImage storedImage = new StoredImage("components/7/image.png", "http://storage/image.png");
+    StoredImage storedImage = new StoredImage("components/7/image.png");
     when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
     when(componentRepository.getNextImageOrderIndex(7L)).thenReturn(0);
     when(componentImageStorage.store(7L, upload)).thenReturn(storedImage);

@@ -9,6 +9,7 @@ import org.springframework.core.io.ClassPathResource
 import org.springframework.jdbc.datasource.DriverManagerDataSource
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator
 import ru.sultanyarov.configurator.contract.AbstractComponentControllerContract
+import ru.sultanyarov.configurator.contract.BinaryTestResponse
 import ru.sultanyarov.configurator.contract.TestResponse
 
 class ComponentControllerExternalIntegrationSpec extends AbstractComponentControllerContract {
@@ -42,6 +43,22 @@ class ComponentControllerExternalIntegrationSpec extends AbstractComponentContro
     TestResponse get(String path, Map<String, ?> queryParams) {
         def response = RestAssured.given().baseUri(baseUrl).accept(ContentType.JSON).queryParams(queryParams.collectEntries { key, value -> [(key): String.valueOf(value)] }).when().get(path).then().extract().response()
         return new TestResponse(response.statusCode(), response.asString())
+    }
+
+    @Override
+    BinaryTestResponse getBinary(String path) {
+        def response = RestAssured.given()
+                .baseUri(baseUrl)
+                .accept("*/*")
+                .when()
+                .get(path)
+                .then()
+                .extract()
+                .response()
+        def headers = response.headers().collectEntries { header ->
+            [(header.name): header.value]
+        }
+        return new BinaryTestResponse(response.statusCode(), response.asByteArray(), headers)
     }
 
     @Override

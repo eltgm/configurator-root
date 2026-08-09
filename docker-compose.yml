@@ -49,7 +49,6 @@ services:
       IMAGE_STORAGE_ACCESS_KEY: minioadmin
       IMAGE_STORAGE_SECRET_KEY: minioadmin
       IMAGE_STORAGE_BUCKET: configurator-components
-      IMAGE_STORAGE_PUBLIC_URL: http://localhost:9000
     ports:
       - "8080:8080"
 
