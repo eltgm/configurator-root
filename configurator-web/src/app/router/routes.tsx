@@ -1,5 +1,4 @@
 import {
-  IconAdjustments,
   IconAssembly,
   IconBox,
   IconCategory,
@@ -12,6 +11,8 @@ import {
 import { Navigate, type RouteObject } from 'react-router-dom';
 
 import { AppLayout } from '@/app/layout/AppLayout';
+import { RequireDomain } from '@/features/domains/ui/RequireDomain';
+import { DomainSettingsPage } from '@/pages/DomainSettingsPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { RouteErrorPage } from '@/pages/RouteErrorPage';
 import { RoutePlaceholder } from '@/pages/RoutePlaceholder';
@@ -26,83 +27,91 @@ export const appRoutes: RouteObject[] = [
       {
         path: 'configurator',
         element: (
-          <RoutePlaceholder
-            icon={IconAssembly}
-            titleKey="pages.configurator.title"
-            descriptionKey="pages.configurator.description"
-          />
+          <RequireDomain>
+            <RoutePlaceholder
+              icon={IconAssembly}
+              titleKey="pages.configurator.title"
+              descriptionKey="pages.configurator.description"
+            />
+          </RequireDomain>
         ),
       },
       {
         path: 'components',
         element: (
-          <RoutePlaceholder
-            icon={IconBox}
-            titleKey="pages.components.title"
-            descriptionKey="pages.components.description"
-          />
+          <RequireDomain>
+            <RoutePlaceholder
+              icon={IconBox}
+              titleKey="pages.components.title"
+              descriptionKey="pages.components.description"
+            />
+          </RequireDomain>
         ),
       },
       {
         path: 'configurations',
         element: (
-          <RoutePlaceholder
-            icon={IconFileDescription}
-            titleKey="pages.configurations.title"
-            descriptionKey="pages.configurations.description"
-          />
+          <RequireDomain>
+            <RoutePlaceholder
+              icon={IconFileDescription}
+              titleKey="pages.configurations.title"
+              descriptionKey="pages.configurations.description"
+            />
+          </RequireDomain>
         ),
       },
       { path: 'settings', element: <Navigate to="/settings/types" replace /> },
       {
         path: 'settings/types',
         element: (
-          <RoutePlaceholder
-            icon={IconCategory}
-            titleKey="pages.settingsTypes.title"
-            descriptionKey="pages.settingsTypes.description"
-          />
+          <RequireDomain>
+            <RoutePlaceholder
+              icon={IconCategory}
+              titleKey="pages.settingsTypes.title"
+              descriptionKey="pages.settingsTypes.description"
+            />
+          </RequireDomain>
         ),
       },
       {
         path: 'settings/compatibility/manual',
         element: (
-          <RoutePlaceholder
-            icon={IconCirclesRelation}
-            titleKey="pages.manualCompatibility.title"
-            descriptionKey="pages.manualCompatibility.description"
-          />
+          <RequireDomain>
+            <RoutePlaceholder
+              icon={IconCirclesRelation}
+              titleKey="pages.manualCompatibility.title"
+              descriptionKey="pages.manualCompatibility.description"
+            />
+          </RequireDomain>
         ),
       },
       {
         path: 'settings/compatibility/rules',
         element: (
-          <RoutePlaceholder
-            icon={IconListDetails}
-            titleKey="pages.compatibilityRules.title"
-            descriptionKey="pages.compatibilityRules.description"
-          />
+          <RequireDomain>
+            <RoutePlaceholder
+              icon={IconListDetails}
+              titleKey="pages.compatibilityRules.title"
+              descriptionKey="pages.compatibilityRules.description"
+            />
+          </RequireDomain>
         ),
       },
       {
         path: 'settings/compatibility/graph',
         element: (
-          <RoutePlaceholder
-            icon={IconGitBranch}
-            titleKey="pages.compatibilityGraph.title"
-            descriptionKey="pages.compatibilityGraph.description"
-          />
+          <RequireDomain>
+            <RoutePlaceholder
+              icon={IconGitBranch}
+              titleKey="pages.compatibilityGraph.title"
+              descriptionKey="pages.compatibilityGraph.description"
+            />
+          </RequireDomain>
         ),
       },
       {
         path: 'settings/domain',
-        element: (
-          <RoutePlaceholder
-            icon={IconAdjustments}
-            titleKey="pages.domainSettings.title"
-            descriptionKey="pages.domainSettings.description"
-          />
-        ),
+        element: <DomainSettingsPage />,
       },
       {
         path: '*',

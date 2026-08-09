@@ -131,6 +131,11 @@ export async function apiRequest<T>(request: Promise<T>): Promise<T> {
   }
 }
 
+export async function apiData<T>(request: Promise<{ data: T }>): Promise<T> {
+  const response = await apiRequest(request);
+  return response.data;
+}
+
 export function getFieldErrors(error: unknown): Readonly<Record<string, ReadonlyArray<string>>> {
   const normalizedError = normalizeApiError(error);
   const errorsByField: Record<string, Array<string>> = {};

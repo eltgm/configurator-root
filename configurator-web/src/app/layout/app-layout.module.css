@@ -14,11 +14,24 @@
 }
 
 .domain-context {
+  display: flex;
+  max-width: min(320px, 42vw);
   min-height: 40px;
+  align-items: center;
   padding: 6px 10px;
   border: 1px solid var(--mantine-color-default-border);
   border-radius: var(--mantine-radius-md);
   background: var(--mantine-color-default);
+  gap: var(--mantine-spacing-xs);
+}
+
+.domain-context:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.domain-selector-text {
+  min-width: 0;
+  max-width: 220px;
 }
 
 .main {

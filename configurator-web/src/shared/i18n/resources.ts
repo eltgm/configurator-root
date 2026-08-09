@@ -9,6 +9,71 @@ export const resources = {
         label: 'Предметная область',
         none: 'Не выбрана',
       },
+      common: {
+        cancel: 'Отмена',
+        save: 'Сохранить',
+        create: 'Создать',
+      },
+      domains: {
+        states: {
+          loading: 'Загрузка предметных областей',
+        },
+        selector: {
+          title: 'Выберите предметную область',
+          retry: 'Не удалось загрузить. Повторить',
+          empty: 'Создать первую область',
+          manage: 'Управление областями',
+        },
+        actions: {
+          create: 'Новая область',
+          createDemo: 'Добавить демо',
+          createDemoFull: 'Создать демо «Сборка ПК»',
+          edit: 'Редактировать',
+          editNamed: 'Редактировать область {{name}}',
+          delete: 'Удалить',
+          deleteNamed: 'Удалить область {{name}}',
+          select: 'Выбрать',
+        },
+        firstRun: {
+          title: 'Начните с предметной области',
+          description:
+            'Предметная область объединяет типы, компоненты, правила совместимости и сохранённые конфигурации.',
+          hint: 'Это не обязательный мастер: позже можно добавить другие области и переключаться между ними в верхнем меню.',
+        },
+        form: {
+          createTitle: 'Новая предметная область',
+          editTitle: 'Редактирование области',
+          name: 'Название',
+          namePlaceholder: 'Например, Сборка рабочего места',
+          description: 'Описание',
+          descriptionPlaceholder: 'Кратко опишите назначение области',
+          validation: {
+            nameRequired: 'Введите название',
+            nameTooLong: 'Название должно содержать не более 255 символов',
+          },
+        },
+        notifications: {
+          created: 'Предметная область создана',
+          demoCreated: 'Демо «Сборка ПК» создано',
+          updated: 'Изменения сохранены',
+          deleted: 'Предметная область удалена',
+        },
+        management: {
+          title: 'Предметные области',
+          description: 'Создавайте области, выбирайте текущую и изменяйте их основные параметры.',
+          emptyTitle: 'Предметных областей пока нет',
+          emptyDescription: 'Создайте пустую область или добавьте готовый демонстрационный пример.',
+          current: 'Текущая',
+          noDescription: 'Описание не задано',
+          createdAt: 'Создана {{date}}',
+        },
+        delete: {
+          title: 'Удалить предметную область?',
+          description: 'Область «{{name}}» будет удалена.',
+          warning:
+            'Действие необратимо. Если в области есть связанные данные, сервер безопасно отклонит удаление.',
+        },
+      },
       navigation: {
         label: 'Основная навигация',
         mobileLabel: 'Мобильная навигация',
@@ -121,6 +186,71 @@ export const resources = {
       domain: {
         label: 'Domain',
         none: 'Not selected',
+      },
+      common: {
+        cancel: 'Cancel',
+        save: 'Save',
+        create: 'Create',
+      },
+      domains: {
+        states: {
+          loading: 'Loading domains',
+        },
+        selector: {
+          title: 'Select a domain',
+          retry: 'Could not load. Try again',
+          empty: 'Create the first domain',
+          manage: 'Manage domains',
+        },
+        actions: {
+          create: 'New domain',
+          createDemo: 'Add demo',
+          createDemoFull: 'Create “PC Build” demo',
+          edit: 'Edit',
+          editNamed: 'Edit domain {{name}}',
+          delete: 'Delete',
+          deleteNamed: 'Delete domain {{name}}',
+          select: 'Select',
+        },
+        firstRun: {
+          title: 'Start with a domain',
+          description:
+            'A domain groups component types, components, compatibility rules, and saved configurations.',
+          hint: 'This is not a required wizard: you can add more domains later and switch between them from the top menu.',
+        },
+        form: {
+          createTitle: 'New domain',
+          editTitle: 'Edit domain',
+          name: 'Name',
+          namePlaceholder: 'For example, Workplace build',
+          description: 'Description',
+          descriptionPlaceholder: 'Briefly describe the purpose of this domain',
+          validation: {
+            nameRequired: 'Enter a name',
+            nameTooLong: 'The name must contain no more than 255 characters',
+          },
+        },
+        notifications: {
+          created: 'Domain created',
+          demoCreated: '“PC Build” demo created',
+          updated: 'Changes saved',
+          deleted: 'Domain deleted',
+        },
+        management: {
+          title: 'Domains',
+          description: 'Create domains, select the current one, and edit their main settings.',
+          emptyTitle: 'There are no domains yet',
+          emptyDescription: 'Create an empty domain or add the ready-to-use demonstration example.',
+          current: 'Current',
+          noDescription: 'No description',
+          createdAt: 'Created {{date}}',
+        },
+        delete: {
+          title: 'Delete domain?',
+          description: 'The “{{name}}” domain will be deleted.',
+          warning:
+            'This action cannot be undone. If the domain has related data, the server will safely reject deletion.',
+        },
       },
       navigation: {
         label: 'Main navigation',

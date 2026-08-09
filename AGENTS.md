@@ -38,7 +38,7 @@ Frontend:
 
 - Node.js 24 LTS, npm 11;
 - React 19.2, TypeScript 6.0 strict, Vite 8.2;
-- React Router 7.18, Mantine 9.5, TanStack Query 5, i18next/react-i18next;
+- React Router 7.18, Mantine 9.5, TanStack Query 5, React Hook Form 7, Zod 4, i18next/react-i18next;
 - ESLint flat config, Prettier, Stylelint;
 - Vitest, Testing Library, MSW, Playwright.
 
@@ -104,6 +104,12 @@ resources, а прикладная тема — использовать Mantine
 Server state хранится через общий TanStack Query provider; предметные страницы не дублируют API-данные в глобальных
 context/store. Ошибки generated client нормализуются через `src/shared/api`, а loading/empty/error состояния собираются
 из `src/shared/ui`. Мутации автоматически не повторяются; success-уведомление вызывается предметным сценарием явно.
+
+Предметная frontend-логика группируется в `src/features/<feature>/{api,model,ui}`. Список областей хранится только в
+TanStack Query, а `DomainProvider` предоставляет выбранный ID и производную текущую область. Последний корректный ID
+сохраняется в `localStorage`, но не добавляется в URL. Query keys всех последующих domain-dependent features обязаны
+включать `domainId`, чтобы данные разных областей не смешивались. Бизнес-формы используют React Hook Form + Zod и
+привязывают нормализованные backend field details к соответствующим полям.
 
 ### База данных
 

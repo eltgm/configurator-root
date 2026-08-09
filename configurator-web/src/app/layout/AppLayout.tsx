@@ -1,5 +1,5 @@
-import { Anchor, AppShell, Box, Group, Text, ThemeIcon, Tooltip } from '@mantine/core';
-import { IconAssembly, IconDatabase } from '@tabler/icons-react';
+import { Anchor, AppShell, Group, Text, ThemeIcon } from '@mantine/core';
+import { IconAssembly } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Link, Outlet } from 'react-router-dom';
 
@@ -7,10 +7,19 @@ import { DesktopNavigation } from '@/app/layout/DesktopNavigation';
 import { MobileNavigation } from '@/app/layout/MobileNavigation';
 import { PreferencesMenu } from '@/app/layout/PreferencesMenu';
 import classes from '@/app/layout/app-layout.module.css';
+import { DomainProvider } from '@/features/domains/model/DomainProvider';
+import { DomainSelector } from '@/features/domains/ui/DomainSelector';
 
 export function AppLayout() {
+  return (
+    <DomainProvider>
+      <AppLayoutContent />
+    </DomainProvider>
+  );
+}
+
+function AppLayoutContent() {
   const { t } = useTranslation();
-  const domainLabel = `${t('domain.label')}: ${t('domain.none')}`;
 
   return (
     <>
@@ -44,24 +53,7 @@ export function AppLayout() {
             </Anchor>
 
             <Group gap="xs" wrap="nowrap">
-              <Tooltip label={domainLabel}>
-                <Group
-                  className={classes['domain-context']}
-                  gap="xs"
-                  wrap="nowrap"
-                  aria-label={domainLabel}
-                >
-                  <IconDatabase size={20} stroke={1.7} />
-                  <Box visibleFrom="sm">
-                    <Text size="xs" c="dimmed" lh={1.1}>
-                      {t('domain.label')}
-                    </Text>
-                    <Text size="sm" fw={600} lh={1.3}>
-                      {t('domain.none')}
-                    </Text>
-                  </Box>
-                </Group>
-              </Tooltip>
+              <DomainSelector />
               <PreferencesMenu />
             </Group>
           </Group>
