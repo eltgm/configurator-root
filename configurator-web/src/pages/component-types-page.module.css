@@ -1,0 +1,36 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(15rem, 0.75fr) minmax(0, 2fr);
+  gap: var(--mantine-spacing-lg);
+  align-items: start;
+}
+
+.master,
+.detail {
+  min-width: 0;
+}
+
+.type-option {
+  width: 100%;
+  padding: var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-md);
+  color: var(--mantine-color-text);
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.type-option:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.type-option[data-selected] {
+  color: var(--mantine-primary-color-filled);
+  background: var(--mantine-primary-color-light);
+}
+
+@media (width <= 62em) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
