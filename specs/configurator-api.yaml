@@ -1583,6 +1583,13 @@ paths:
           in: query
           schema:
             type: string
+        - name: archived
+          in: query
+          description: |
+            Optional archive filter. true returns only archived components, false returns only active
+            components, and an omitted parameter preserves the existing unfiltered result.
+          schema:
+            type: boolean
         - name: page
           in: query
           schema:
@@ -1738,6 +1745,42 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /components/{id}/restore:
+    post:
+      tags: [ Components ]
+      summary: Restore archived component
+      description: |
+        Idempotently returns a component to the active catalog. An already active component is
+        returned unchanged. Attributes, images, compatibility links, and configuration references
+        are preserved.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '200':
+          description: Component is active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Component'
+        '400':
+          description: Invalid component identifier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Component not found
           content:
             application/json:
               schema:

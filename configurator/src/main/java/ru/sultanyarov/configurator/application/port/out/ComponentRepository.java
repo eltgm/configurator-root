@@ -43,6 +43,14 @@ public interface ComponentRepository {
   boolean archiveComponentById(Long id);
 
   /**
+   * Marks a component as active.
+   *
+   * @param id the unique identifier of the component
+   * @return {@code true} when a component row was updated
+   */
+  boolean restoreComponentById(Long id);
+
+  /**
    * Persists image metadata for a component.
    *
    * @param image image metadata containing component, object key and display order
@@ -102,6 +110,6 @@ public interface ComponentRepository {
    * @param size the number of items per page
    * @return a page containing components matching the specified filters and pagination information
    */
-  Page<Component> findPageByDomainIdComponentTypeIdName(
-      Long domainId, Long componentTypeId, String name, int page, int size);
+  Page<Component> findPageByDomainIdComponentTypeIdNameArchived(
+      Long domainId, Long componentTypeId, String name, Boolean archived, int page, int size);
 }

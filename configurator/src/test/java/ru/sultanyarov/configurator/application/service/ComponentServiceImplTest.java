@@ -466,14 +466,16 @@ class ComponentServiceImplTest {
     Page<Component> page = new Page<>(List.of(), 0, 10, 0);
 
     when(domainService.getById(1L)).thenReturn(domain);
-    when(componentRepository.findPageByDomainIdComponentTypeIdName(1L, null, "name", 0, 10))
+    when(componentRepository.findPageByDomainIdComponentTypeIdNameArchived(
+            1L, null, "name", true, 0, 10))
         .thenReturn(page);
 
-    Page<Component> result = componentService.getByPageByDomainId(1L, null, "name", 0, 10);
+    Page<Component> result = componentService.getByPageByDomainId(1L, null, "name", true, 0, 10);
 
     assertThat(result).isSameAs(page);
     verify(domainService).getById(1L);
-    verify(componentRepository).findPageByDomainIdComponentTypeIdName(1L, null, "name", 0, 10);
+    verify(componentRepository)
+        .findPageByDomainIdComponentTypeIdNameArchived(1L, null, "name", true, 0, 10);
   }
 
   @Test
@@ -482,11 +484,14 @@ class ComponentServiceImplTest {
     Page<Component> page = new Page<>(List.of(), 0, 10, 0);
 
     when(domainService.getById(1L)).thenReturn(domain);
-    when(componentRepository.findPageByDomainIdComponentTypeIdName(1L, null, null, 0, 10))
+    when(componentRepository.findPageByDomainIdComponentTypeIdNameArchived(
+            1L, null, null, null, 0, 10))
         .thenReturn(page);
 
-    assertThat(componentService.getByPageByDomainId(1L, null, null, null, null)).isSameAs(page);
-    verify(componentRepository).findPageByDomainIdComponentTypeIdName(1L, null, null, 0, 10);
+    assertThat(componentService.getByPageByDomainId(1L, null, null, null, null, null))
+        .isSameAs(page);
+    verify(componentRepository)
+        .findPageByDomainIdComponentTypeIdNameArchived(1L, null, null, null, 0, 10);
   }
 
   @Test
@@ -494,13 +499,13 @@ class ComponentServiceImplTest {
     Domain domain = Domain.builder().id(1L).componentTypes(List.of()).build();
     when(domainService.getById(1L)).thenReturn(domain);
 
-    assertThatThrownBy(() -> componentService.getByPageByDomainId(1L, null, null, -1, 10))
+    assertThatThrownBy(() -> componentService.getByPageByDomainId(1L, null, null, null, -1, 10))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Page index");
-    assertThatThrownBy(() -> componentService.getByPageByDomainId(1L, null, null, 0, 0))
+    assertThatThrownBy(() -> componentService.getByPageByDomainId(1L, null, null, null, 0, 0))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Page size");
-    assertThatThrownBy(() -> componentService.getByPageByDomainId(1L, null, null, 0, 101))
+    assertThatThrownBy(() -> componentService.getByPageByDomainId(1L, null, null, null, 0, 101))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Page size");
 
@@ -517,13 +522,15 @@ class ComponentServiceImplTest {
     Page<Component> page = new Page<>(List.of(), 1, 5, 0);
 
     when(domainService.getById(1L)).thenReturn(domain);
-    when(componentRepository.findPageByDomainIdComponentTypeIdName(1L, 2L, null, 1, 5))
+    when(componentRepository.findPageByDomainIdComponentTypeIdNameArchived(
+            1L, 2L, null, false, 1, 5))
         .thenReturn(page);
 
-    Page<Component> result = componentService.getByPageByDomainId(1L, 2L, null, 1, 5);
+    Page<Component> result = componentService.getByPageByDomainId(1L, 2L, null, false, 1, 5);
 
     assertThat(result).isSameAs(page);
-    verify(componentRepository).findPageByDomainIdComponentTypeIdName(1L, 2L, null, 1, 5);
+    verify(componentRepository)
+        .findPageByDomainIdComponentTypeIdNameArchived(1L, 2L, null, false, 1, 5);
   }
 
   @Test
@@ -536,7 +543,7 @@ class ComponentServiceImplTest {
 
     when(domainService.getById(1L)).thenReturn(domain);
 
-    assertThatThrownBy(() -> componentService.getByPageByDomainId(1L, 2L, null, 0, 10))
+    assertThatThrownBy(() -> componentService.getByPageByDomainId(1L, 2L, null, null, 0, 10))
         .isInstanceOf(ValidationException.class)
         .hasMessage("Тип компонента не принадлежит указанному домену");
 
@@ -596,6 +603,62 @@ class ComponentServiceImplTest {
     assertThatThrownBy(() -> componentService.archiveById(7L))
         .isInstanceOf(BusinessException.class)
         .hasMessageContaining("Failed to archive component");
+  }
+
+  @Test
+  void restoreById_shouldRestoreArchivedComponentAndPreserveRelatedData() {
+    AttributeValue attribute = AttributeValue.builder().id(11L).value("42").build();
+    ComponentImage image = new ComponentImage(21L, 7L, "components/7/image.png", 0);
+    Component component =
+        Component.builder()
+            .id(7L)
+            .archived(true)
+            .attributes(List.of(attribute))
+            .images(List.of(image))
+            .build();
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+    when(componentRepository.restoreComponentById(7L)).thenReturn(true);
+
+    Component result = componentService.restoreById(7L);
+
+    assertThat(result).isSameAs(component);
+    assertThat(result.getArchived()).isFalse();
+    assertThat(result.getAttributes()).containsExactly(attribute);
+    assertThat(result.getImages()).containsExactly(image);
+    verify(componentRepository).restoreComponentById(7L);
+  }
+
+  @Test
+  void restoreById_shouldBeIdempotentForActiveComponent() {
+    Component component = Component.builder().id(7L).archived(false).build();
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+
+    assertThat(componentService.restoreById(7L)).isSameAs(component);
+
+    verify(componentRepository, never()).restoreComponentById(anyLong());
+  }
+
+  @Test
+  void restoreById_shouldThrowNotFoundExceptionWhenComponentDoesNotExist() {
+    when(componentRepository.getById(7L)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> componentService.restoreById(7L))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessageContaining("7");
+
+    verify(componentRepository, never()).restoreComponentById(anyLong());
+  }
+
+  @Test
+  void restoreById_shouldThrowBusinessExceptionWhenRepositoryDidNotRestoreComponent() {
+    Component component = Component.builder().id(7L).archived(true).build();
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+    when(componentRepository.restoreComponentById(7L)).thenReturn(false);
+
+    assertThatThrownBy(() -> componentService.restoreById(7L))
+        .isInstanceOf(BusinessException.class)
+        .hasMessageContaining("Failed to restore component");
+    assertThat(component.getArchived()).isTrue();
   }
 
   @Test

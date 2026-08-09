@@ -50,6 +50,14 @@ public interface ComponentService {
   void archiveById(Long id);
 
   /**
+   * Idempotently restores a component to the active catalog.
+   *
+   * @param id the component identifier
+   * @return the active component with its related data
+   */
+  Component restoreById(Long id);
+
+  /**
    * Stores and attaches an image to an active component.
    *
    * @param id the component identifier
@@ -118,5 +126,10 @@ public interface ComponentService {
    *     does not belong to the specified domain
    */
   Page<Component> getByPageByDomainId(
-      Long domainId, Long componentTypeId, String name, Integer page, Integer size);
+      Long domainId,
+      Long componentTypeId,
+      String name,
+      Boolean archived,
+      Integer page,
+      Integer size);
 }
