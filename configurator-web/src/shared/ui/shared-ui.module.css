@@ -3,3 +3,26 @@
   display: grid;
   place-items: center;
 }
+
+.page-header-copy {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.page-header-title {
+  overflow-wrap: anywhere;
+}
+
+.page-header-actions {
+  max-width: 100%;
+}
+
+@media (width <= 48em) {
+  .page-header-title {
+    font-size: 2rem;
+  }
+
+  .page-header-actions {
+    width: 100%;
+  }
+}

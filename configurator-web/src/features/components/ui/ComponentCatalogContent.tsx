@@ -14,6 +14,7 @@ import {
 } from '@mantine/core';
 import { IconArchive, IconPhotoOff, IconRestore } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 
 import { toComponentImageUrl } from '@/features/components/model/catalog-preferences';
 import type { Component, ComponentImage, ComponentType } from '@/shared/api';
@@ -156,7 +157,9 @@ export function ComponentCatalogContent({
               <Stack gap={5}>
                 <Group justify="space-between" align="flex-start" wrap="nowrap">
                   <Title order={2} size="h4">
-                    {component.name}
+                    <Link className={classes.link} to={`/components/${component.id}`}>
+                      {component.name}
+                    </Link>
                   </Title>
                   {archived ? <Badge color="gray">{t('components.item.archived')}</Badge> : null}
                 </Group>
@@ -203,7 +206,14 @@ export function ComponentCatalogContent({
                 <Table.Td>
                   <Group gap="sm" wrap="nowrap">
                     <ComponentPreview component={component} compact />
-                    <Text fw={600}>{component.name}</Text>
+                    <Text
+                      component={Link}
+                      className={classes.link}
+                      to={`/components/${component.id}`}
+                      fw={600}
+                    >
+                      {component.name}
+                    </Text>
                   </Group>
                 </Table.Td>
                 <Table.Td>{component.brand || t('components.item.noBrand')}</Table.Td>
@@ -231,7 +241,13 @@ export function ComponentCatalogContent({
               <ComponentPreview component={component} compact />
               <Stack gap={7} flex={1} miw={0}>
                 <Stack gap={2}>
-                  <Text fw={600} truncate>
+                  <Text
+                    component={Link}
+                    className={classes.link}
+                    to={`/components/${component.id}`}
+                    fw={600}
+                    truncate
+                  >
                     {component.name}
                   </Text>
                   <Text size="xs" c="dimmed" truncate>

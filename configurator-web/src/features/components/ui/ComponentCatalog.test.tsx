@@ -204,7 +204,7 @@ describe('component catalog', () => {
     ).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Восстановить' }));
 
-    expect(await screen.findByRole('heading', { name: 'Архив пус' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Архив пуст' })).toBeInTheDocument();
     expect(await screen.findByText('Компонент восстановлен')).toBeInTheDocument();
   });
 

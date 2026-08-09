@@ -11,6 +11,8 @@ import { Navigate, type RouteObject } from 'react-router-dom';
 import { AppLayout } from '@/app/layout/AppLayout';
 import { RequireDomain } from '@/features/domains/ui/RequireDomain';
 import { ComponentsPage } from '@/pages/ComponentsPage';
+import { ComponentDetailsPage } from '@/pages/ComponentDetailsPage';
+import { ComponentFormPage } from '@/pages/ComponentFormPage';
 import { ComponentTypesPage } from '@/pages/ComponentTypesPage';
 import { DomainSettingsPage } from '@/pages/DomainSettingsPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -41,6 +43,30 @@ export const appRoutes: RouteObject[] = [
         element: (
           <RequireDomain>
             <ComponentsPage />
+          </RequireDomain>
+        ),
+      },
+      {
+        path: 'components/new',
+        element: (
+          <RequireDomain>
+            <ComponentFormPage />
+          </RequireDomain>
+        ),
+      },
+      {
+        path: 'components/:componentId',
+        element: (
+          <RequireDomain>
+            <ComponentDetailsPage />
+          </RequireDomain>
+        ),
+      },
+      {
+        path: 'components/:componentId/edit',
+        element: (
+          <RequireDomain>
+            <ComponentFormPage />
           </RequireDomain>
         ),
       },
