@@ -21,4 +21,14 @@ const defaultDomainPage: DomainPage = {
 
 export const server = setupServer(
   http.get(`${testApiBaseUrl}/domains`, () => HttpResponse.json(defaultDomainPage)),
+  http.get(`${testApiBaseUrl}/domains/:domainId/component-types`, () => HttpResponse.json([])),
+  http.get(`${testApiBaseUrl}/domains/:domainId/components`, ({ request }) => {
+    const url = new URL(request.url);
+    return HttpResponse.json({
+      items: [],
+      page: Number(url.searchParams.get('page') ?? 0),
+      size: Number(url.searchParams.get('size') ?? 12),
+      totalItems: 0,
+    });
+  }),
 );

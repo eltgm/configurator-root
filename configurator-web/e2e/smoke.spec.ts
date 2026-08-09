@@ -37,6 +37,31 @@ const attributes = [
   },
 ];
 
+const componentPage = {
+  items: [
+    {
+      id: 101,
+      componentTypeId: 11,
+      name: 'Ryzen 7 7800X3D',
+      brand: 'AMD',
+      archived: false,
+      createdAt: '2026-08-09T12:00:00Z',
+      attributes: [
+        {
+          attributeDefinitionId: 1011,
+          name: 'cores',
+          label: 'Количество ядер',
+          dataType: 'NUMBER',
+          value: '8',
+        },
+      ],
+    },
+  ],
+  page: 0,
+  size: 12,
+  totalItems: 1,
+};
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/domains*', async (route) => {
     await route.fulfill({ json: domainPage });
@@ -46,6 +71,9 @@ test.beforeEach(async ({ page }) => {
   });
   await page.route('**/api/component-types/*/attributes', async (route) => {
     await route.fulfill({ json: attributes });
+  });
+  await page.route('**/api/domains/*/components*', async (route) => {
+    await route.fulfill({ json: componentPage });
   });
 });
 
@@ -75,4 +103,22 @@ test('shows types and attributes for the selected domain', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 2, name: 'Процессор' })).toBeVisible();
   await expect(page.getByText('Количество ядер')).toBeVisible();
   await expect(page.getByText('Обязательный')).toBeVisible();
+});
+
+test('shows the component catalog and replaces the table with a compact mobile list', async ({
+  page,
+}) => {
+  await page.goto('/components');
+
+  await expect(page.getByRole('heading', { level: 1, name: 'Компоненты' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Ryzen 7 7800X3D' })).toBeVisible();
+  await page.getByText('Таблица', { exact: true }).click();
+  await expect(page.getByTestId('desktop-component-table')).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId('desktop-component-table')).toBeHidden();
+  await expect(page.getByTestId('mobile-component-list')).toBeVisible();
+  await expect(
+    page.getByTestId('mobile-component-list').getByText('Ryzen 7 7800X3D', { exact: true }),
+  ).toBeVisible();
 });
