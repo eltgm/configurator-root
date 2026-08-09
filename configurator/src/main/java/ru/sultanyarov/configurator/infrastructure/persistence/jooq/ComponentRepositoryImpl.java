@@ -82,6 +82,16 @@ public class ComponentRepositoryImpl implements ComponentRepository {
   }
 
   @Override
+  public boolean restoreComponentById(Long id) {
+    return dslContext
+            .update(COMPONENT)
+            .set(COMPONENT.ARCHIVED, false)
+            .where(COMPONENT.ID.eq(id))
+            .execute()
+        > 0;
+  }
+
+  @Override
   public Optional<ComponentImage> createImage(ComponentImage image) {
     var componentImage = Tables.COMPONENT_IMAGE;
     return dslContext
@@ -147,8 +157,8 @@ public class ComponentRepositoryImpl implements ComponentRepository {
   }
 
   @Override
-  public Page<Component> findPageByDomainIdComponentTypeIdName(
-      Long domainId, Long componentTypeId, String name, int page, int size) {
+  public Page<Component> findPageByDomainIdComponentTypeIdNameArchived(
+      Long domainId, Long componentTypeId, String name, Boolean archived, int page, int size) {
     Condition condition =
         COMPONENT.COMPONENT_TYPE_ID.in(
             dslContext
@@ -162,6 +172,10 @@ public class ComponentRepositoryImpl implements ComponentRepository {
 
     if (name != null && !name.isBlank()) {
       condition = condition.and(COMPONENT.NAME.eq(name));
+    }
+
+    if (archived != null) {
+      condition = condition.and(COMPONENT.ARCHIVED.eq(archived));
     }
 
     return jooqPage(

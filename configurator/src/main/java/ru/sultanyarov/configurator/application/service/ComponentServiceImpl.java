@@ -147,6 +147,22 @@ public class ComponentServiceImpl implements ComponentService {
   }
 
   @Override
+  @Transactional
+  public Component restoreById(Long id) {
+    log.debug("restore component with id {}", id);
+    Component component = getById(id);
+    if (!Boolean.TRUE.equals(component.getArchived())) {
+      return component;
+    }
+
+    if (!componentRepository.restoreComponentById(id)) {
+      throw new BusinessException("Failed to restore component with id {}", id);
+    }
+    component.setArchived(false);
+    return component;
+  }
+
+  @Override
   public ComponentImage uploadImage(Long id, ComponentImageUpload image, Integer orderIndex) {
     log.debug("upload image for component with id {}", id);
     Component component = getById(id);
@@ -276,7 +292,12 @@ public class ComponentServiceImpl implements ComponentService {
 
   @Override
   public Page<Component> getByPageByDomainId(
-      Long domainId, Long componentTypeId, String name, Integer page, Integer size) {
+      Long domainId,
+      Long componentTypeId,
+      String name,
+      Boolean archived,
+      Integer page,
+      Integer size) {
     log.debug("get component by domain id {}, component type id {}", domainId, componentTypeId);
     Domain domain = domainService.getById(domainId);
     validateComponentType(componentTypeId, domain);
@@ -284,8 +305,8 @@ public class ComponentServiceImpl implements ComponentService {
     int resolvedSize = size == null ? DEFAULT_PAGE_SIZE : size;
     validatePagination(resolvedPage, resolvedSize);
 
-    return componentRepository.findPageByDomainIdComponentTypeIdName(
-        domainId, componentTypeId, name, resolvedPage, resolvedSize);
+    return componentRepository.findPageByDomainIdComponentTypeIdNameArchived(
+        domainId, componentTypeId, name, archived, resolvedPage, resolvedSize);
   }
 
   private static void validatePagination(int page, int size) {

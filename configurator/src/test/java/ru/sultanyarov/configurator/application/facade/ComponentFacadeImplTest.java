@@ -88,13 +88,13 @@ class ComponentFacadeImplTest {
     Page<ru.sultanyarov.configurator.domain.model.Component> page = new Page<>(List.of(), 0, 10, 0);
     ComponentPage pageDto = new ComponentPage();
 
-    when(componentService.getByPageByDomainId(1L, 2L, "name", 0, 10)).thenReturn(page);
+    when(componentService.getByPageByDomainId(1L, 2L, "name", true, 0, 10)).thenReturn(page);
     when(componentMapper.toComponentPageDto(page)).thenReturn(pageDto);
 
-    ComponentPage result = componentFacade.getComponentsByDomainId(1L, 2L, "name", 0, 10);
+    ComponentPage result = componentFacade.getComponentsByDomainId(1L, 2L, "name", true, 0, 10);
 
     assertThat(result).isSameAs(pageDto);
-    verify(componentService).getByPageByDomainId(1L, 2L, "name", 0, 10);
+    verify(componentService).getByPageByDomainId(1L, 2L, "name", true, 0, 10);
     verify(componentMapper).toComponentPageDto(page);
   }
 
@@ -119,6 +119,22 @@ class ComponentFacadeImplTest {
     componentFacade.archiveComponent(7L);
 
     verify(componentService).archiveById(7L);
+  }
+
+  @Test
+  void restoreComponent_shouldDelegateToServiceAndMapToDto() {
+    ru.sultanyarov.configurator.domain.model.Component restoredEntity =
+        ru.sultanyarov.configurator.domain.model.Component.builder().id(7L).archived(false).build();
+    Component dto = new Component();
+
+    when(componentService.restoreById(7L)).thenReturn(restoredEntity);
+    when(componentMapper.toDto(restoredEntity)).thenReturn(dto);
+
+    Component result = componentFacade.restoreComponent(7L);
+
+    assertThat(result).isSameAs(dto);
+    verify(componentService).restoreById(7L);
+    verify(componentMapper).toDto(restoredEntity);
   }
 
   @Test

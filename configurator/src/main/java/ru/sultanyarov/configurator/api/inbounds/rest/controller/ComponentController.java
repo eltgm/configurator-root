@@ -58,6 +58,11 @@ public class ComponentController implements ComponentsApi {
   }
 
   @Override
+  public ResponseEntity<Component> componentsIdRestorePost(Long id) {
+    return ResponseEntity.ok(componentFacade.restoreComponent(id));
+  }
+
+  @Override
   public ResponseEntity<Component> componentsPost(CreateComponentRequest createComponentRequest) {
     return ResponseEntity.status(CREATED)
         .body(componentFacade.createComponent(createComponentRequest));
@@ -65,8 +70,14 @@ public class ComponentController implements ComponentsApi {
 
   @Override
   public ResponseEntity<ComponentPage> domainsDomainIdComponentsGet(
-      Long domainId, Long componentTypeId, String name, Integer page, Integer size) {
+      Long domainId,
+      Long componentTypeId,
+      String name,
+      Boolean archived,
+      Integer page,
+      Integer size) {
     return ResponseEntity.ok(
-        componentFacade.getComponentsByDomainId(domainId, componentTypeId, name, page, size));
+        componentFacade.getComponentsByDomainId(
+            domainId, componentTypeId, name, archived, page, size));
   }
 }

@@ -63,7 +63,11 @@ class ComponentControllerExternalIntegrationSpec extends AbstractComponentContro
 
     @Override
     TestResponse post(String path, Object body) {
-        def response = RestAssured.given().baseUri(baseUrl).contentType(ContentType.JSON).accept(ContentType.JSON).body(objectMapper.writeValueAsString(body)).when().post(path).then().extract().response()
+        def request = RestAssured.given().baseUri(baseUrl).accept(ContentType.JSON)
+        if (body != null) {
+            request.contentType(ContentType.JSON).body(objectMapper.writeValueAsString(body))
+        }
+        def response = request.when().post(path).then().extract().response()
         return new TestResponse(response.statusCode(), response.asString())
     }
 

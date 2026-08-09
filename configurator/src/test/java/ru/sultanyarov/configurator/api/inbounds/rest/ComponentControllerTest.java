@@ -47,14 +47,15 @@ class ComponentControllerTest {
   void domainsDomainIdComponentsGet_shouldDelegateSearchToFacade() {
     ComponentPage componentPage = new ComponentPage();
 
-    when(componentFacade.getComponentsByDomainId(1L, 2L, "name", 0, 10)).thenReturn(componentPage);
+    when(componentFacade.getComponentsByDomainId(1L, 2L, "name", true, 0, 10))
+        .thenReturn(componentPage);
 
     ResponseEntity<ComponentPage> response =
-        componentController.domainsDomainIdComponentsGet(1L, 2L, "name", 0, 10);
+        componentController.domainsDomainIdComponentsGet(1L, 2L, "name", true, 0, 10);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isSameAs(componentPage);
-    verify(componentFacade).getComponentsByDomainId(1L, 2L, "name", 0, 10);
+    verify(componentFacade).getComponentsByDomainId(1L, 2L, "name", true, 0, 10);
   }
 
   @Test
@@ -91,6 +92,18 @@ class ComponentControllerTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     assertThat(response.getBody()).isNull();
     verify(componentFacade).archiveComponent(7L);
+  }
+
+  @Test
+  void componentsIdRestorePost_shouldDelegateRestorationToFacade() {
+    Component component = new Component();
+    when(componentFacade.restoreComponent(7L)).thenReturn(component);
+
+    ResponseEntity<Component> response = componentController.componentsIdRestorePost(7L);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).isSameAs(component);
+    verify(componentFacade).restoreComponent(7L);
   }
 
   @Test

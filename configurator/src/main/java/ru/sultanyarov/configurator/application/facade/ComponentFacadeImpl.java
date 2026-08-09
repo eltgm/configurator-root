@@ -47,6 +47,12 @@ public class ComponentFacadeImpl implements ComponentFacade {
   }
 
   @Override
+  public Component restoreComponent(Long componentId) {
+    log.info("Restoring component with id {}", componentId);
+    return componentMapper.toDto(componentService.restoreById(componentId));
+  }
+
+  @Override
   public ComponentImage uploadComponentImage(
       Long componentId, MultipartFile file, Integer orderIndex) {
     log.info("Uploading image for component with id {}", componentId);
@@ -95,10 +101,16 @@ public class ComponentFacadeImpl implements ComponentFacade {
 
   @Override
   public ComponentPage getComponentsByDomainId(
-      Long domainId, Long componentTypeId, String name, Integer page, Integer size) {
+      Long domainId,
+      Long componentTypeId,
+      String name,
+      Boolean archived,
+      Integer page,
+      Integer size) {
     log.info("Getting components by domain");
     return componentMapper.toComponentPageDto(
-        componentService.getByPageByDomainId(domainId, componentTypeId, name, page, size));
+        componentService.getByPageByDomainId(
+            domainId, componentTypeId, name, archived, page, size));
   }
 
   @Override

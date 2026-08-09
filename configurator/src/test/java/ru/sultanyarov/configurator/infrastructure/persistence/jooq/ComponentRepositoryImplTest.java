@@ -178,7 +178,8 @@ class ComponentRepositoryImplTest extends AbstractJooqRepositoryTest {
     insertComponent(3L, 2L, "Keycap");
     insertComponent(4L, 3L, "Other domain component");
 
-    Page<Component> page = repository.findPageByDomainIdComponentTypeIdName(1L, null, null, 0, 2);
+    Page<Component> page =
+        repository.findPageByDomainIdComponentTypeIdNameArchived(1L, null, null, null, 0, 2);
 
     assertThat(page.page()).isZero();
     assertThat(page.size()).isEqualTo(2);
@@ -194,7 +195,7 @@ class ComponentRepositoryImplTest extends AbstractJooqRepositoryTest {
     insertComponent(4L, 3L, "Switch A");
 
     Page<Component> page =
-        repository.findPageByDomainIdComponentTypeIdName(1L, 1L, "Switch A", 0, 10);
+        repository.findPageByDomainIdComponentTypeIdNameArchived(1L, 1L, "Switch A", null, 0, 10);
 
     assertThat(page.totalItems()).isEqualTo(1);
     assertThat(page.items())
@@ -213,10 +214,29 @@ class ComponentRepositoryImplTest extends AbstractJooqRepositoryTest {
     insertComponent(2L, 1L, "Switch B");
     insertComponent(3L, 2L, "Keycap");
 
-    Page<Component> page = repository.findPageByDomainIdComponentTypeIdName(1L, null, null, 1, 2);
+    Page<Component> page =
+        repository.findPageByDomainIdComponentTypeIdNameArchived(1L, null, null, null, 1, 2);
 
     assertThat(page.totalItems()).isEqualTo(3);
     assertThat(page.items()).extracting(Component::getId).containsExactly(3L);
+  }
+
+  @Test
+  void shouldFilterDomainComponentsByArchiveStatus() {
+    insertComponent(1L, 1L, "Active switch");
+    insertComponent(2L, 1L, "Archived switch");
+    repository.archiveComponentById(2L);
+
+    Page<Component> activePage =
+        repository.findPageByDomainIdComponentTypeIdNameArchived(1L, null, null, false, 0, 10);
+    Page<Component> archivedPage =
+        repository.findPageByDomainIdComponentTypeIdNameArchived(1L, null, null, true, 0, 10);
+    Page<Component> unfilteredPage =
+        repository.findPageByDomainIdComponentTypeIdNameArchived(1L, null, null, null, 0, 10);
+
+    assertThat(activePage.items()).extracting(Component::getId).containsExactly(1L);
+    assertThat(archivedPage.items()).extracting(Component::getId).containsExactly(2L);
+    assertThat(unfilteredPage.items()).extracting(Component::getId).containsExactly(1L, 2L);
   }
 
   @Test
@@ -321,6 +341,20 @@ class ComponentRepositoryImplTest extends AbstractJooqRepositoryTest {
   @Test
   void shouldReturnFalseWhenArchivingNonExistentComponent() {
     assertThat(repository.archiveComponentById(404L)).isFalse();
+  }
+
+  @Test
+  void shouldRestoreArchivedComponent() {
+    insertComponent(7L, 1L, "Switch");
+    repository.archiveComponentById(7L);
+
+    assertThat(repository.restoreComponentById(7L)).isTrue();
+    assertThat(repository.getById(7L).orElseThrow().getArchived()).isFalse();
+  }
+
+  @Test
+  void shouldReturnFalseWhenRestoringNonExistentComponent() {
+    assertThat(repository.restoreComponentById(404L)).isFalse();
   }
 
   @Test

@@ -59,6 +59,14 @@ public interface ComponentFacade {
   void archiveComponent(Long componentId);
 
   /**
+   * Restores a component to the active catalog.
+   *
+   * @param componentId the component identifier
+   * @return the active component DTO
+   */
+  Component restoreComponent(Long componentId);
+
+  /**
    * Uploads and attaches an image to an active component.
    *
    * @param componentId the unique identifier of the component
@@ -117,7 +125,12 @@ public interface ComponentFacade {
    *     does not belong to the specified domain
    */
   ComponentPage getComponentsByDomainId(
-      Long domainId, Long componentTypeId, String name, Integer page, Integer size);
+      Long domainId,
+      Long componentTypeId,
+      String name,
+      Boolean archived,
+      Integer page,
+      Integer size);
 
   /**
    * Retrieves a component by its unique identifier.

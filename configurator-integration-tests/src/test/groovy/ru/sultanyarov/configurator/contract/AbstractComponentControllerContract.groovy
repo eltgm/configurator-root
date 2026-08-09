@@ -488,6 +488,77 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         delete("/components/0").status == 400
     }
 
+    def "should restore archived component without losing attributes or images"() {
+        given:
+        prepareComponentUpdateData()
+        delete("/components/1").status == 204
+        def archivedBeforeRestore = get("/domains/1/components", [archived: true])
+        assert archivedBeforeRestore.status == 200
+        assert objectMapper.readValue(archivedBeforeRestore.body, ComponentPage)
+                .getItems()*.getId() == [1L]
+
+        when:
+        def result = post("/components/1/restore", null)
+
+        then:
+        result.status == 200
+        def responseBody = objectMapper.readValue(result.body, Component)
+        responseBody.getId() == 1L
+        !responseBody.getArchived()
+        responseBody.getAttributes().size() == 3
+        responseBody.getAttributes()*.getAttributeDefinitionId().containsAll([101L, 102L, 103L])
+        responseBody.getImages()*.getId() == [501L]
+        responseBody.getImages().first().getUrl() == "/component-images/501/content"
+
+        and: "the restored component moves from the archive back to the active list"
+        def archivedPage = objectMapper.readValue(
+                get("/domains/1/components", [archived: true]).body,
+                ComponentPage
+        )
+        def activePage = objectMapper.readValue(
+                get("/domains/1/components", [archived: false]).body,
+                ComponentPage
+        )
+        archivedPage.getItems().isEmpty()
+        activePage.getItems()*.getId().contains(1L)
+    }
+
+    def "should restore active component idempotently"() {
+        given:
+        prepareComponentUpdateData()
+
+        when:
+        def firstResult = post("/components/1/restore", null)
+        def secondResult = post("/components/1/restore", null)
+
+        then:
+        firstResult.status == 200
+        secondResult.status == 200
+        objectMapper.readTree(firstResult.body) == objectMapper.readTree(secondResult.body)
+        !objectMapper.readValue(secondResult.body, Component).getArchived()
+    }
+
+    def "should return not found when restoring non-existent component"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        when:
+        def result = post("/components/999999/restore", null)
+
+        then:
+        result.status == 404
+        objectMapper.readValue(result.body, ErrorResponse).getMessage() ==
+                "Component with id 999999 not found"
+    }
+
+    def "should return bad request when component id for restoration is not positive"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        expect:
+        post("/components/0/restore", null).status == 400
+    }
+
     def "should upload supported #contentType component image"() {
         given:
         prepareComponentImageData()
@@ -989,6 +1060,56 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         responseBody.getSize() == 10
         responseBody.getTotalItems() == 3
         responseBody.getItems()*.getId() == [1L, 2L, 3L]
+    }
+
+    def "should filter domain components by archive status"() {
+        given:
+        prepareComponentSearchData()
+        delete("/components/2").status == 204
+
+        when:
+        def allResult = get("/domains/1/components")
+        def activeResult = get("/domains/1/components", [archived: false])
+        def archivedResult = get("/domains/1/components", [archived: true])
+
+        then: "an omitted filter remains backward compatible and returns both statuses"
+        allResult.status == 200
+        objectMapper.readValue(allResult.body, ComponentPage).getItems()*.getId() == [1L, 2L, 3L]
+
+        and:
+        activeResult.status == 200
+        def activePage = objectMapper.readValue(activeResult.body, ComponentPage)
+        activePage.getTotalItems() == 2
+        activePage.getItems()*.getId() == [1L, 3L]
+        activePage.getItems().every { !it.getArchived() }
+
+        and:
+        archivedResult.status == 200
+        def archivedPage = objectMapper.readValue(archivedResult.body, ComponentPage)
+        archivedPage.getTotalItems() == 1
+        archivedPage.getItems()*.getId() == [2L]
+        archivedPage.getItems().every { it.getArchived() }
+    }
+
+    def "should combine archive status with existing component filters"() {
+        given:
+        prepareComponentSearchData()
+        delete("/components/2").status == 204
+
+        when:
+        def result = get("/domains/1/components", [
+                componentTypeId: 1,
+                name: "Keychron K2",
+                archived: true,
+                page: 0,
+                size: 10
+        ])
+
+        then:
+        result.status == 200
+        def responseBody = objectMapper.readValue(result.body, ComponentPage)
+        responseBody.getTotalItems() == 1
+        responseBody.getItems()*.getId() == [2L]
     }
 
     def "should filter domain components by component type"() {

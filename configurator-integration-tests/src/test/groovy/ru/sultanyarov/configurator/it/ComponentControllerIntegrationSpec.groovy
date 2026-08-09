@@ -74,9 +74,13 @@ class ComponentControllerIntegrationSpec extends AbstractComponentControllerCont
 
     @Override
     TestResponse post(String path, Object body) {
-        def result = mockMvc.perform(MockMvcRequestBuilders.post(path)
-                .contentType("application/json")
-                .content(objectMapper.writeValueAsString(body))).andReturn()
+        def requestBuilder = MockMvcRequestBuilders.post(path)
+        if (body != null) {
+            requestBuilder
+                    .contentType("application/json")
+                    .content(objectMapper.writeValueAsString(body))
+        }
+        def result = mockMvc.perform(requestBuilder).andReturn()
         return new TestResponse(result.response.status, result.response.contentAsString)
     }
 
