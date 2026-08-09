@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  apiData,
   apiRequest,
   AppError,
   getErrorTranslationKey,
@@ -95,5 +96,6 @@ describe('API error normalization', () => {
       code: 'VALIDATION_ERROR',
     });
     await expect(apiRequest(Promise.resolve('ok'))).resolves.toBe('ok');
+    await expect(apiData(Promise.resolve({ data: 'typed data' }))).resolves.toBe('typed data');
   });
 });

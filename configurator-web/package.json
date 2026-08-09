@@ -31,6 +31,7 @@
     "check": "npm run api:check && npm run format:check && npm run lint && npm run lint:styles && npm run test && npm run build"
   },
   "dependencies": {
+    "@hookform/resolvers": "5.7.1",
     "@mantine/core": "9.5.1",
     "@mantine/hooks": "9.5.1",
     "@mantine/notifications": "9.5.1",
@@ -39,8 +40,10 @@
     "i18next": "26.3.6",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "react-hook-form": "7.85.0",
     "react-i18next": "17.0.11",
-    "react-router-dom": "7.18.2"
+    "react-router-dom": "7.18.2",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

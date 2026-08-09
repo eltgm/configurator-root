@@ -1,9 +1,11 @@
 import '@testing-library/jest-dom/vitest';
 
 import { cleanup } from '@testing-library/react';
-import { afterAll, afterEach, beforeAll, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest';
 
-import { server } from '@/test/server';
+import { client } from '@/shared/api';
+import { queryClient } from '@/shared/query/query-client';
+import { server, testApiBaseUrl } from '@/test/server';
 
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
@@ -31,8 +33,12 @@ Object.defineProperty(globalThis, 'ResizeObserver', {
 });
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+beforeEach(() => {
+  client.setConfig({ baseUrl: testApiBaseUrl });
+});
 afterEach(() => {
   cleanup();
+  queryClient.clear();
   server.resetHandlers();
 });
 afterAll(() => server.close());

@@ -6,8 +6,8 @@
 [![OpenAPI 3.1](https://img.shields.io/badge/OpenAPI-3.1-6BA539?logo=openapiinitiative&logoColor=white)](specs/configurator-api.yaml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Backend-first конфигуратор компонентов: каталог доменов и компонентов, ручные и атрибутивные правила совместимости,
-поиск совместимых наборов и сохранение конфигураций.
+Backend-first конфигуратор компонентов с React-интерфейсом: каталог предметных областей и компонентов, ручные и
+атрибутивные правила совместимости, поиск совместимых наборов и сохранение конфигураций.
 
 > [!IMPORTANT]
 > Текущий релизный уровень — `0.1.0` (MVP preview). Контракты `POST /auth/register` и `POST /auth/login` описаны в
@@ -26,9 +26,12 @@ Backend-first конфигуратор компонентов: каталог д
 | Совместимость    | Реализовано     | ручные связи, граф, CRUD атрибутивных правил, объяснение результата               |
 | Конфигуратор     | Реализовано     | прямой и транзитивный поиск, поиск по нескольким компонентам, пересечение наборов |
 | Конфигурации     | Реализовано     | создание, список, получение и экспорт в JSON                                      |
+| Web-интерфейс    | В разработке    | shell, темы, локализация, первый запуск и управление предметными областями         |
 | Аутентификация   | Только контракт | регистрация, login и Bearer JWT описаны, runtime-реализации нет                   |
 
-Frontend в репозиторий не входит.
+Предметные страницы типов, компонентов, совместимости, конфигуратора и конфигураций пока представлены подготовленными
+маршрутами. Реальный пользовательский сценарий уже доступен для создания демо/пустой предметной области, выбора,
+редактирования и подтверждённого удаления.
 
 ## Архитектура
 
@@ -57,7 +60,11 @@ controller -> facade -> service -> outbound port -> infrastructure
 - MapStruct и Lombok;
 - JUnit 5, Spock, ArchUnit, Testcontainers, MockMvc и RestAssured;
 - JaCoCo с обязательным покрытием не ниже 90%;
-- Spotless и Google Java Format.
+- Spotless и Google Java Format;
+- Node.js 24 LTS и npm 11;
+- React 19.2, TypeScript 6, Vite 8, React Router;
+- Mantine, TanStack Query, React Hook Form, Zod и i18next;
+- Vitest, Testing Library, MSW и Playwright.
 
 ## Структура репозитория
 
@@ -65,6 +72,7 @@ controller -> facade -> service -> outbound port -> infrastructure
 .
 ├── configurator/                   # Spring Boot приложение
 ├── configurator-integration-tests/ # общие local/external integration contracts
+├── configurator-web/               # независимый React/Vite frontend
 ├── specs/configurator-api.yaml     # источник истины REST API
 ├── docs/release/                   # релизный аудит и checklist
 ├── .github/                        # CI, release automation, templates
@@ -97,6 +105,20 @@ docker compose up --build
 - PostgreSQL — `localhost:5432/configurator`.
 
 Локальные значения `configurator/configurator`, `minioadmin/minioadmin` предназначены только для разработки.
+
+### Запуск web-интерфейса для разработки
+
+После запуска backend откройте второй терминал. Понадобятся Node.js 24 LTS и npm 11:
+
+```bash
+cd configurator-web
+npm ci
+npm run dev
+```
+
+Web-интерфейс будет доступен на <http://127.0.0.1:5173>. Dev server проксирует `/api/*` на backend
+`http://127.0.0.1:8080`. Готовая однокнопочная поставка для нетехнического пользователя будет добавлена отдельной
+задачей; текущий вариант предназначен для разработки.
 
 ### Запуск приложения из IDE
 
@@ -155,6 +177,18 @@ docker compose up -d --build
 ```
 
 Local и external режимы используют одни и те же контрактные сценарии; различается только transport/setup.
+
+### Frontend
+
+```bash
+cd configurator-web
+npm ci
+npm run check
+npm run test:coverage
+```
+
+`npm run check` проверяет generated API drift, форматирование, ESLint, Stylelint, unit/component tests, TypeScript и
+production build. E2E запускаются отдельно командой `npm run test:e2e` после `npx playwright install`.
 
 ## Разработка
 
