@@ -2,7 +2,7 @@
 # Перед сборкой образа нужно собрать JAR:
 #   ./gradlew :configurator:bootJar
 
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 WORKDIR /app
 
 ARG JAR_FILE=configurator/build/libs/configurator-0.1.0-SNAPSHOT.jar
