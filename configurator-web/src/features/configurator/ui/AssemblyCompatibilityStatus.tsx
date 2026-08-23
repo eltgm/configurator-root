@@ -41,6 +41,7 @@ export function AssemblyCompatibilityStatus({
         color="green"
         icon={<IconCircleCheck aria-hidden="true" />}
         title={t('configurator.validation.valid')}
+        styles={{ label: { color: 'var(--mantine-color-text)' } }}
       >
         <Stack gap="sm">
           <Text size="sm">{t('configurator.validation.validDescription')}</Text>

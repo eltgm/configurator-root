@@ -1,5 +1,24 @@
 version: 2
 updates:
+  - package-ecosystem: npm
+    directory: /configurator-web
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:30"
+      timezone: Europe/Moscow
+    groups:
+      frontend-minor-and-patch:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    labels: ["dependencies", "npm"]
+    open-pull-requests-limit: 5
+
   - package-ecosystem: gradle
     directory: /
     target-branch: develop
@@ -11,12 +30,12 @@ updates:
     groups:
       gradle-minor-and-patch:
         applies-to: version-updates
-        patterns: [ "*" ]
-        update-types: [ "minor", "patch" ]
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
     ignore:
       - dependency-name: "*"
-        update-types: [ "version-update:semver-major" ]
-    labels: [ "dependencies", "gradle" ]
+        update-types: ["version-update:semver-major"]
+    labels: ["dependencies", "gradle"]
     open-pull-requests-limit: 5
 
   - package-ecosystem: docker
@@ -29,8 +48,8 @@ updates:
       timezone: Europe/Moscow
     ignore:
       - dependency-name: eclipse-temurin
-        update-types: [ "version-update:semver-major" ]
-    labels: [ "dependencies", "docker" ]
+        update-types: ["version-update:semver-major"]
+    labels: ["dependencies", "docker"]
     open-pull-requests-limit: 3
 
   - package-ecosystem: github-actions
@@ -43,6 +62,6 @@ updates:
       timezone: Europe/Moscow
     groups:
       github-actions:
-        patterns: [ "*" ]
-    labels: [ "dependencies", "github-actions" ]
+        patterns: ["*"]
+    labels: ["dependencies", "github-actions"]
     open-pull-requests-limit: 3

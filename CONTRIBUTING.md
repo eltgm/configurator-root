@@ -34,6 +34,25 @@ docker compose up -d --build
 
 Если внешний контур не удалось запустить, явно укажите это в pull request.
 
+### Frontend
+
+Для frontend-изменений дополнительно нужны Node.js 24 и npm 11:
+
+```bash
+cd configurator-web
+npm ci
+npm run check
+npm run test:coverage
+npx playwright install
+npm run test:e2e
+npm run test:accessibility
+npm run test:visual
+```
+
+Visual regression выполняется в pinned Playwright Docker image. Эталоны обновляются только после намеренного UI
+изменения через `npm run test:visual:update`, просматриваются в diff и подтверждаются повторным обычным прогоном.
+Подробности: `docs/testing/FRONTEND_TESTING.md`.
+
 ## Стиль и архитектура
 
 - Цепочка: `controller -> facade -> service -> port -> infrastructure`.

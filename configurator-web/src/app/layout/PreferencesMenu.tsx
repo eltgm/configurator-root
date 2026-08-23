@@ -32,7 +32,13 @@ export function PreferencesMenu() {
   };
 
   return (
-    <Menu position="bottom-end" width={240} withinPortal>
+    <Menu
+      position="bottom-end"
+      width={240}
+      withinPortal
+      trapFocus={false}
+      withInitialFocusPlaceholder={false}
+    >
       <Menu.Target>
         <ActionIcon variant="subtle" size="lg" aria-label={t('preferences.open')}>
           <IconSettings size={22} stroke={1.8} />

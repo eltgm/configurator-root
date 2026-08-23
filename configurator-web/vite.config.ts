@@ -74,6 +74,12 @@ export default defineConfig({
       exclude: ['src/shared/api/generated/**'],
       reporter: ['text', 'html', 'lcov'],
       reportsDirectory: './coverage',
+      thresholds: {
+        lines: 90,
+        statements: 90,
+        functions: 85,
+        branches: 80,
+      },
     },
   },
 });

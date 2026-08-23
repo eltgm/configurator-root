@@ -190,7 +190,9 @@ npm run test:coverage
 ```
 
 `npm run check` проверяет generated API drift, форматирование, ESLint, Stylelint, unit/component tests, TypeScript и
-production build. E2E запускаются отдельно командой `npm run test:e2e` после `npx playwright install`.
+production build. После `npx playwright install` функциональные E2E запускаются `npm run test:e2e`, автоматическая
+проверка доступности — `npm run test:accessibility`. Visual regression требует Docker Desktop и запускается
+`npm run test:visual`; подробный процесс описан в [`docs/testing/FRONTEND_TESTING.md`](docs/testing/FRONTEND_TESTING.md).
 
 ## Разработка
 

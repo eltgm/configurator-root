@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ develop, master ]
+    branches: [develop, master]
   pull_request:
-    branches: [ develop, master ]
+    branches: [develop, master]
   workflow_dispatch:
 
 permissions:
@@ -15,6 +15,82 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  frontend-quality:
+    name: Frontend static and unit quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: configurator-web
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: configurator-web/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run frontend checks
+        run: npm run check
+
+      - name: Enforce frontend coverage
+        run: npm run test:coverage
+
+      - name: Upload frontend reports on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: frontend-quality-reports
+          path: |
+            configurator-web/coverage/
+            configurator-web/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  frontend-browser:
+    name: Frontend browser quality
+    needs: frontend-quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
+      options: --ipc=host
+    defaults:
+      run:
+        working-directory: configurator-web
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run functional E2E matrix
+        run: npm run test:e2e
+
+      - name: Run accessibility gate
+        run: npm run test:accessibility
+
+      - name: Run visual regression gate
+        run: npm run test:visual:container
+
+      - name: Upload browser reports on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: frontend-browser-reports
+          path: |
+            configurator-web/playwright-report/
+            configurator-web/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
   build:
     name: Build and local contracts
     runs-on: ubuntu-latest

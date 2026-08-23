@@ -11,6 +11,7 @@ export const resources = {
       },
       common: {
         cancel: 'Отмена',
+        close: 'Закрыть',
         save: 'Сохранить',
         create: 'Создать',
         validation: {
@@ -1085,6 +1086,7 @@ export const resources = {
       },
       common: {
         cancel: 'Cancel',
+        close: 'Close',
         save: 'Save',
         create: 'Create',
         validation: {

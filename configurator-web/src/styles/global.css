@@ -6,6 +6,19 @@
   scroll-padding-block: calc(64px + var(--mantine-spacing-md)) var(--shell-scroll-padding-end);
 }
 
+:root[data-mantine-color-scheme='light'] {
+  --mantine-color-dimmed: var(--mantine-color-gray-7);
+  --mantine-color-error: var(--mantine-color-red-8);
+}
+
+:root[data-mantine-color-scheme='dark'] {
+  --mantine-color-dimmed: var(--mantine-color-dark-0);
+}
+
+:root[data-mantine-color-scheme='light'] [class~='mantine-Badge-root'][data-variant='light'] {
+  --badge-color: var(--mantine-color-text) !important;
+}
+
 * {
   box-sizing: border-box;
 }
