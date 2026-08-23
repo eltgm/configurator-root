@@ -58,6 +58,21 @@ Visual regression выполняется в pinned Playwright Docker image. Эт
 `docker-compose.yml` публикует gateway `127.0.0.1:8080`; development override добавляет loopback-порты backend `8081`,
 PostgreSQL `5432` и MinIO `9000/9001`. Не заменяйте loopback bind на wildcard host bind.
 
+### Пользовательская поставка
+
+При изменении `delivery/**`, Compose runtime, gateway или release packaging дополнительно выполните:
+
+```bash
+delivery/tests/package-contract.sh
+delivery/tests/macos-scripts-test.sh
+delivery/tests/archive-contract.sh
+delivery/tests/docker-lifecycle-contract.sh
+```
+
+Windows PowerShell 5.1 contract выполняется job `Windows delivery scripts contract`. Не меняйте backup format,
+preview channel, строгий Update/Restore failure contract, line endings или состав архива без актуализации требований и
+`docs/release/LOCAL_DELIVERY.md`. Публикация images/assets относится к 9.30.
+
 ## Стиль и архитектура
 
 - Цепочка: `controller -> facade -> service -> port -> infrastructure`.

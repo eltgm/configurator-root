@@ -43,3 +43,8 @@ dist/
 coverage/
 playwright-report/
 test-results/
+
+### Local delivery ###
+delivery-output/
+delivery/**/backups/
+delivery/**/logs/

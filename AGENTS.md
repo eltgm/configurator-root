@@ -10,6 +10,7 @@
 - `configurator` — Spring Boot runtime;
 - `configurator-integration-tests` — единые local/external integration contracts;
 - `configurator-web` — независимый React/Vite frontend;
+- `delivery` — image-only Windows/macOS пользовательские пакеты и lifecycle contracts;
 - `specs/configurator-api.yaml` — source of truth REST API.
 
 Реализованные области: домены, типы компонентов, атрибуты, компоненты, изображения в MinIO, ручная и автоматическая
@@ -187,6 +188,19 @@ gateway, SPA deep links и реальный `/api` boundary.
 
 Для изменения только frontend toolchain/UI обязательны `npm ci` и `npm run check`; backend и external integration
 проверяются дополнительно, если меняются OpenAPI, backend, Docker delivery или общий runtime-контракт.
+
+Для изменений `delivery/**`, Compose/gateway runtime или package builder обязательны:
+
+```bash
+delivery/tests/package-contract.sh
+delivery/tests/macos-scripts-test.sh
+delivery/tests/archive-contract.sh
+delivery/tests/docker-lifecycle-contract.sh
+```
+
+Windows dispatcher остаётся совместимым с Windows PowerShell 5.1/CRLF/UTF-8 BOM; macOS dispatcher — со штатным Bash
+3.2/LF. Backup format v1, stable Compose project, preview channel и строгая остановка app/gateway после failed Update
+или Restore — публичные delivery contracts. Публикация multi-platform images и release assets относится к 9.30.
 
 ## 6. Локальное окружение
 

@@ -75,6 +75,7 @@ controller -> facade -> service -> outbound port -> infrastructure
 ├── configurator/                   # Spring Boot приложение
 ├── configurator-integration-tests/ # общие local/external integration contracts
 ├── configurator-web/               # независимый React/Vite frontend
+├── delivery/                       # шаблоны Windows/macOS пользовательских пакетов
 ├── specs/configurator-api.yaml     # источник истины REST API
 ├── docs/release/                   # релизный аудит и checklist
 ├── .github/                        # CI, release automation, templates
@@ -88,10 +89,35 @@ controller -> facade -> service -> outbound port -> infrastructure
 - схема БД — [`configurator/src/main/resources/db/migration`](configurator/src/main/resources/db/migration);
 - правила для AI-агентов — [`AGENTS.md`](AGENTS.md).
 
+## Запуск пользовательского пакета
+
+Пакет рассчитан на Windows 10/11 x86-64 и macOS Intel/Apple Silicon. Пользователю нужен только Docker Desktop и
+интернет при первом запуске и обновлении; JDK, Gradle, Node.js, npm и Git не требуются.
+
+1. Скачайте архив для своей ОС и полностью распакуйте папку `Configurator`.
+2. Запустите `Start.cmd` в Windows или `Start.command` в macOS двойным кликом.
+3. Дождитесь сообщения о готовности: браузер откроет <http://127.0.0.1:8080>.
+
+Рядом доступны `Stop`, `Update`, `Backup` и `Restore`. Update всегда создаёт backup до загрузки preview-образов;
+Restore проверяет контрольные суммы и сначала создаёт страховочный backup. Backups не зашифрованы. На macOS при
+первом предупреждении Gatekeeper используйте правый клик → «Открыть», не отключая системную защиту.
+
+Шаблоны и сборщик пакетов уже находятся в репозитории, но публичные multi-platform images и прикрепление архивов к
+GitHub Release выполняются следующей задачей 9.30. До её завершения архив можно собрать только для разработки:
+
+```bash
+scripts/release/build-delivery-packages.sh 0.1.0
+```
+
+Подробности эксплуатации и recovery: [`docs/release/LOCAL_DELIVERY.md`](docs/release/LOCAL_DELIVERY.md).
+
+> Runtime-аутентификация пока не реализована. Пакет предназначен только для одного пользователя на локальном
+> компьютере; не публикуйте порт 8080 в LAN или интернет.
+
 ## Быстрый старт из исходного кода
 
-До появления готовых пользовательских архивов 9.29 понадобятся JDK 21 и Docker Desktop с Compose plugin. Отдельно
-устанавливать Gradle и Node.js не нужно: frontend собирается внутри gateway image.
+Для запуска из исходников понадобятся JDK 21 и Docker Desktop с Compose plugin. Отдельно устанавливать Gradle и
+Node.js не нужно: frontend собирается внутри gateway image.
 
 ```bash
 ./gradlew :configurator:bootJar
@@ -132,8 +158,7 @@ npm run dev
 ```
 
 Web-интерфейс будет доступен на <http://127.0.0.1:5173>. Dev server проксирует `/api/*` на backend
-`http://127.0.0.1:8080`. Готовая однокнопочная поставка для нетехнического пользователя будет добавлена в 9.29;
-текущая команда предназначена для разработки.
+`http://127.0.0.1:8080`. Эта команда предназначена только для разработки; пользовательский сценарий описан выше.
 
 ### Запуск приложения из IDE
 
