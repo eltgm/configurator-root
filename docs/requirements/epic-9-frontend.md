@@ -687,6 +687,45 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
   WebKit;
 - OpenAPI, backend, Flyway, jOOQ, БД и generated API client в 9.24 не меняются.
 
+#### 9.25 — Копирование, экспорт и безвозвратное удаление
+
+- read-only detail предоставляет действия копирования, скачивания JSON и безвозвратного удаления рядом с
+  существующим редактированием; карточка списка предоставляет те же операции в компактном responsive-меню;
+- copy открывает modal с read-only составом, исходным описанием и предварительным названием
+  `<исходное название> — копия`; при ограничении 255 символов локализованный suffix сохраняется полностью;
+- пользователь может изменить название и описание копии, но не её snapshot-состав; исходная конфигурация и
+  domain-scoped localStorage-черновик основного конфигуратора не изменяются;
+- отдельный copy endpoint не добавляется: копия создаётся через существующий `POST /domains/{id}/configurations`, а
+  backend повторно проверяет область, активность, уникальность типов и прямую попарную совместимость всего состава;
+- copy остаётся видимым, но недоступно для конфигурации с архивным компонентом и объясняет необходимость сначала
+  исправить состав в editor; актуальные изменения compatibility rules могут отклонить и неархивный snapshot;
+- при `400/404/409` copy modal, введённые metadata и исходная страница сохраняются, structured field details
+  привязываются к полям, а общая ошибка показывается внутри modal;
+- после успешного copy response помещается в domain-scoped detail cache, list family текущей области инвалидируется,
+  показывается notification и открывается detail новой независимой конфигурации;
+- export выполняется on demand через generated SDK и `GET /configurations/{id}/export/json`, без кэширования и
+  automatic retry; прямой переход браузера на API endpoint не используется, чтобы сохранить единый error/auth path;
+- UI скачивает ровно полученный серверный `ConfigurationExport`: pretty JSON с двумя пробелами и завершающей новой
+  строкой, MIME `application/json;charset=utf-8`, имя `configuration-{id}.json`; timestamps, archived flags и состав
+  клиентом не пересчитываются;
+- временная download-ссылка удаляется, object URL освобождается; при API error файл не создаётся, экран сохраняется и
+  показывается error notification; повторный export той же конфигурации блокируется до завершения запроса;
+- delete открывает modal с названием и явным предупреждением о необратимости; отдельный ввод названия не требуется,
+  закрытие click-outside/Escape и повторное подтверждение блокируются во время запроса;
+- delete выполняется только после явного подтверждения через `DELETE /configurations/{id}` и не применяется
+  оптимистически; при `400/404` modal остаётся открыт и показывает нормализованную ошибку;
+- после успешного delete exact detail cache удаляется, list family области инвалидируется и показывается
+  notification; detail возвращается к списку, а список остаётся на странице либо переходит на предыдущую после
+  удаления её последней карточки;
+- удаление не очищает configurator draft, не изменяет catalog components и другие configurations; восстановление,
+  version history, import, sharing и bulk operations в 9.25 не входят;
+- copy/export/delete не показываются на edit route; все действия доступны с клавиатуры, имеют понятные accessible
+  names, pending/error/success feedback и не создают горизонтальную прокрутку от 360 px;
+- API/cache isolation, copy name и archived blocker, JSON serialization/download cleanup, modal error paths,
+  detail/list navigation, pagination fallback и полный copy/export/delete flow покрываются unit/component tests с MSW
+  и Playwright в Chromium, Firefox и WebKit;
+- OpenAPI, backend, Flyway, jOOQ, БД и generated API client в 9.25 не меняются.
+
 ### Качество и поставка
 
 | Пункт | Требование                                           |

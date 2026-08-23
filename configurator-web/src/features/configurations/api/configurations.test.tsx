@@ -7,13 +7,16 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   configurationKeys,
   fetchConfiguration,
+  fetchConfigurationExport,
   fetchConfigurations,
   useConfigurationQuery,
   useConfigurationsQuery,
   useCreateConfigurationMutation,
+  useDeleteConfigurationMutation,
+  useExportConfigurationMutation,
   useUpdateConfigurationMutation,
 } from '@/features/configurations/api/configurations';
-import type { Configuration, ConfigurationPage } from '@/shared/api';
+import type { Configuration, ConfigurationExport, ConfigurationPage } from '@/shared/api';
 import { server, testApiBaseUrl } from '@/test/server';
 
 const configuration: Configuration = {
@@ -96,6 +99,7 @@ describe('configurations API', () => {
     });
 
     expect(requestBody).toEqual({ name: 'Home PC', componentIds: [3, 9] });
+    expect(client.getQueryData(configurationKeys.detail(7, 41))).toEqual(configuration);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: configurationKeys.lists(7) });
     expect(invalidate).not.toHaveBeenCalledWith({ queryKey: configurationKeys.lists(8) });
   });
@@ -190,5 +194,116 @@ describe('configurations API', () => {
     await waitFor(() => expect(mutation.result.current.isError).toBe(true));
 
     expect(requests).toBe(1);
+  });
+
+  it('exports a configuration on demand without caching the document', async () => {
+    const exported: ConfigurationExport = {
+      schemaVersion: 1,
+      exportedAt: '2026-08-23T12:00:00Z',
+      configuration,
+    };
+    let requests = 0;
+    server.use(
+      http.get(`${testApiBaseUrl}/configurations/41/export/json`, () => {
+        requests += 1;
+        return HttpResponse.json(exported);
+      }),
+    );
+
+    await expect(fetchConfigurationExport(41)).resolves.toEqual(exported);
+    const { client, wrapper } = createTestContext();
+    const mutation = renderHook(() => useExportConfigurationMutation(), { wrapper });
+    await act(async () => {
+      await mutation.result.current.mutateAsync(41);
+    });
+
+    expect(requests).toBe(2);
+    expect(client.getQueryCache().findAll({ queryKey: ['configurations', 'export'] })).toEqual([]);
+  });
+
+  it('does not retry a failed export', async () => {
+    let requests = 0;
+    server.use(
+      http.get(`${testApiBaseUrl}/configurations/41/export/json`, () => {
+        requests += 1;
+        return HttpResponse.json(
+          {
+            timestamp: '2026-08-23T12:00:00Z',
+            status: 404,
+            error: 'Not Found',
+            code: 'NOT_FOUND',
+            message: 'Configuration not found',
+            path: '/configurations/41/export/json',
+            details: [],
+          },
+          { status: 404 },
+        );
+      }),
+    );
+    const { wrapper } = createTestContext();
+    const mutation = renderHook(() => useExportConfigurationMutation(), { wrapper });
+
+    act(() => mutation.result.current.mutate(41));
+    await waitFor(() => expect(mutation.result.current.isError).toBe(true));
+
+    expect(requests).toBe(1);
+  });
+
+  it('permanently deletes a configuration and updates only its domain cache', async () => {
+    server.use(
+      http.delete(
+        `${testApiBaseUrl}/configurations/41`,
+        () => new HttpResponse(null, { status: 204 }),
+      ),
+    );
+    const { client, wrapper } = createTestContext();
+    client.setQueryData(configurationKeys.detail(7, 41), configuration);
+    client.setQueryData(configurationKeys.detail(8, 41), configuration);
+    const remove = vi.spyOn(client, 'removeQueries');
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    const mutation = renderHook(() => useDeleteConfigurationMutation(), { wrapper });
+
+    await act(async () => {
+      await mutation.result.current.mutateAsync({ domainId: 7, configurationId: 41 });
+    });
+
+    expect(remove).toHaveBeenCalledWith({
+      queryKey: configurationKeys.detail(7, 41),
+      exact: true,
+    });
+    expect(client.getQueryData(configurationKeys.detail(7, 41))).toBeUndefined();
+    expect(client.getQueryData(configurationKeys.detail(8, 41))).toEqual(configuration);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: configurationKeys.lists(7) });
+    expect(invalidate).not.toHaveBeenCalledWith({ queryKey: configurationKeys.lists(8) });
+  });
+
+  it('keeps caches intact and does not retry a failed delete', async () => {
+    let requests = 0;
+    server.use(
+      http.delete(`${testApiBaseUrl}/configurations/41`, () => {
+        requests += 1;
+        return HttpResponse.json(
+          {
+            timestamp: '2026-08-23T12:00:00Z',
+            status: 404,
+            error: 'Not Found',
+            code: 'NOT_FOUND',
+            message: 'Configuration not found',
+            path: '/configurations/41',
+            details: [],
+          },
+          { status: 404 },
+        );
+      }),
+    );
+    const { client, wrapper } = createTestContext();
+    client.setQueryData(configurationKeys.detail(7, 41), configuration);
+    const mutation = renderHook(() => useDeleteConfigurationMutation(), { wrapper });
+
+    act(() => mutation.result.current.mutate({ domainId: 7, configurationId: 41 }));
+    await waitFor(() => expect(mutation.result.current.isError).toBe(true));
+
+    expect(requests).toBe(1);
+    expect(client.getQueryData(configurationKeys.detail(7, 41))).toEqual(configuration);
   });
 });

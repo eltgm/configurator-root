@@ -3,13 +3,24 @@ import { IconArchive, IconChevronRight } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
+import { ConfigurationActions } from '@/features/configurations/ui/ConfigurationActions';
 import type { Configuration } from '@/shared/api';
 
 interface ConfigurationListProps {
   configurations: ReadonlyArray<Configuration>;
+  exportingConfigurationId?: number | undefined;
+  onCopy: (configuration: Configuration) => void;
+  onExport: (configuration: Configuration) => void;
+  onDelete: (configuration: Configuration) => void;
 }
 
-export function ConfigurationList({ configurations }: ConfigurationListProps) {
+export function ConfigurationList({
+  configurations,
+  exportingConfigurationId,
+  onCopy,
+  onExport,
+  onDelete,
+}: ConfigurationListProps) {
   const { t, i18n } = useTranslation();
   const dateFormatter = new Intl.DateTimeFormat(i18n.resolvedLanguage, {
     dateStyle: 'long',
@@ -22,11 +33,21 @@ export function ConfigurationList({ configurations }: ConfigurationListProps) {
         <Paper component="article" key={configuration.id} p="lg" withBorder>
           <Stack gap="md">
             <Stack gap={4}>
-              <Title order={2} size="h3">
-                <Text component={Link} to={`/configurations/${configuration.id}`} inherit>
-                  {configuration.name}
-                </Text>
-              </Title>
+              <Group justify="space-between" align="flex-start" wrap="nowrap">
+                <Title order={2} size="h3">
+                  <Text component={Link} to={`/configurations/${configuration.id}`} inherit>
+                    {configuration.name}
+                  </Text>
+                </Title>
+                <ConfigurationActions
+                  configuration={configuration}
+                  variant="menu"
+                  isExporting={exportingConfigurationId === configuration.id}
+                  onCopy={() => onCopy(configuration)}
+                  onExport={() => onExport(configuration)}
+                  onDelete={() => onDelete(configuration)}
+                />
+              </Group>
               <Text size="xs" c="dimmed">
                 {t('configurations.card.createdAt', {
                   date: dateFormatter.format(new Date(configuration.createdAt)),

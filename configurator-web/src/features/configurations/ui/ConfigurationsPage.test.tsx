@@ -75,9 +75,17 @@ describe('ConfigurationsPage', () => {
     expect(within(card).getByText('Ryzen 9')).toBeInTheDocument();
     expect(within(card).getByText('RTX 5090')).toBeInTheDocument();
     expect(within(card).getByText('В архиве')).toBeInTheDocument();
+    await user.click(
+      within(card).getByRole('button', {
+        name: 'Действия с конфигурацией Рабочая станция',
+      }),
+    );
+    const copyAction = await screen.findByRole('menuitem', { name: /Копировать/ });
+    expect(copyAction).toHaveAttribute('data-disabled', 'true');
     expect(
-      screen.queryByRole('button', { name: /Удалить|Экспорт|Копировать/ }),
-    ).not.toBeInTheDocument();
+      screen.getByText('Сначала удалите или замените архивные компоненты в редакторе.'),
+    ).toBeInTheDocument();
+    await user.keyboard('{Escape}');
 
     await user.click(screen.getByRole('button', { name: '2' }));
     expect(await screen.findByRole('heading', { name: 'Старая сборка' })).toBeInTheDocument();
@@ -124,5 +132,62 @@ describe('ConfigurationsPage', () => {
     const retry = await screen.findByRole('button', { name: 'Повторить' }, { timeout: 3000 });
     await user.click(retry);
     await waitFor(() => expect(requests).toBe(3));
+  });
+
+  it('returns to the previous page after deleting its last configuration', async () => {
+    const user = userEvent.setup();
+    let deleted = false;
+    const requestedPages: number[] = [];
+    server.use(
+      http.get(`${testApiBaseUrl}/domains/101/configurations`, ({ request }) => {
+        const page = Number(new URL(request.url).searchParams.get('page') ?? 0);
+        requestedPages.push(page);
+        return HttpResponse.json({
+          page,
+          size: 10,
+          totalItems: deleted ? 10 : 11,
+          items:
+            page === 1 && !deleted
+              ? [
+                  {
+                    id: 80,
+                    domainId: 101,
+                    name: 'Последняя на странице',
+                    createdAt: '2026-08-01T10:00:00Z',
+                    components: [],
+                  },
+                ]
+              : page === 0
+                ? [
+                    {
+                      id: 79,
+                      domainId: 101,
+                      name: 'Предыдущая страница',
+                      createdAt: '2026-08-01T10:00:00Z',
+                      components: [],
+                    },
+                  ]
+                : [],
+        });
+      }),
+      http.delete(`${testApiBaseUrl}/configurations/80`, () => {
+        deleted = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    renderPage();
+
+    await screen.findByRole('heading', { name: 'Предыдущая страница' });
+    await user.click(screen.getByRole('button', { name: '2' }));
+    await screen.findByRole('heading', { name: 'Последняя на странице' });
+    await user.click(
+      screen.getByRole('button', { name: 'Действия с конфигурацией Последняя на странице' }),
+    );
+    await user.click(await screen.findByRole('menuitem', { name: 'Удалить' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Удалить конфигурацию?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Удалить' }));
+
+    expect(await screen.findByRole('heading', { name: 'Предыдущая страница' })).toBeInTheDocument();
+    expect(requestedPages.at(-1)).toBe(0);
   });
 });

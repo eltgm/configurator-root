@@ -50,4 +50,49 @@ describe('CreateConfigurationModal', () => {
     expect(within(dialog).getByDisplayValue('Домашний ПК')).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  it('preserves prefilled copy metadata and shows a non-field conflict', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post(`${testApiBaseUrl}/domains/101/configurations`, () =>
+        HttpResponse.json(
+          {
+            timestamp: '2026-08-23T12:00:00Z',
+            status: 409,
+            error: 'Conflict',
+            code: 'CONFIGURATION_CONFLICT',
+            message: 'Состав больше не совместим напрямую',
+            path: '/domains/101/configurations',
+            details: [],
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+    render(
+      <AppProviders>
+        <CreateConfigurationModal
+          opened
+          mode="copy"
+          domainId={101}
+          componentIds={[7, 8]}
+          components={[{ id: 7, name: 'Ryzen', typeName: 'Процессор', brand: 'AMD' }]}
+          initialValues={{ name: 'Домашний ПК — копия', description: 'Тихая сборка' }}
+          onClose={vi.fn()}
+          onSaved={vi.fn()}
+        />
+      </AppProviders>,
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Копирование конфигурации' });
+
+    await user.click(within(dialog).getByRole('button', { name: 'Создать копию' }));
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Состав больше не совместим напрямую',
+    );
+    expect(within(dialog).getByRole('textbox', { name: /Название/ })).toHaveValue(
+      'Домашний ПК — копия',
+    );
+    expect(within(dialog).getByRole('textbox', { name: 'Описание' })).toHaveValue('Тихая сборка');
+  });
 });

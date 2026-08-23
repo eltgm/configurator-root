@@ -3,11 +3,14 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import {
   apiData,
   client,
+  deleteConfigurationsById,
   getConfigurationsById,
+  getConfigurationsByIdExportJson,
   getDomainsByIdConfigurations,
   postDomainsByIdConfigurations,
   putConfigurationsById,
   type Configuration,
+  type ConfigurationExport,
   type ConfigurationPage,
   type CreateConfigurationRequest,
   type UpdateConfigurationRequest,
@@ -95,7 +98,8 @@ export function useCreateConfigurationMutation() {
           throwOnError: true,
         }),
       ),
-    onSuccess: async (_configuration, { domainId }) => {
+    onSuccess: async (configuration, { domainId }) => {
+      queryClient.setQueryData(configurationKeys.detail(domainId, configuration.id), configuration);
       await queryClient.invalidateQueries({ queryKey: configurationKeys.lists(domainId) });
     },
   });
@@ -121,6 +125,48 @@ export function useUpdateConfigurationMutation() {
       ),
     onSuccess: async (configuration, { domainId, configurationId }) => {
       queryClient.setQueryData(configurationKeys.detail(domainId, configurationId), configuration);
+      await queryClient.invalidateQueries({ queryKey: configurationKeys.lists(domainId) });
+    },
+  });
+}
+
+export function fetchConfigurationExport(configurationId: number): Promise<ConfigurationExport> {
+  return apiData(
+    getConfigurationsByIdExportJson({
+      client,
+      path: { id: configurationId },
+      throwOnError: true,
+    }),
+  );
+}
+
+export function useExportConfigurationMutation() {
+  return useMutation({
+    mutationFn: (configurationId: number) => fetchConfigurationExport(configurationId),
+  });
+}
+
+export interface DeleteConfigurationVariables {
+  domainId: number;
+  configurationId: number;
+}
+
+export function useDeleteConfigurationMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ configurationId }: DeleteConfigurationVariables) =>
+      apiData(
+        deleteConfigurationsById({
+          client,
+          path: { id: configurationId },
+          throwOnError: true,
+        }),
+      ),
+    onSuccess: async (_result, { domainId, configurationId }) => {
+      queryClient.removeQueries({
+        queryKey: configurationKeys.detail(domainId, configurationId),
+        exact: true,
+      });
       await queryClient.invalidateQueries({ queryKey: configurationKeys.lists(domainId) });
     },
   });

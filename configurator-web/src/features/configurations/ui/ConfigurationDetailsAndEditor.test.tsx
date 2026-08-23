@@ -2,13 +2,16 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { createMemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from '@/app/App';
 import { appRoutes } from '@/app/router/routes';
 import type { ComponentType, Configuration, ConfiguratorBatchSearchResponse } from '@/shared/api';
-import { selectedDomainStorageKey } from '@/shared/config/preferences';
+import { configuratorDraftStorageKey, selectedDomainStorageKey } from '@/shared/config/preferences';
+import { downloadTextFile } from '@/shared/lib/download';
 import { server, testApiBaseUrl } from '@/test/server';
+
+vi.mock('@/shared/lib/download', () => ({ downloadTextFile: vi.fn() }));
 
 const componentTypes: ComponentType[] = [
   { id: 11, domainId: 101, name: 'Процессор', orderIndex: 10 },
@@ -117,6 +120,8 @@ function findConfigurationHeading(name: string) {
 
 afterEach(() => {
   window.localStorage.removeItem(selectedDomainStorageKey);
+  window.localStorage.removeItem(configuratorDraftStorageKey(101));
+  vi.mocked(downloadTextFile).mockClear();
 });
 
 describe('configuration details and editor', () => {
@@ -138,7 +143,12 @@ describe('configuration details and editor', () => {
       'href',
       '/configurations/91/edit',
     );
-    expect(screen.queryByRole('button', { name: /Удалить|Экспорт|Копировать/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Копировать' })).toBeDisabled();
+    expect(
+      screen.getByText('Сначала удалите или замените архивные компоненты в редакторе.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Скачать JSON' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Удалить' })).toBeEnabled();
   });
 
   it('shows a safe not-found state for an invalid or missing configuration', async () => {
@@ -164,6 +174,104 @@ describe('configuration details and editor', () => {
     );
     renderAt('/configurations/404');
     expect(await screen.findByText('Конфигурация не найдена')).toBeInTheDocument();
+  });
+
+  it('creates an independent copy from immutable metadata and composition', async () => {
+    const user = userEvent.setup();
+    const draftKey = configuratorDraftStorageKey(101);
+    const localDraft = JSON.stringify({ version: 1, componentIds: [777] });
+    window.localStorage.setItem(draftKey, localDraft);
+    let requestBody: unknown;
+    useConfigurationHandlers();
+    server.use(
+      http.post(`${testApiBaseUrl}/domains/101/configurations`, async ({ request }) => {
+        requestBody = await request.json();
+        return HttpResponse.json(
+          { ...configuration, id: 92, name: 'Рабочая станция — копия' },
+          { status: 201 },
+        );
+      }),
+    );
+    const { router } = renderAt('/configurations/91');
+
+    await findConfigurationHeading('Рабочая станция');
+    await user.click(screen.getByRole('button', { name: 'Копировать' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Копирование конфигурации' });
+    expect(within(dialog).getByRole('textbox', { name: /Название/ })).toHaveValue(
+      'Рабочая станция — копия',
+    );
+    expect(within(dialog).getByRole('textbox', { name: 'Описание' })).toHaveValue('Тихая сборка');
+    expect(within(dialog).getByText('Ryzen 9')).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Создать копию' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/configurations/92'));
+    expect(requestBody).toEqual({
+      name: 'Рабочая станция — копия',
+      description: 'Тихая сборка',
+      componentIds: [7, 8],
+    });
+    expect(window.localStorage.getItem(draftKey)).toBe(localDraft);
+  });
+
+  it('downloads the exact server export and keeps the detail screen open', async () => {
+    const user = userEvent.setup();
+    const exported = {
+      schemaVersion: 1,
+      exportedAt: '2026-08-23T12:00:00Z',
+      configuration,
+    };
+    useConfigurationHandlers();
+    server.use(
+      http.get(`${testApiBaseUrl}/configurations/91/export/json`, () =>
+        HttpResponse.json(exported),
+      ),
+    );
+    const { router } = renderAt('/configurations/91');
+
+    await findConfigurationHeading('Рабочая станция');
+    await user.click(screen.getByRole('button', { name: 'Скачать JSON' }));
+
+    await waitFor(() =>
+      expect(downloadTextFile).toHaveBeenCalledWith({
+        content: `${JSON.stringify(exported, null, 2)}\n`,
+        fileName: 'configuration-91.json',
+        mimeType: 'application/json;charset=utf-8',
+      }),
+    );
+    expect(router.state.location.pathname).toBe('/configurations/91');
+  });
+
+  it('cancels and then confirms permanent deletion from details', async () => {
+    const user = userEvent.setup();
+    let deleteRequests = 0;
+    useConfigurationHandlers();
+    server.use(
+      http.delete(`${testApiBaseUrl}/configurations/91`, () => {
+        deleteRequests += 1;
+        return new HttpResponse(null, { status: 204 });
+      }),
+      http.get(`${testApiBaseUrl}/domains/101/configurations`, () =>
+        HttpResponse.json({ items: [], page: 0, size: 10, totalItems: 0 }),
+      ),
+    );
+    const { router } = renderAt('/configurations/91');
+
+    await findConfigurationHeading('Рабочая станция');
+    await user.click(screen.getByRole('button', { name: 'Удалить' }));
+    let dialog = await screen.findByRole('dialog', { name: 'Удалить конфигурацию?' });
+    expect(within(dialog).getByText(/нельзя отменить/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Отмена' }));
+    expect(deleteRequests).toBe(0);
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Удалить конфигурацию?' })).toBeNull(),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Удалить' }));
+    dialog = await screen.findByRole('dialog', { name: 'Удалить конфигурацию?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Удалить' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/configurations'));
+    expect(deleteRequests).toBe(1);
   });
 
   it('submits a complete strict update and returns to refreshed details', async () => {
