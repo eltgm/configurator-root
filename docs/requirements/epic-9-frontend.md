@@ -474,6 +474,40 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
 - используются зафиксированные совместимые версии `@xyflow/react` и `d3-force`; OpenAPI, backend, Flyway, jOOQ и
   generated API client в 9.18 не меняются.
 
+#### 9.19 — CRUD автоматических атрибутивных правил
+
+- `/settings/compatibility/rules` показывает все enabled/disabled rule sets выбранной предметной области из
+  `GET /domains/{id}/compatibility/rules`; query keys списка и отдельного правила включают `domainId`, а server state
+  хранится только в TanStack Query;
+- список показывает имя, пару типов, статус и количество AND-условий, поддерживает локальный поиск по имени/типам,
+  фильтр статуса, desktop table и mobile cards; названия атрибутов разрешаются только в форме, чтобы list view не
+  создавал N+1 attribute requests;
+- создание и редактирование выполняются на отдельных маршрутах `/settings/compatibility/rules/new` и
+  `/settings/compatibility/rules/{ruleId}/edit`; edit загружает authoritative item через
+  `GET /domains/{id}/compatibility/rules/{ruleId}`;
+- форма использует React Hook Form + Zod, требует имя до 255 символов, два различных типа компонентов и минимум одно
+  условие; определения атрибутов загружаются существующими type-scoped queries;
+- каждое условие связывает атрибут левого типа с атрибутом правого типа того же `dataType`; `EQUALS/NOT_EQUALS`
+  доступны для одинаковых типов, а `GT/GTE/LT/LTE` — только для `NUMBER`; условия объединяются через AND;
+- conditions добавляются, удаляются и перемещаются доступными кнопками без drag-and-drop; перед submit им назначаются
+  последовательные `orderIndex` по текущему порядку, а duplicate triple attribute/operator/attribute блокируется;
+- при смене типа зависимые attribute selections очищаются; backend остаётся источником истины для domain ownership,
+  normalization сторон, разворота directional operator и конкурентного business-key conflict;
+- create выполняется `POST /domains/{id}/compatibility/rules`, update — полным
+  `PUT /domains/{id}/compatibility/rules/{ruleId}`; update заменяет все условия, поэтому UI не зависит от сохранения их
+  ID или timestamps;
+- quick toggle также отправляет полный PUT из authoritative rule и не меняет switch оптимистично; failed toggle/save
+  сохраняет предыдущий cache/form draft;
+- физическое удаление через `DELETE /domains/{id}/compatibility/rules/{ruleId}` безвозвратно, требует отдельного
+  подтверждения и удаляет правило из UI только после 204;
+- success mutations синхронизируют list/detail caches текущей области и затем инвалидируют только rule family этой
+  области; structured backend field details привязываются к scalar и indexed condition fields;
+- loading/error/retry/empty, stale IDs, search/filter, create/edit/full replacement, validation, toggle, permanent
+  delete, domain isolation, unsaved guard, keyboard controls и mobile layout покрываются unit/component tests с MSW и
+  E2E smoke в Chromium, Firefox и WebKit;
+- preview совпадений, pagination, server search и optimistic concurrency не добавляются без отдельного backend-
+  контракта; OpenAPI, backend, Flyway, jOOQ и generated API client в 9.19 не меняются.
+
 ### Конфигуратор
 
 | Пункт | Требование                                      |

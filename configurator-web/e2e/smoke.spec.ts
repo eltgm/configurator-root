@@ -1,6 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Route } from '@playwright/test';
 
-import type { GraphResponse } from '../src/shared/api/generated/types.gen';
+import type {
+  CompatibilityRuleSet,
+  GraphResponse,
+  SaveCompatibilityRuleSetRequest,
+} from '../src/shared/api/generated/types.gen';
 
 const domainPage = {
   items: [
@@ -25,19 +29,40 @@ const componentTypes = [
     description: 'Центральный процессор',
     orderIndex: 1,
   },
-];
-
-const attributes = [
   {
-    id: 1011,
-    componentTypeId: 11,
-    name: 'cores',
-    label: 'Количество ядер',
-    dataType: 'NUMBER',
-    isRequired: true,
-    orderIndex: 1,
+    id: 12,
+    domainId: 101,
+    name: 'Материнская плата',
+    code: 'MOTHERBOARD',
+    description: 'Системная плата',
+    orderIndex: 2,
   },
 ];
+
+const attributesByType = {
+  11: [
+    {
+      id: 1011,
+      componentTypeId: 11,
+      name: 'cores',
+      label: 'Количество ядер',
+      dataType: 'NUMBER',
+      isRequired: true,
+      orderIndex: 1,
+    },
+  ],
+  12: [
+    {
+      id: 2011,
+      componentTypeId: 12,
+      name: 'pcie_lanes',
+      label: 'Линии PCIe',
+      dataType: 'NUMBER',
+      isRequired: false,
+      orderIndex: 1,
+    },
+  ],
+} as const;
 
 const componentPage = {
   items: [
@@ -97,6 +122,47 @@ test.beforeEach(async ({ page }) => {
     ],
     edges: [{ id: 301, source: 101, target: 102, comment: 'Сокет AM5' }],
   };
+  let nextRuleId = 502;
+  let compatibilityRules: CompatibilityRuleSet[] = [
+    {
+      id: 501,
+      domainId: 101,
+      name: 'Количество линий',
+      componentTypeAId: 11,
+      componentTypeBId: 12,
+      enabled: true,
+      conditions: [
+        {
+          id: 601,
+          ruleSetId: 501,
+          leftAttributeDefinitionId: 1011,
+          operator: 'GTE',
+          rightAttributeDefinitionId: 2011,
+          orderIndex: 0,
+          createdAt: '2026-08-23T12:00:00',
+        },
+      ],
+      createdAt: '2026-08-23T12:00:00',
+    },
+  ];
+  const ruleFromRequest = (
+    id: number,
+    body: SaveCompatibilityRuleSetRequest,
+  ): CompatibilityRuleSet => ({
+    id,
+    domainId: 101,
+    ...body,
+    conditions: body.conditions.map((condition, index) => ({
+      id: id * 10 + index,
+      ruleSetId: id,
+      leftAttributeDefinitionId: condition.leftAttributeDefinitionId,
+      operator: condition.operator,
+      rightAttributeDefinitionId: condition.rightAttributeDefinitionId,
+      orderIndex: condition.orderIndex ?? index,
+      createdAt: '2026-08-23T12:00:00',
+    })),
+    createdAt: '2026-08-23T12:00:00',
+  });
   await page.route(frontendApiBaseUrl + '/domains*', async (route) => {
     await route.fulfill({ json: domainPage });
   });
@@ -104,7 +170,10 @@ test.beforeEach(async ({ page }) => {
     await route.fulfill({ json: componentTypes });
   });
   await page.route(frontendApiBaseUrl + '/component-types/*/attributes', async (route) => {
-    await route.fulfill({ json: attributes });
+    const typeId = Number(new URL(route.request().url()).pathname.split('/').at(-2));
+    await route.fulfill({
+      json: attributesByType[typeId as keyof typeof attributesByType] ?? [],
+    });
   });
   await page.route(frontendApiBaseUrl + '/domains/*/components*', async (route) => {
     await route.fulfill({ json: componentPage });
@@ -112,6 +181,51 @@ test.beforeEach(async ({ page }) => {
   await page.route(frontendApiBaseUrl + '/domains/*/compatibility/graph', async (route) => {
     await route.fulfill({ json: compatibilityGraph });
   });
+  const handleCompatibilityRules = async (route: Route) => {
+    const request = route.request();
+    const method = request.method();
+    const path = new URL(request.url()).pathname;
+    const ruleId = Number(path.split('/').at(-1));
+    const isCollection = path.endsWith('/rules');
+    if (isCollection && method === 'GET') {
+      await route.fulfill({ json: compatibilityRules });
+      return;
+    }
+    if (isCollection && method === 'POST') {
+      const body = request.postDataJSON() as SaveCompatibilityRuleSetRequest;
+      const created = ruleFromRequest(nextRuleId++, body);
+      compatibilityRules = [...compatibilityRules, created];
+      await route.fulfill({ status: 201, json: created });
+      return;
+    }
+    const index = compatibilityRules.findIndex((rule) => rule.id === ruleId);
+    if (index < 0) {
+      await route.fulfill({ status: 404, json: { message: 'Rule not found' } });
+      return;
+    }
+    if (method === 'GET') {
+      await route.fulfill({ json: compatibilityRules[index] });
+      return;
+    }
+    if (method === 'PUT') {
+      const body = request.postDataJSON() as SaveCompatibilityRuleSetRequest;
+      const updated = ruleFromRequest(ruleId, body);
+      compatibilityRules[index] = updated;
+      await route.fulfill({ json: updated });
+      return;
+    }
+    if (method === 'DELETE') {
+      compatibilityRules.splice(index, 1);
+      await route.fulfill({ status: 204 });
+      return;
+    }
+    await route.fallback();
+  };
+  await page.route(frontendApiBaseUrl + '/domains/*/compatibility/rules', handleCompatibilityRules);
+  await page.route(
+    frontendApiBaseUrl + '/domains/*/compatibility/rules/*',
+    handleCompatibilityRules,
+  );
   await page.route(frontendApiBaseUrl + '/domains/*/compatibility', async (route) => {
     const body = route.request().postDataJSON() as {
       componentAId: number;
@@ -338,6 +452,66 @@ test('creates and permanently deletes a manual compatibility link on desktop and
 
   await expect(page.getByText('Ручная связь удалена')).toBeVisible();
   await expect(page.getByText('Один блок питания')).toHaveCount(0);
+});
+
+test('creates, edits, toggles and permanently deletes an automatic compatibility rule', async ({
+  page,
+}) => {
+  await page.goto('/settings/compatibility/rules');
+
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Автоматические правила' }),
+  ).toBeVisible();
+  await expect(page.getByTestId('desktop-compatibility-rule-table')).toBeVisible();
+  await expect(page.getByText('Количество линий').first()).toBeVisible();
+  await page.getByRole('link', { name: 'Новое правило' }).click();
+  await expect(page).toHaveURL(/\/settings\/compatibility\/rules\/new$/);
+
+  await page.getByRole('textbox', { name: 'Название правила' }).fill('Сравнение линий');
+  await page.getByRole('combobox', { name: 'Тип слева' }).click();
+  await page.getByRole('option', { name: 'Процессор' }).click();
+  await page.getByRole('combobox', { name: 'Тип справа' }).click();
+  await page.getByRole('option', { name: 'Материнская плата' }).click();
+  await page.getByRole('combobox', { name: 'Атрибут слева' }).click();
+  await page.getByRole('option', { name: 'Количество ядер · NUMBER' }).click();
+  await page.getByRole('combobox', { name: 'Оператор' }).click();
+  await page.getByRole('option', { name: 'Больше или равно (≥)' }).click();
+  await page.getByRole('combobox', { name: 'Атрибут справа' }).click();
+  await page.getByRole('option', { name: 'Линии PCIe · NUMBER' }).click();
+  await page.getByRole('button', { name: 'Создать правило' }).click();
+
+  await expect(page).toHaveURL(/\/settings\/compatibility\/rules$/);
+  await expect(page.getByText('Автоматическое правило создано')).toBeVisible();
+  await expect(page.getByText('Сравнение линий').first()).toBeVisible();
+  await page.getByRole('link', { name: 'Редактировать правило Сравнение линий' }).click();
+  const name = page.getByRole('textbox', { name: 'Название правила' });
+  await expect(name).toHaveValue('Сравнение линий');
+  await name.fill('Сравнение линий PCIe');
+  await page.getByRole('button', { name: 'Сохранить правило' }).click();
+
+  await expect(page.getByText('Автоматическое правило сохранено')).toBeVisible();
+  await page
+    .getByRole('switch', { name: 'Отключить правило Сравнение линий PCIe' })
+    .locator('..')
+    .click();
+  await expect(page.getByText('Автоматическое правило отключено')).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId('desktop-compatibility-rule-table')).toBeHidden();
+  await expect(page.getByTestId('mobile-compatibility-rule-list')).toBeVisible();
+  await page.getByRole('button', { name: 'Удалить правило Сравнение линий PCIe' }).click();
+  await page
+    .getByRole('dialog', { name: 'Удалить автоматическое правило?' })
+    .getByRole('button', { name: 'Удалить' })
+    .click();
+
+  await expect(page.getByText('Автоматическое правило удалено')).toBeVisible();
+  await expect(page.getByText('Сравнение линий PCIe')).toHaveCount(0);
+  await page.goto('/settings/compatibility/rules/new');
+  await expect(page.getByRole('heading', { name: 'Новое автоматическое правило' })).toBeVisible();
+  const mobileFormAction = page.getByRole('button', { name: 'Создать правило' });
+  const mobileFormActionBox = await mobileFormAction.boundingBox();
+  expect(mobileFormActionBox).not.toBeNull();
+  expect(mobileFormActionBox!.x + mobileFormActionBox!.width).toBeLessThanOrEqual(390);
 });
 
 test('explores the manual compatibility graph on desktop and mobile', async ({ page }) => {

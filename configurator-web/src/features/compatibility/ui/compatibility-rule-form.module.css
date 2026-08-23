@@ -1,0 +1,23 @@
+.type-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mantine-spacing-md);
+}
+
+.condition {
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-7));
+}
+
+.condition-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.55fr) minmax(0, 1fr);
+  gap: var(--mantine-spacing-md);
+  align-items: start;
+}
+
+@media (width <= 48em) {
+  .type-fields,
+  .condition-fields {
+    grid-template-columns: 1fr;
+  }
+}

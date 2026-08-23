@@ -1,0 +1,13 @@
+.mobile-list {
+  display: none;
+}
+
+@media (width <= 48em) {
+  .desktop-list {
+    display: none;
+  }
+
+  .mobile-list {
+    display: flex;
+  }
+}
