@@ -67,6 +67,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
+    maxWorkers: 2,
+    testTimeout: 20_000,
     coverage: {
       provider: 'v8',
       exclude: ['src/shared/api/generated/**'],

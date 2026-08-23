@@ -153,6 +153,21 @@ function configuratorResponse(baseComponentId: number) {
 const frontendApiBaseUrl = 'http://127.0.0.1:5173/api';
 
 test.beforeEach(async ({ page }) => {
+  let configurations: Array<{
+    id: number;
+    domainId: number;
+    name: string;
+    description?: string;
+    createdAt: string;
+    components: Array<{
+      id: number;
+      name: string;
+      brand?: string;
+      componentTypeId: number;
+      componentTypeName: string;
+      archived: boolean;
+    }>;
+  }> = [];
   let componentImages = [
     { id: 9001, url: '/component-images/9001/content', orderIndex: 0 },
     { id: 9002, url: '/component-images/9002/content', orderIndex: 1 },
@@ -238,6 +253,55 @@ test.beforeEach(async ({ page }) => {
   });
   await page.route(frontendApiBaseUrl + '/domains/*/components*', async (route) => {
     await route.fulfill({ json: componentPage });
+  });
+  await page.route(frontendApiBaseUrl + '/domains/*/configurations*', async (route) => {
+    const request = route.request();
+    if (request.method() === 'POST') {
+      const body = request.postDataJSON() as {
+        name: string;
+        description?: string;
+        componentIds: number[];
+      };
+      const created = {
+        id: 901,
+        domainId: 101,
+        name: body.name,
+        ...(body.description ? { description: body.description } : {}),
+        createdAt: '2026-08-23T12:00:00Z',
+        components: body.componentIds.flatMap((componentId) => {
+          const component = componentPage.items.find((item) => item.id === componentId);
+          if (!component) {
+            return [];
+          }
+          return [
+            {
+              id: component.id,
+              name: component.name,
+              brand: component.brand,
+              componentTypeId: component.componentTypeId,
+              componentTypeName:
+                componentTypes.find((type) => type.id === component.componentTypeId)?.name ??
+                'Unknown',
+              archived: false,
+            },
+          ];
+        }),
+      };
+      configurations = [created, ...configurations];
+      await route.fulfill({ status: 201, json: created });
+      return;
+    }
+    const url = new URL(request.url());
+    const pageNumber = Number(url.searchParams.get('page') ?? 0);
+    const size = Number(url.searchParams.get('size') ?? 10);
+    await route.fulfill({
+      json: {
+        items: configurations.slice(pageNumber * size, pageNumber * size + size),
+        page: pageNumber,
+        size,
+        totalItems: configurations.length,
+      },
+    });
   });
   await page.route(frontendApiBaseUrl + '/domains/*/configurator/compatible*', async (route) => {
     if (route.request().method() !== 'GET') {
@@ -515,6 +579,48 @@ test('opens the configurator frontend with the selected domain', async ({ page }
   expect(workspaceBox!.x + workspaceBox!.width).toBeLessThanOrEqual(390);
 });
 
+test('saves the current assembly and shows it in the configurations list', async ({ page }) => {
+  await page.goto('/configurator');
+
+  const browser = page.getByRole('region', { name: 'Доступные компоненты' });
+  const assembly = page.getByRole('region', { name: 'Текущая сборка' });
+  await browser.getByRole('button', { name: 'Добавить' }).first().click();
+  await expect(assembly.getByText('Сборка совместима напрямую')).toBeVisible();
+  await expect(assembly.getByRole('button', { name: 'Сохранить конфигурацию' })).toBeEnabled();
+  await assembly.getByRole('button', { name: 'Сохранить конфигурацию' }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Сохранение конфигурации' });
+  await expect(dialog.getByText('Ryzen 7 7800X3D')).toBeVisible();
+  await dialog.getByRole('textbox', { name: /Название/ }).fill('Домашний ПК');
+  await dialog.getByRole('textbox', { name: 'Описание' }).fill('Тихая сборка');
+  const createRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname.endsWith('/domains/101/configurations'),
+  );
+  await dialog.getByRole('button', { name: 'Сохранить конфигурацию' }).click();
+
+  expect((await createRequest).postDataJSON()).toEqual({
+    name: 'Домашний ПК',
+    description: 'Тихая сборка',
+    componentIds: [101],
+  });
+  await expect(page).toHaveURL(/\/configurations$/);
+  const card = page.getByRole('article');
+  await expect(card.getByRole('heading', { name: 'Домашний ПК' })).toBeVisible();
+  await expect(card.getByText('Тихая сборка')).toBeVisible();
+  await expect(card.getByText('Ryzen 7 7800X3D')).toBeVisible();
+  const storedDraft = await page.evaluate<string | null>(
+    "window.localStorage.getItem('configurator.assembly-draft.v1.101')",
+  );
+  expect(JSON.parse(storedDraft ?? '{}') as unknown).toMatchObject({ version: 1, items: [] });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mainBox = await page.getByRole('main').boundingBox();
+  expect(mainBox).not.toBeNull();
+  expect(mainBox!.x + mainBox!.width).toBeLessThanOrEqual(390);
+});
+
 test('explains a transitive candidate and returns the draft to strict validation', async ({
   page,
 }) => {
@@ -615,6 +721,7 @@ test('explains a transitive candidate and returns the draft to strict validation
   const assembly = page.getByRole('region', { name: 'Текущая сборка' });
   await expect(assembly.getByText('Сборка совместима только с учётом цепочек')).toBeVisible();
   await expect(assembly.getByText(/нельзя сохранить/)).toBeVisible();
+  await expect(assembly.getByRole('button', { name: 'Сохранить конфигурацию' })).toBeDisabled();
   await assembly.getByRole('button', { name: 'Показать проверку' }).click();
   await expect(page.getByRole('dialog', { name: 'Проверка текущей сборки' })).toBeVisible();
   await page.keyboard.press('Escape');

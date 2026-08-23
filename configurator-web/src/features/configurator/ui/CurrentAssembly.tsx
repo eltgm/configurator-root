@@ -53,6 +53,9 @@ interface CurrentAssemblyProps {
   onReplace: (slot: ConfiguratorDraftSlot) => void;
   onRemove: (componentId: number) => void;
   onClear: () => void;
+  canSave: boolean;
+  saveUnavailableReason?: string;
+  onSave: () => void;
 }
 
 export function CurrentAssembly({
@@ -67,6 +70,9 @@ export function CurrentAssembly({
   onReplace,
   onRemove,
   onClear,
+  canSave,
+  saveUnavailableReason,
+  onSave,
 }: CurrentAssemblyProps) {
   const { t } = useTranslation();
   const [detailsOpened, setDetailsOpened] = useState(false);
@@ -98,7 +104,7 @@ export function CurrentAssembly({
         withBorder
       >
         <Stack gap="lg">
-          <Group justify="space-between" align="flex-start" wrap="nowrap">
+          <Group justify="space-between" align="flex-start" wrap="wrap">
             <Stack gap={4}>
               <Title id="current-assembly-title" order={2} size="h3">
                 {t('configurator.assembly.title')}
@@ -108,11 +114,22 @@ export function CurrentAssembly({
               </Text>
             </Stack>
             {slots.length > 0 ? (
-              <Button size="xs" variant="subtle" color="red" onClick={onClear}>
-                {t('configurator.assembly.clear')}
-              </Button>
+              <Group gap="xs" justify="flex-end">
+                <Button size="xs" disabled={!canSave} onClick={onSave}>
+                  {t('configurations.actions.save')}
+                </Button>
+                <Button size="xs" variant="subtle" color="red" onClick={onClear}>
+                  {t('configurator.assembly.clear')}
+                </Button>
+              </Group>
             ) : null}
           </Group>
+
+          {slots.length > 0 && saveUnavailableReason ? (
+            <Text size="xs" c="dimmed" ta="right">
+              {saveUnavailableReason}
+            </Text>
+          ) : null}
 
           <AssemblyCompatibilityStatus
             state={compatibilityState}

@@ -31,4 +31,13 @@ export const server = setupServer(
       totalItems: 0,
     });
   }),
+  http.get(`${testApiBaseUrl}/domains/:domainId/configurations`, ({ request }) => {
+    const url = new URL(request.url);
+    return HttpResponse.json({
+      items: [],
+      page: Number(url.searchParams.get('page') ?? 0),
+      size: Number(url.searchParams.get('size') ?? 10),
+      totalItems: 0,
+    });
+  }),
 );

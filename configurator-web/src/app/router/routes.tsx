@@ -1,4 +1,4 @@
-import { IconFileDescription, IconSettings } from '@tabler/icons-react';
+import { IconSettings } from '@tabler/icons-react';
 import { Navigate, type RouteObject } from 'react-router-dom';
 
 import { AppLayout } from '@/app/layout/AppLayout';
@@ -11,11 +11,11 @@ import { CompatibilityGraphPage } from '@/pages/CompatibilityGraphPage';
 import { CompatibilityRuleFormPage } from '@/pages/CompatibilityRuleFormPage';
 import { CompatibilityRulesPage } from '@/pages/CompatibilityRulesPage';
 import { ConfiguratorPage } from '@/pages/ConfiguratorPage';
+import { ConfigurationsPage } from '@/pages/ConfigurationsPage';
 import { DomainSettingsPage } from '@/pages/DomainSettingsPage';
 import { ManualCompatibilityPage } from '@/pages/ManualCompatibilityPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { RouteErrorPage } from '@/pages/RouteErrorPage';
-import { RoutePlaceholder } from '@/pages/RoutePlaceholder';
 
 export const appRoutes: RouteObject[] = [
   {
@@ -68,11 +68,7 @@ export const appRoutes: RouteObject[] = [
         path: 'configurations',
         element: (
           <RequireDomain>
-            <RoutePlaceholder
-              icon={IconFileDescription}
-              titleKey="pages.configurations.title"
-              descriptionKey="pages.configurations.description"
-            />
+            <ConfigurationsPage />
           </RequireDomain>
         ),
       },
