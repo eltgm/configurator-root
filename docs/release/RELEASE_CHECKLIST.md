@@ -1,6 +1,6 @@
 # First release checklist — v0.1.0
 
-Дата аудита: 2026-07-31. Целевой статус: MVP preview, не production-ready.
+Дата аудита: 2026-08-24. Целевой статус: локальный MVP preview, не production-ready.
 
 ## Функциональная готовность
 
@@ -12,7 +12,7 @@
 - [x] Direct/transitive/batch/intersection configurator search.
 - [x] Saved configurations и JSON export.
 - [ ] Authentication/authorization — осознанно перенесены после первого preview release.
-- [ ] Frontend — вне scope backend repository.
+- [x] React frontend: catalog, configurator, compatibility, configurations and settings UX.
 
 ## Репозиторий
 
@@ -59,6 +59,25 @@
 - [ ] В git отсутствуют secrets, `.DS_Store`, IDE и host-specific settings.
 - [x] JAR запускается в пересобранном runtime container.
 
+## Локальная пользовательская поставка
+
+9.29 реализует и проверяет package contract; 9.30 должна опубликовать public multi-platform images и добавить архивы
+в GitHub Release. Не считать одни только локально собранные архивы готовым пользовательским релизом.
+
+- [x] Image-only Compose без `build`, с единственным bind `127.0.0.1:8080`.
+- [x] Windows `.cmd`/PowerShell 5.1 и macOS `.command`/Bash 3.2 launchers.
+- [x] Start/Stop/Update/Backup/Restore package contracts и versioned archive builder.
+- [x] PostgreSQL + MinIO backup format v1, checksums и pre-restore safety backup.
+- [x] Real Docker lifecycle: destructive mutation/recovery, preview Update success и strict failure.
+- [ ] 9.30: public `linux/amd64` + `linux/arm64` app/gateway manifests опубликованы и доступны без registry login.
+- [ ] 9.30: Windows/macOS archives и `SHA256SUMS` прикреплены к draft GitHub Release.
+- [ ] 9.30: SBOM/provenance/signing policy выполнены согласно актуальным требованиям.
+- [ ] Чистая Windows 10/11 x86-64: download, extract, Start/repeated Start, Stop, Update, Backup, Restore.
+- [ ] Чистая macOS Intel: download, extract, right-click/Open, полный lifecycle и browser opening.
+- [ ] Чистая macOS Apple Silicon: download, extract, right-click/Open, полный lifecycle и browser opening.
+- [ ] Проверено, что архивы не содержат source/build tools/secrets/host paths/IDE/OS metadata.
+- [ ] Проверено предупреждение local-only/no-auth и отсутствие LAN/public exposure.
+
 ## Выпуск
 
 1. [ ] Обновить `CHANGELOG.md`, версию и дату.
@@ -66,7 +85,7 @@
 3. [ ] После merge убедиться, что CI на `master` зелёный.
 4. [ ] Создать annotated tag `v0.1.0` на commit из `master` и push tag.
 5. [ ] Дождаться release workflow: он повторно проверит проект и создаст draft release.
-6. [ ] Проверить JAR, OpenAPI, `SHA256SUMS` и generated notes.
+6. [ ] Проверить JAR, OpenAPI, пользовательские архивы, `SHA256SUMS`, image manifests и generated notes.
 7. [ ] Опубликовать draft как pre-release.
 8. [ ] Выполнить smoke test из release artifact.
 
@@ -75,6 +94,6 @@
 - Spring Security/JWT и реальный `CurrentUserProvider`.
 - Authorization policy и negative security tests.
 - Production secrets/configuration, TLS и deployment strategy.
-- Backup/restore и миграционный rollback/runbook.
+- Production backup/restore, retention/encryption и миграционный rollback/runbook.
 - Observability, health/readiness probes и operational SLO.
 - Формализованная support policy и release maintenance window.

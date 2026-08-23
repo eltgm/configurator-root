@@ -216,7 +216,7 @@ scripts/release/
 ```
 
 Generated archive root is a single `Configurator/` directory. It additionally contains `LICENSE.txt`, `VERSION`,
-empty writable `backups/` and `logs/` directories. Build output goes to ignored `build/release/`.
+empty writable `backups/` and `logs/` directories. Build output goes to ignored `delivery-output/`.
 
 ### Delivery Compose
 
@@ -419,13 +419,13 @@ gateway/app log tail and recovery path.
 - Modify: `docs/requirements/epic-9-frontend.md`
 - Modify: `docs/plans/20260824-local-delivery-packages.md`
 
-- [ ] add detailed Start/Stop/Update/Backup/Restore acceptance criteria from Confirmed Product Contract
-- [ ] define archive names/content, supported OS/architectures and Docker Desktop prerequisites
-- [ ] define backup format v1, trust boundary, checksums, consistency and downgrade limitations
-- [ ] define `preview` update channel, mandatory pre-update backup and strict no-auto-rollback failure behavior
-- [ ] separate 9.29 scripts/package verification from 9.30 image publication/release automation
-- [ ] document OpenAPI/backend/frontend/DB/security non-goals
-- [ ] format and review requirements before Task 2
+- [x] add detailed Start/Stop/Update/Backup/Restore acceptance criteria from Confirmed Product Contract
+- [x] define archive names/content, supported OS/architectures and Docker Desktop prerequisites
+- [x] define backup format v1, trust boundary, checksums, consistency and downgrade limitations
+- [x] define `preview` update channel, mandatory pre-update backup and strict no-auto-rollback failure behavior
+- [x] separate 9.29 scripts/package verification from 9.30 image publication/release automation
+- [x] document OpenAPI/backend/frontend/DB/security non-goals
+- [x] format and review requirements before Task 2
 
 ### Task 2: Create the image-only delivery Compose contract
 
@@ -437,15 +437,15 @@ gateway/app log tail and recovery path.
 - Create: `delivery/tests/package-contract.sh`
 - Modify: `.gitignore`
 
-- [ ] add stable project name, named PostgreSQL/MinIO volumes and core image-only services
-- [ ] parameterize public `preview` app/gateway image references for 9.30 and local CI overrides
-- [ ] preserve gateway non-root/read-only hardening and publish only `127.0.0.1:8080`
-- [ ] add pinned one-off PostgreSQL/MinIO maintenance services behind a profile
-- [ ] define validated backup bind path without exposing infrastructure ports
-- [ ] define shared exit-code, readiness, timeout, backup-format and local-only configuration constants
-- [ ] write package/Compose success tests for default and overridden images
-- [ ] write error/edge tests for missing variables, invalid paths, profiles, builds and forbidden port binds
-- [ ] run focused Compose/package tests before Task 3
+- [x] add stable project name, named PostgreSQL/MinIO volumes and core image-only services
+- [x] parameterize public `preview` app/gateway image references for 9.30 and local CI overrides
+- [x] preserve gateway non-root/read-only hardening and publish only `127.0.0.1:8080`
+- [x] add pinned one-off PostgreSQL/MinIO maintenance services behind a profile
+- [x] define validated backup bind path without exposing infrastructure ports
+- [x] define shared exit-code, readiness, timeout, backup-format and local-only configuration constants
+- [x] write package/Compose success tests for default and overridden images
+- [x] write error/edge tests for missing variables, invalid paths, profiles, builds and forbidden port binds
+- [x] run focused Compose/package tests before Task 3
 
 ### Task 3: Implement cross-platform Start and Stop
 
@@ -461,16 +461,16 @@ gateway/app log tail and recovery path.
 - Create: `delivery/tests/macos-scripts-test.sh`
 - Modify: `.gitattributes`
 
-- [ ] implement thin Windows/macOS launchers and one dispatcher per OS
-- [ ] resolve package root independently of current directory and safely quote space/Unicode paths
-- [ ] implement prerequisite/architecture/Compose/port checks and bounded Docker Desktop startup wait
-- [ ] implement atomic operation lock, sanitized logging and stable exit categories
-- [ ] implement idempotent Start, liveness/readiness wait and browser open
-- [ ] implement idempotent Stop without deleting volumes/images or stopping Docker Desktop
-- [ ] ensure Windows PowerShell 5.1/UTF-8 BOM/CRLF and macOS Bash 3.2/LF/executable compatibility
-- [ ] write Start/Stop success and idempotency tests for both OS implementations
-- [ ] write missing Docker/daemon/port/readiness/lock/path error and edge tests
-- [ ] run Windows/macOS focused script tests before Task 4
+- [x] implement thin Windows/macOS launchers and one dispatcher per OS
+- [x] resolve package root independently of current directory and safely quote space/Unicode paths
+- [x] implement prerequisite/architecture/Compose/port checks and bounded Docker Desktop startup wait
+- [x] implement atomic operation lock, sanitized logging and stable exit categories
+- [x] implement idempotent Start, liveness/readiness wait and browser open
+- [x] implement idempotent Stop without deleting volumes/images or stopping Docker Desktop
+- [x] ensure Windows PowerShell 5.1/UTF-8 BOM/CRLF and macOS Bash 3.2/LF/executable compatibility
+- [x] write Start/Stop success and idempotency tests for both OS implementations
+- [x] write missing Docker/daemon/port/readiness/lock/path error and edge tests
+- [x] run Windows/macOS focused script tests before Task 4
 
 ### Task 4: Implement portable Backup
 
@@ -484,15 +484,15 @@ gateway/app log tail and recovery path.
 - Modify: `delivery/tests/macos-scripts-test.sh`
 - Modify: `delivery/tests/docker-lifecycle-contract.sh`
 
-- [ ] implement finalized timestamp/partial directory lifecycle and best-effort private permissions
-- [ ] capture and restore pre-operation running state while quiescing gateway/app writes
-- [ ] invoke maintenance services for PostgreSQL custom dump and all current MinIO objects
-- [ ] generate manifest format 1 without secrets and sorted SHA-256 checksums
-- [ ] validate dump/artifacts before atomic finalization and never expose failed partial backup as restorable
-- [ ] implement non-interactive internal backup function reusable by Update/Restore without nested lock
-- [ ] write success/empty-store/running-state/manifest/checksum tests for both OS implementations
-- [ ] write dump/mirror/disk/path/cleanup/lock failure and edge tests
-- [ ] run focused fake-Docker and real Docker backup tests before Task 5
+- [x] implement finalized timestamp/partial directory lifecycle and best-effort private permissions
+- [x] capture and restore pre-operation running state while quiescing gateway/app writes
+- [x] invoke maintenance services for PostgreSQL custom dump and all current MinIO objects
+- [x] generate manifest format 1 without secrets and sorted SHA-256 checksums
+- [x] validate dump/artifacts before atomic finalization and never expose failed partial backup as restorable
+- [x] implement non-interactive internal backup function reusable by Update/Restore without nested lock
+- [x] write success/empty-store/running-state/manifest/checksum tests for both OS implementations
+- [x] write dump/mirror/disk/path/cleanup/lock failure and edge tests
+- [x] run focused fake-Docker and real Docker backup tests before Task 5
 
 ### Task 5: Implement strict Restore with safety backup
 
@@ -506,16 +506,16 @@ gateway/app log tail and recovery path.
 - Modify: `delivery/tests/macos-scripts-test.sh`
 - Modify: `delivery/tests/docker-lifecycle-contract.sh`
 
-- [ ] implement newest-first finalized backup discovery, numbered selection and explicit `--backup`
-- [ ] validate canonical path, trusted manifest format, required files and all checksums before data changes
-- [ ] require destructive confirmation and create complete pre-restore safety backup
-- [ ] recreate database from clean template and restore with fail-fast/no-owner/no-privileges options
-- [ ] create/replace MinIO bucket content with overwrite/remove semantics
-- [ ] start current stack and verify liveness/readiness only after both stores restore successfully
-- [ ] keep app/gateway stopped and preserve diagnostics/safety backup on any restore/readiness failure
-- [ ] write selection/confirmation/validation/success tests for both OS implementations
-- [ ] write untrusted/partial/checksum/database/MinIO/readiness/downgrade-warning error and edge tests
-- [ ] run focused fake-Docker and real destructive restore tests before Task 6
+- [x] implement newest-first finalized backup discovery, numbered selection and explicit `--backup`
+- [x] validate canonical path, trusted manifest format, required files and all checksums before data changes
+- [x] require destructive confirmation and create complete pre-restore safety backup
+- [x] recreate database from clean template and restore with fail-fast/no-owner/no-privileges options
+- [x] create/replace MinIO bucket content with overwrite/remove semantics
+- [x] start current stack and verify liveness/readiness only after both stores restore successfully
+- [x] keep app/gateway stopped and preserve diagnostics/safety backup on any restore/readiness failure
+- [x] write selection/confirmation/validation/success tests for both OS implementations
+- [x] write untrusted/partial/checksum/database/MinIO/readiness/downgrade-warning error and edge tests
+- [x] run focused fake-Docker and real destructive restore tests before Task 6
 
 ### Task 6: Implement `preview` channel Update
 
@@ -529,15 +529,15 @@ gateway/app log tail and recovery path.
 - Modify: `delivery/tests/macos-scripts-test.sh`
 - Modify: `delivery/tests/docker-lifecycle-contract.sh`
 
-- [ ] require successful full backup before image pull and record current resolved image identifiers
-- [ ] pull only app/gateway channel images and recreate the stack without build or volume replacement
-- [ ] verify gateway liveness and API readiness before reporting update success
-- [ ] retain backups and old local image layers without automatic prune
-- [ ] on pull/start/readiness failure stop app/gateway, preserve infrastructure and print Restore recovery path
-- [ ] prove no old-image retag/restart or automatic destructive rollback occurs
-- [ ] write success/unchanged-image/idempotency tests for both OS implementations
-- [ ] write backup/pull/start/readiness/lock failure and strict-state edge tests
-- [ ] run focused fake-registry and real Docker update tests before Task 7
+- [x] require successful full backup before image pull and record current resolved image identifiers
+- [x] pull only app/gateway channel images and recreate the stack without build or volume replacement
+- [x] verify gateway liveness and API readiness before reporting update success
+- [x] retain backups and old local image layers without automatic prune
+- [x] on pull/start/readiness failure stop app/gateway, preserve infrastructure and print Restore recovery path
+- [x] prove no old-image retag/restart or automatic destructive rollback occurs
+- [x] write success/unchanged-image/idempotency tests for both OS implementations
+- [x] write backup/pull/start/readiness/lock failure and strict-state edge tests
+- [x] run focused fake-registry and real Docker update tests before Task 7
 
 ### Task 7: Assemble deterministic Windows and macOS archives
 
@@ -549,15 +549,15 @@ gateway/app log tail and recovery path.
 - Modify: `.gitattributes`
 - Modify: `delivery/tests/package-contract.sh`
 
-- [ ] validate semantic package version and assemble allowlisted `Configurator/` roots from clean templates
-- [ ] include Compose/environment, matching OS scripts, LICENSE, VERSION and writable backup/log directories only
-- [ ] produce `configurator-windows-vX.Y.Z.zip` and `configurator-macos-vX.Y.Z.tar.gz`
-- [ ] preserve Windows encoding/line endings and macOS executable modes
-- [ ] generate local `SHA256SUMS` for both archives without implementing GitHub publication
-- [ ] make assembly deterministic where host archive formats permit and record unavoidable metadata boundaries
-- [ ] write archive content/name/checksum/mode/encoding/path success tests
-- [ ] write invalid version, missing file, forbidden content and stale output error tests
-- [ ] extract and validate both packages before Task 8
+- [x] validate semantic package version and assemble allowlisted `Configurator/` roots from clean templates
+- [x] include Compose/environment, matching OS scripts, LICENSE, VERSION and writable backup/log directories only
+- [x] produce `configurator-windows-vX.Y.Z.zip` and `configurator-macos-vX.Y.Z.tar.gz`
+- [x] preserve Windows encoding/line endings and macOS executable modes
+- [x] generate local `SHA256SUMS` for both archives without implementing GitHub publication
+- [x] make assembly deterministic where host archive formats permit and record unavoidable metadata boundaries
+- [x] write archive content/name/checksum/mode/encoding/path success tests
+- [x] write invalid version, missing file, forbidden content and stale output error tests
+- [x] extract and validate both packages before Task 8
 
 ### Task 8: Add CI package and lifecycle gates
 
@@ -570,15 +570,15 @@ gateway/app log tail and recovery path.
 - Modify: `delivery/tests/WindowsScripts.Tests.ps1`
 - Modify: `delivery/tests/macos-scripts-test.sh`
 
-- [ ] add SHA-pinned minimal-permission Ubuntu package/real-Docker lifecycle job
-- [ ] add Windows runner check using Windows PowerShell 5.1, extracted zip and fake Docker
-- [ ] add macOS runner check using `/bin/bash`, extracted tar and fake Docker
-- [ ] build current local app/gateway images and override package image references without template edits
-- [ ] verify real Start/Stop, seed, Backup, mutation, Restore and exact data/object recovery
-- [ ] verify controlled `preview` pull success and non-ready update strict failure via disposable test registry
-- [ ] upload reviewable generated archives/logs only with short retention and no user data/secrets
-- [ ] ensure jobs clean only uniquely named test project containers/volumes/registry
-- [ ] run all three CI-equivalent commands locally where the host supports them before Task 9
+- [x] add SHA-pinned minimal-permission Ubuntu package/real-Docker lifecycle job
+- [x] add Windows runner check using Windows PowerShell 5.1, extracted zip and fake Docker
+- [x] add macOS runner check using `/bin/bash`, extracted tar and fake Docker
+- [x] build current local app/gateway images and override package image references without template edits
+- [x] verify real Start/Stop, seed, Backup, mutation, Restore and exact data/object recovery
+- [x] verify controlled `preview` pull success and non-ready update strict failure via disposable test registry
+- [x] upload reviewable generated archives/logs only with short retention and no user data/secrets
+- [x] ensure jobs clean only uniquely named test project containers/volumes/registry
+- [x] run all three CI-equivalent commands locally where the host supports them before Task 9
 
 ### Task 9: Document end-user and maintainer workflows
 
@@ -591,15 +591,15 @@ gateway/app log tail and recovery path.
 - Modify: `docs/release/RELEASE_CHECKLIST.md`
 - Modify: `delivery/common/README.txt`
 
-- [ ] replace source-build quick start for end users with download/extract/Start minimal flow while preserving developer
+- [x] replace source-build quick start for end users with download/extract/Start minimal flow while preserving developer
       instructions separately
-- [ ] document Windows/macOS first run, Docker Desktop license/startup and macOS right-click/Open
-- [ ] document exact Start/Stop/Update/Backup/Restore behavior and recovery messages
-- [ ] document unencrypted backup storage, trusted-archive rule, no downgrade and strict update/restore failure states
-- [ ] document local-only/no-auth boundary and prohibit LAN/public exposure
-- [ ] document package builder, image override, OS matrix and delivery Definition of Done
-- [ ] update release checklist with 9.29/9.30 boundary and clean-machine verification matrix
-- [ ] run documentation formatting and link/path checks before Task 10
+- [x] document Windows/macOS first run, Docker Desktop license/startup and macOS right-click/Open
+- [x] document exact Start/Stop/Update/Backup/Restore behavior and recovery messages
+- [x] document unencrypted backup storage, trusted-archive rule, no downgrade and strict update/restore failure states
+- [x] document local-only/no-auth boundary and prohibit LAN/public exposure
+- [x] document package builder, image override, OS matrix and delivery Definition of Done
+- [x] update release checklist with 9.29/9.30 boundary and clean-machine verification matrix
+- [x] run documentation formatting and link/path checks before Task 10
 
 ### Task 10: Verify all 9.29 acceptance criteria
 
@@ -608,18 +608,44 @@ gateway/app log tail and recovery path.
 - Modify: `docs/plans/20260824-local-delivery-packages.md`
 - Move after completion: `docs/plans/20260824-local-delivery-packages.md` to `docs/plans/completed/`
 
-- [ ] run Windows PowerShell 5.1 and macOS Bash 3.2 script suites
-- [ ] build/extract/audit both versioned archives and verify checksums/modes/encodings
-- [ ] validate delivery Compose default/override/profile/security/port contracts
-- [ ] run full real Docker Start/Stop/Backup/Restore/Update success and failure lifecycle
-- [ ] prove PostgreSQL rows and MinIO image bytes recover exactly after destructive mutation
-- [ ] run `./gradlew build` and full external integration contracts through gateway
-- [ ] run `npm ci`, `npm run check`, `npm run test:coverage` and production delivery smoke if relevant files changed
-- [ ] run `git diff --check` and verify OpenAPI/generated client/Flyway/jOOQ drift is absent
-- [ ] confirm archives contain no source, build tools, secrets, reports, host paths, IDE/OS metadata or unrelated files
-- [ ] confirm `testcontainers.properties` remains unstaged and unchanged by implementation
-- [ ] record test counts, archive checksums/sizes, image identifiers, current host/platform and unverified manual matrix
-- [ ] move completed plan to `docs/plans/completed/`
+- [!] macOS Bash suite выполнен локально; Windows PowerShell 5.1 suite добавлен в Windows CI, но Windows runner из
+      текущего macOS host не запускался
+- [x] build/extract/audit both versioned archives and verify checksums/modes/encodings
+- [x] validate delivery Compose default/override/profile/security/port contracts
+- [x] run full real Docker Start/Stop/Backup/Restore/Update success and failure lifecycle
+- [x] prove PostgreSQL rows and MinIO image bytes recover exactly after destructive mutation
+- [x] run `./gradlew build` and full external integration contracts through gateway
+- [x] run `npm ci`, `npm run check`, `npm run test:coverage` and production delivery build
+- [x] run `git diff --check` and verify OpenAPI/generated client/Flyway/jOOQ drift is absent
+- [x] confirm archives contain no source, build tools, secrets, reports, host paths, IDE/OS metadata or unrelated files
+- [x] confirm `testcontainers.properties` remains unstaged and unchanged by implementation
+- [x] record test counts, archive checksums/sizes, image identifiers, current host/platform and unverified manual matrix
+- [x] move completed plan to `docs/plans/completed/`
+
+## Verification Results
+
+- Host: macOS Darwin 25.3.0, Apple Silicon `arm64`; Docker 29.2.1.
+- `./gradlew --no-daemon build --rerun-tasks`: success; backend 410 tests and local integration 200 tests, no failures;
+  JaCoCo gate passed.
+- `:configurator-integration-tests:externalIntegrationTest --rerun-tasks`: success; 204 external tests, no failures,
+  through isolated gateway/PostgreSQL/MinIO Compose.
+- `npm ci`, `npm run check`, `npm run test:coverage`: success; 41 files / 207 tests in each Vitest run; statements
+  90.25%, branches 83.94%, functions 88.79%, lines 90.84%.
+- `package-contract.sh`, `macos-scripts-test.sh`, `archive-contract.sh`: success.
+- `docker-lifecycle-contract.sh`: success with isolated project and disposable registry; PostgreSQL row and exact MinIO
+  bytes recovered, preview Update succeeded, intentionally non-ready Update returned 60 and stopped app/gateway.
+- Windows dispatcher/test files parsed successfully in official PowerShell runtime. Native Windows PowerShell 5.1 and
+  double-click UX remain pending Windows CI/manual verification.
+- Final local images tested: app `sha256:0f7ea745da3e6c01d94e4c85abba85da685d3e9dd3cb136b02e705d41f4dea0b`,
+  gateway `sha256:ded6aea51e28750e607b8bd0b5e70ecf55dcf9838b339f9996bd145e4c8e66d1`, both `linux/arm64`.
+- Local `v0.1.0` archives are reproducible on the current host: Windows zip 11,681 bytes,
+  SHA-256 `71d5a287d4881ce5f4ec71edae5ddc8aa66ef505d6e85f7e3daf3ed1428a59c6`; macOS tar.gz 8,723 bytes,
+  SHA-256 `ff3402755986c3f60ec1eaf2c9259df4871ca6ac35c10a7d9ae4e377c2cc8a10`. CI rebuilds and audits archives independently.
+- OpenAPI, generated client, Flyway, jOOQ and DB schema have no source changes.
+- Unrelated local `configurator-integration-tests/src/test/resources/testcontainers.properties` remains modified only
+  by the user and must stay unstaged.
+- Manual release matrix still required: Windows x86-64, macOS Intel and clean macOS Apple Silicon Docker Desktop,
+  including browser opening and OS security prompts. Public images/release assets remain 9.30.
 
 ## Non-Goals
 

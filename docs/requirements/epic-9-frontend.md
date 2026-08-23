@@ -844,6 +844,60 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
   безопасной для публикации в недоверенной сети;
 - OpenAPI, backend business logic, Flyway, jOOQ, БД и generated API client в 9.28 не меняются.
 
+#### 9.29 — Пакеты запуска, обновления, backup и restore
+
+- конечному пользователю предоставляются отдельные архивы `configurator-windows-vX.Y.Z.zip` и
+  `configurator-macos-vX.Y.Z.tar.gz`; после установки Docker Desktop не требуются JDK, Gradle, Node.js, npm, Git или
+  локальная сборка image;
+- архив содержит image-only Compose, настройки локального preview, лицензию, краткую инструкцию и отдельные Start,
+  Stop, Update, Backup и Restore launchers; исходники, JAR и build tools в пакет не входят;
+- Windows x86-64 использует запускаемые двойным кликом `.cmd` wrappers и совместимый с Windows PowerShell 5.1
+  dispatcher; macOS Intel/Apple Silicon использует executable `.command` wrappers и штатный Bash 3.2;
+- scripts работают из каталога с пробелами и Unicode-символами, определяют package root от собственного расположения и
+  не зависят от текущего рабочего каталога;
+- Compose project name фиксирован, поэтому PostgreSQL/MinIO named volumes сохраняются при переименовании или переносе
+  распакованной папки; единственным host bind остаётся `127.0.0.1:8080` gateway;
+- app и gateway загружаются из публичного канала `preview`; конкретные image references параметризованы для CI и
+  будущей публикации 9.30, а пользовательский Compose не содержит `build`;
+- Start проверяет поддерживаемую OS/architecture, Docker CLI, Compose plugin и порт 8080, при необходимости пытается
+  открыть Docker Desktop, ждёт daemon, запускает stack, проверяет `/healthz` и `/api/v3/api-docs`, затем открывает UI;
+- повторный Start идемпотентен и не выполняет update; Stop идемпотентно останавливает только project containers, не
+  удаляет volumes/images/backups и не завершает Docker Desktop;
+- Update всегда сначала создаёт полный backup, затем выполняет `docker compose pull` только для app/gateway,
+  пересоздаёт stack и сообщает успех только после liveness/readiness;
+- при ошибке Update app/gateway остаются остановленными, backup и old image layers сохраняются, а старые images
+  автоматически не запускаются: новый backend мог уже применить несовместимую с ними Flyway migration;
+- Backup временно останавливает gateway/app, сохраняет PostgreSQL custom-format dump и все текущие objects application
+  bucket MinIO, после чего возвращает исходное running state;
+- backup format version `1` содержит `database.dump`, `minio/`, `manifest.properties` и `SHA256SUMS`; manifest фиксирует
+  UTC timestamp, package/channel, Compose project и resolved image IDs, но не credentials;
+- backup сначала создаётся в `.partial` directory, становится доступным Restore только после полной проверки и
+  переименования; старые backups автоматически не удаляются;
+- MinIO format 1 сохраняет текущие objects без historical versions; backups не шифруются и должны храниться в
+  доверенном месте;
+- Restore показывает завершённые backups от нового к старому либо принимает явный путь для automation, затем до любых
+  изменений проверяет canonical path, format, обязательные artifacts и все SHA-256 checksums;
+- Restore принимает только доверенный backup, созданный Configurator: PostgreSQL archive из неизвестного источника
+  может выполнять произвольные SQL-объекты и не является поддерживаемым import format;
+- после явного подтверждения Restore обязательно создаёт pre-restore safety backup, пересоздаёт application database,
+  восстанавливает MinIO с overwrite/remove semantics и запускает текущий stack только после успешного восстановления
+  обоих stores;
+- при ошибке Restore app/gateway остаются остановленными, выбранный и safety backups сохраняются; downgrade из backup
+  новой версии в старые images не поддерживается;
+- mutating operations защищены process lock, пишут отдельные UTF-8 logs без credentials и возвращают стабильные
+  ненулевые exit categories для prerequisites, Docker, validation, backup, restore, update и readiness errors;
+- Windows scripts используют UTF-8 BOM/CRLF, macOS scripts — LF и executable mode; macOS инструкция предлагает только
+  штатный right-click/Open при Gatekeeper warning и не отключает системную защиту;
+- пакет не устанавливает Docker Desktop и не принимает его license; пользовательские сообщения первого релиза —
+  русские, а recovery action всегда сформулирован явно;
+- cross-platform fake-Docker contracts проверяют Windows/macOS control flow, а реальный Docker lifecycle проверяет
+  Start/Stop, backup, destructive mutation, restore, update success и strict update failure;
+- публикация public multi-platform images, release assets, signing, SBOM и provenance выполняется в 9.30; до неё 9.29
+  использует локальные image overrides/test registry;
+- runtime authentication/authorization не добавляется: package остаётся local-only preview, wildcard/LAN/public bind
+  не поддерживается;
+- OpenAPI, backend/frontend behavior, Flyway, jOOQ, БД и generated API client в 9.29 не меняются.
+
 ## Демонстрационная предметная область
 
 Пункт 9.7 добавляет атомарное создание примера «Сборка ПК» через `POST /domains/demo`. Пример содержит типы, определения

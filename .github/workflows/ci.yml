@@ -15,6 +15,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  delivery-macos-contract:
+    name: macOS delivery scripts contract
+    runs-on: macos-14
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify macOS Bash lifecycle scripts
+        run: delivery/tests/macos-scripts-test.sh
+
+  delivery-windows-contract:
+    name: Windows delivery scripts contract
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify Windows PowerShell 5.1 lifecycle scripts
+        shell: powershell
+        run: .\delivery\tests\WindowsScripts.Tests.ps1
+
   frontend-quality:
     name: Frontend static and unit quality
     runs-on: ubuntu-latest
@@ -116,6 +139,26 @@ jobs:
       - name: Build and verify
         run: ./gradlew --no-daemon clean build -PspotlessRatchetFrom=origin/develop
 
+      - name: Verify delivery package contracts
+        run: |
+          delivery/tests/package-contract.sh
+          delivery/tests/macos-scripts-test.sh
+          delivery/tests/archive-contract.sh
+
+      - name: Assemble reviewable delivery archives
+        run: scripts/release/build-delivery-packages.sh 0.0.0-ci.1
+
+      - name: Upload delivery archives
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: delivery-package-contract-assets
+          path: |
+            delivery-output/configurator-windows-v0.0.0-ci.1.zip
+            delivery-output/configurator-macos-v0.0.0-ci.1.tar.gz
+            delivery-output/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 3
+
       - name: Upload verification reports on failure
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -176,6 +219,9 @@ jobs:
         working-directory: configurator-web
         run: npm run test:delivery
 
+      - name: Tag backend image for delivery contract
+        run: docker tag "$(docker compose -f docker-compose.yml -f docker-compose.dev.yml images -q app)" configurator-app:delivery-contract
+
       - name: Print service logs on failure
         if: failure()
         run: docker compose -f docker-compose.yml -f docker-compose.dev.yml logs --no-color
@@ -183,3 +229,10 @@ jobs:
       - name: Stop external environment
         if: always()
         run: docker compose -f docker-compose.yml -f docker-compose.dev.yml down --volumes
+
+      - name: Run packaged lifecycle contract
+        if: success()
+        env:
+          CONFIGURATOR_TEST_APP_IMAGE: configurator-app:delivery-contract
+          CONFIGURATOR_TEST_GATEWAY_IMAGE: configurator-web:local
+        run: delivery/tests/docker-lifecycle-contract.sh
