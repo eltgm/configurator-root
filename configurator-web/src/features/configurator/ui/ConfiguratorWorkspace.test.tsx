@@ -14,6 +14,7 @@ const domainId = 101;
 const componentTypes: ComponentType[] = [
   { id: 11, domainId, name: 'Процессор', orderIndex: 1 },
   { id: 12, domainId, name: 'Видеокарта', orderIndex: 2 },
+  { id: 13, domainId, name: 'Материнская плата', orderIndex: 3 },
 ];
 const ryzen: Component = {
   id: 101,
@@ -39,7 +40,54 @@ const radeon: Component = {
   archived: false,
   createdAt: '2026-08-03T12:00:00Z',
 };
-const components = [ryzen, intel, radeon];
+const motherboard: Component = {
+  id: 104,
+  componentTypeId: 13,
+  name: 'B650 Tomahawk',
+  brand: 'MSI',
+  archived: false,
+  createdAt: '2026-08-04T12:00:00Z',
+};
+const components = [ryzen, intel, radeon, motherboard];
+
+function groupComponentsByType(entries: ReadonlyArray<Component>) {
+  const groups = new Map<number, Component[]>();
+  for (const component of entries) {
+    groups.set(component.componentTypeId, [
+      ...(groups.get(component.componentTypeId) ?? []),
+      component,
+    ]);
+  }
+  return groups;
+}
+
+function compatibleComponents(baseComponentId: number) {
+  return components.filter(
+    (component) =>
+      component.id !== baseComponentId &&
+      !(baseComponentId === ryzen.id && component.id === intel.id) &&
+      !(baseComponentId === intel.id && component.id === ryzen.id),
+  );
+}
+
+function toCompatibilityResponse(baseComponentId: number) {
+  const groups = groupComponentsByType(compatibleComponents(baseComponentId));
+  return {
+    baseComponentId,
+    compatibleByType: [...groups].map(([componentTypeId, candidates]) => ({
+      componentTypeId,
+      componentTypeName:
+        componentTypes.find((type) => type.id === componentTypeId)?.name ?? 'Unknown',
+      components: candidates.map((component) => ({
+        id: component.id,
+        name: component.name,
+        brand: component.brand,
+        componentTypeId: component.componentTypeId,
+        explanations: [{ source: 'MANUAL' as const, linkId: component.id + baseComponentId }],
+      })),
+    })),
+  };
+}
 
 function useHandlers() {
   server.use(
@@ -68,6 +116,51 @@ function useHandlers() {
         ? HttpResponse.json(component)
         : HttpResponse.json({ message: 'Not found' }, { status: 404 });
     }),
+    http.get(`${testApiBaseUrl}/domains/:domainId/configurator/compatible`, ({ request }) => {
+      const componentId = Number(new URL(request.url).searchParams.get('componentId'));
+      return HttpResponse.json(toCompatibilityResponse(componentId));
+    }),
+    http.post(
+      `${testApiBaseUrl}/domains/:domainId/configurator/compatible/search`,
+      async ({ request }) => {
+        const body = (await request.json()) as { componentIds: number[] };
+        return HttpResponse.json({
+          results: body.componentIds.map(toCompatibilityResponse),
+        });
+      },
+    ),
+    http.post(
+      `${testApiBaseUrl}/domains/:domainId/configurator/compatible/intersection`,
+      async ({ request }) => {
+        const body = (await request.json()) as { componentIds: number[] };
+        const candidates = components.filter(
+          (component) =>
+            !body.componentIds.includes(component.id) &&
+            body.componentIds.every((baseId) =>
+              compatibleComponents(baseId).some((candidate) => candidate.id === component.id),
+            ),
+        );
+        const groups = groupComponentsByType(candidates);
+        return HttpResponse.json({
+          componentIds: body.componentIds,
+          compatibleByType: [...groups].map(([componentTypeId, entries]) => ({
+            componentTypeId,
+            componentTypeName:
+              componentTypes.find((type) => type.id === componentTypeId)?.name ?? 'Unknown',
+            components: entries.map((component) => ({
+              id: component.id,
+              name: component.name,
+              brand: component.brand,
+              componentTypeId,
+              compatibilityByBase: body.componentIds.map((baseComponentId) => ({
+                baseComponentId,
+                explanations: [{ source: 'MANUAL', linkId: component.id + baseComponentId }],
+              })),
+            })),
+          })),
+        });
+      },
+    ),
   );
 }
 
@@ -79,12 +172,12 @@ function renderPage() {
 afterEach(() => window.localStorage.clear());
 
 describe('configurator workspace', () => {
-  it('adds, explicitly replaces, removes and clears components while persisting the draft', async () => {
+  it('adds direct and intersected candidates, explicitly replaces and clears the draft', async () => {
     const user = userEvent.setup();
     useHandlers();
     renderPage();
 
-    const browser = await screen.findByRole('region', { name: 'Доступные компоненты' });
+    let browser = await screen.findByRole('region', { name: 'Доступные компоненты' });
     const assembly = screen.getByRole('region', { name: 'Текущая сборка' });
     expect(
       within(assembly).getByRole('heading', { name: 'Сборка пока пуста' }),
@@ -100,7 +193,23 @@ describe('configurator workspace', () => {
       items: [{ componentId: ryzen.id, componentTypeId: ryzen.componentTypeId }],
     });
 
-    await user.click(within(browser).getByRole('button', { name: 'Заменить' }));
+    expect(await within(assembly).findByText('Сборка совместима напрямую')).toBeInTheDocument();
+    browser = screen.getByRole('region', { name: 'Доступные компоненты' });
+    expect(await within(browser).findByText(radeon.name)).toBeInTheDocument();
+    await user.click(within(browser).getAllByRole('button', { name: 'Добавить' })[0]!);
+    expect(await within(assembly).findByText(radeon.name)).toBeInTheDocument();
+    browser = screen.getByRole('region', { name: 'Доступные компоненты' });
+    expect(await within(browser).findByText(motherboard.name)).toBeInTheDocument();
+    await user.click(within(browser).getByRole('button', { name: 'Добавить' }));
+    expect(await within(assembly).findByText(motherboard.name)).toBeInTheDocument();
+
+    await user.click(within(assembly).getByRole('button', { name: `Заменить ${ryzen.name}` }));
+    const replacementBrowser = screen.getByRole('region', { name: 'Выбор замены' });
+    expect(
+      await within(replacementBrowser).findByRole('heading', { name: 'Выбор замены' }),
+    ).toBeInTheDocument();
+    expect(await within(replacementBrowser).findByText(intel.name)).toBeInTheDocument();
+    await user.click(within(replacementBrowser).getByRole('button', { name: 'Выбрать' }));
     const replaceDialog = await screen.findByRole('dialog', {
       name: 'Заменить компонент этого типа?',
     });
@@ -110,8 +219,6 @@ describe('configurator workspace', () => {
     expect(await within(assembly).findByText(intel.name)).toBeInTheDocument();
     expect(within(assembly).queryByText(ryzen.name)).not.toBeInTheDocument();
 
-    await user.click(within(browser).getAllByRole('button', { name: 'Добавить' }).at(-1)!);
-    expect(await within(assembly).findByText(radeon.name)).toBeInTheDocument();
     await user.click(
       within(assembly).getByRole('button', { name: `Убрать ${intel.name} из сборки` }),
     );
@@ -151,6 +258,62 @@ describe('configurator workspace', () => {
     ).toBeInTheDocument();
     expect(within(assembly).getByRole('button', { name: 'Повторить' })).toBeInTheDocument();
     expect(within(assembly).getByRole('button', { name: 'Убрать' })).toBeInTheDocument();
+  });
+
+  it('keeps an incompatible restored draft and resolves it through slot-aware replacement', async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem(
+      configuratorDraftStorageKey(domainId),
+      JSON.stringify({
+        version: 1,
+        updatedAt: '2026-08-23T12:00:00.000Z',
+        items: [
+          { componentId: ryzen.id, componentTypeId: ryzen.componentTypeId },
+          { componentId: radeon.id, componentTypeId: radeon.componentTypeId },
+        ],
+      }),
+    );
+    useHandlers();
+    server.use(
+      http.post(
+        `${testApiBaseUrl}/domains/:domainId/configurator/compatible/search`,
+        async ({ request }) => {
+          const body = (await request.json()) as { componentIds: number[] };
+          if (body.componentIds.includes(ryzen.id)) {
+            return HttpResponse.json({
+              results: body.componentIds.map((baseComponentId) => ({
+                baseComponentId,
+                compatibleByType: [],
+              })),
+            });
+          }
+          return HttpResponse.json({
+            results: body.componentIds.map(toCompatibilityResponse),
+          });
+        },
+      ),
+    );
+    renderPage();
+
+    const assembly = await screen.findByRole('region', { name: 'Текущая сборка' });
+    const browser = screen.getByRole('region', { name: 'Доступные компоненты' });
+    expect(await within(assembly).findByText('В сборке есть конфликт')).toBeInTheDocument();
+    expect(within(assembly).getAllByText('Конфликт')).toHaveLength(2);
+    expect(within(browser).getByText('Подбор временно недоступен')).toBeInTheDocument();
+
+    await user.click(within(assembly).getByRole('button', { name: `Заменить ${ryzen.name}` }));
+    const replacementBrowser = screen.getByRole('region', { name: 'Выбор замены' });
+    expect(await within(replacementBrowser).findByText(intel.name)).toBeInTheDocument();
+    await user.click(within(replacementBrowser).getByRole('button', { name: 'Выбрать' }));
+    await user.click(
+      within(
+        await screen.findByRole('dialog', { name: 'Заменить компонент этого типа?' }),
+      ).getByRole('button', { name: 'Заменить' }),
+    );
+
+    expect(await within(assembly).findByText(intel.name)).toBeInTheDocument();
+    expect(await within(assembly).findByText('Сборка совместима напрямую')).toBeInTheDocument();
+    expect(within(assembly).queryByText(ryzen.name)).not.toBeInTheDocument();
   });
 
   it('keeps an archived draft item visible and safely resets corrupted storage', async () => {

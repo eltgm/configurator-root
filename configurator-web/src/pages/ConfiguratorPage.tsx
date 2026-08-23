@@ -4,13 +4,18 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useComponentTypesQuery } from '@/features/component-types/api/component-types';
+import { useBatchCompatibilityQuery } from '@/features/configurator/api/configurator-compatibility';
 import { configuratorDraftMaxItems } from '@/features/configurator/model/configurator-draft';
+import {
+  replacementBaseComponentIds,
+  type ConfiguratorComponentSelection,
+  validateConfiguratorAssembly,
+} from '@/features/configurator/model/configurator-compatibility';
 import { useConfiguratorDraft } from '@/features/configurator/model/use-configurator-draft';
 import { AvailableComponentBrowser } from '@/features/configurator/ui/AvailableComponentBrowser';
 import { CurrentAssembly } from '@/features/configurator/ui/CurrentAssembly';
 import classes from '@/features/configurator/ui/configurator-workspace.module.css';
 import { useDomainContext } from '@/features/domains/model/domain-context';
-import type { Component } from '@/shared/api';
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle';
 import { ErrorState, PageHeader } from '@/shared/ui';
 
@@ -18,11 +23,53 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
   const { t } = useTranslation();
   const componentTypesQuery = useComponentTypesQuery(domainId);
   const draft = useConfiguratorDraft(domainId);
-  const [replacement, setReplacement] = useState<Component>();
+  const [replacementTarget, setReplacementTarget] = useState<ConfiguratorComponentSelection>();
+  const [replacementCandidate, setReplacementCandidate] =
+    useState<ConfiguratorComponentSelection>();
   const [clearRequested, setClearRequested] = useState(false);
   const [message, setMessage] = useState('');
+  const componentIds = draft.items.map((item) => item.componentId);
+  const hydratedDraftReady =
+    draft.slots.length === draft.items.length &&
+    draft.slots.every(
+      (slot) => slot.status === 'ready' && slot.component && !slot.component.archived,
+    );
+  const batchQuery = useBatchCompatibilityQuery(
+    domainId,
+    componentIds,
+    hydratedDraftReady && componentIds.length > 1,
+  );
+  const validation = batchQuery.data
+    ? validateConfiguratorAssembly(componentIds, batchQuery.data)
+    : undefined;
+  const compatibilityState =
+    componentIds.length === 0
+      ? ('empty' as const)
+      : !hydratedDraftReady
+        ? ('blocked' as const)
+        : componentIds.length === 1
+          ? ('valid' as const)
+          : batchQuery.isPending
+            ? ('pending' as const)
+            : batchQuery.error
+              ? ('error' as const)
+              : validation?.compatible
+                ? ('valid' as const)
+                : ('conflict' as const);
+  const baseComponentIds = replacementBaseComponentIds(componentIds, replacementTarget?.id ?? null);
+  const replacementBasesReady = replacementTarget
+    ? draft.slots
+        .filter((slot) => slot.item.componentId !== replacementTarget.id)
+        .every((slot) => slot.status === 'ready' && slot.component && !slot.component.archived)
+    : false;
+  const compatibilityBlocked = replacementTarget
+    ? !replacementBasesReady
+    : compatibilityState === 'pending' ||
+      compatibilityState === 'conflict' ||
+      compatibilityState === 'blocked' ||
+      compatibilityState === 'error';
 
-  const selectComponent = (component: Component) => {
+  const selectComponent = (component: ConfiguratorComponentSelection) => {
     const result = draft.add(component);
     switch (result.status) {
       case 'added':
@@ -32,7 +79,7 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
         setMessage(t('configurator.feedback.alreadySelected', { name: component.name }));
         break;
       case 'replacement-required':
-        setReplacement(component);
+        setReplacementCandidate(component);
         break;
       case 'limit-reached':
         setMessage(t('configurator.feedback.limitReached', { count: configuratorDraftMaxItems }));
@@ -41,8 +88,8 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
   };
 
   const componentTypes = componentTypesQuery.data ?? [];
-  const replacedSlot = replacement
-    ? draft.slots.find((slot) => slot.item.componentTypeId === replacement.componentTypeId)
+  const replacedSlot = replacementCandidate
+    ? draft.slots.find((slot) => slot.item.componentTypeId === replacementCandidate.componentTypeId)
     : undefined;
   const replacedName =
     replacedSlot?.component?.name ??
@@ -86,25 +133,47 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
         <CurrentAssembly
           slots={draft.slots}
           componentTypes={componentTypes}
+          compatibilityState={compatibilityState}
+          conflictComponentIds={validation?.conflictComponentIds ?? new Set()}
+          conflictCount={validation?.conflictPairs.length ?? 0}
+          onRetryCompatibility={() => void batchQuery.refetch()}
+          onReplace={(slot) => {
+            if (slot.component) {
+              setReplacementTarget(slot.component);
+              setReplacementCandidate(undefined);
+            }
+          }}
           onRemove={(componentId) => {
             draft.remove(componentId);
+            if (replacementTarget?.id === componentId) {
+              setReplacementTarget(undefined);
+              setReplacementCandidate(undefined);
+            }
             setMessage(t('configurator.feedback.removed'));
           }}
           onClear={() => setClearRequested(true)}
         />
         <AvailableComponentBrowser
+          key={`${domainId}:${replacementTarget?.id ?? 'default'}:${componentIds.join(',')}`}
           domainId={domainId}
           componentTypes={componentTypes}
           componentTypesLoading={componentTypesQuery.isPending}
           componentTypesUnavailable={Boolean(componentTypesQuery.error)}
           selectedItems={draft.items}
+          baseComponentIds={baseComponentIds}
+          compatibilityBlocked={compatibilityBlocked}
+          {...(replacementTarget ? { replacementTarget } : {})}
+          onCancelReplacement={() => {
+            setReplacementTarget(undefined);
+            setReplacementCandidate(undefined);
+          }}
           onSelect={selectComponent}
         />
       </div>
 
       <Modal
-        opened={Boolean(replacement)}
-        onClose={() => setReplacement(undefined)}
+        opened={Boolean(replacementCandidate)}
+        onClose={() => setReplacementCandidate(undefined)}
         title={t('configurator.replace.title')}
         centered
       >
@@ -112,23 +181,26 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
           <Text>
             {t('configurator.replace.description', {
               current: replacedName,
-              replacement: replacement?.name ?? '',
+              replacement: replacementCandidate?.name ?? '',
             })}
           </Text>
           <Text size="sm" c="dimmed">
             {t('configurator.replace.hint')}
           </Text>
           <Group justify="flex-end">
-            <Button variant="default" onClick={() => setReplacement(undefined)}>
+            <Button variant="default" onClick={() => setReplacementCandidate(undefined)}>
               {t('common.cancel')}
             </Button>
             <Button
               onClick={() => {
-                if (replacement) {
-                  draft.replace(replacement);
-                  setMessage(t('configurator.feedback.replaced', { name: replacement.name }));
+                if (replacementCandidate) {
+                  draft.replace(replacementCandidate);
+                  setMessage(
+                    t('configurator.feedback.replaced', { name: replacementCandidate.name }),
+                  );
                 }
-                setReplacement(undefined);
+                setReplacementCandidate(undefined);
+                setReplacementTarget(undefined);
               }}
             >
               {t('configurator.replace.confirm')}
@@ -153,6 +225,8 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
               color="red"
               onClick={() => {
                 draft.clear();
+                setReplacementTarget(undefined);
+                setReplacementCandidate(undefined);
                 setMessage(t('configurator.feedback.cleared'));
                 setClearRequested(false);
               }}

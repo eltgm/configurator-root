@@ -113,6 +113,43 @@ const componentPage = {
   totalItems: 3,
 };
 
+function directlyCompatibleComponents(baseComponentId: number) {
+  const base = componentPage.items.find((component) => component.id === baseComponentId);
+  if (!base) {
+    return [];
+  }
+  return componentPage.items.filter(
+    (component) =>
+      component.id !== baseComponentId && component.componentTypeId !== base.componentTypeId,
+  );
+}
+
+function configuratorResponse(baseComponentId: number) {
+  const groups = new Map<number, typeof componentPage.items>();
+  for (const component of directlyCompatibleComponents(baseComponentId)) {
+    groups.set(component.componentTypeId, [
+      ...(groups.get(component.componentTypeId) ?? []),
+      component,
+    ]);
+  }
+  return {
+    baseComponentId,
+    compatibleByType: [...groups].map(([componentTypeId, components]) => ({
+      componentTypeId,
+      componentTypeName:
+        componentTypes.find((componentType) => componentType.id === componentTypeId)?.name ??
+        'Unknown',
+      components: components.map((component) => ({
+        id: component.id,
+        name: component.name,
+        brand: component.brand,
+        componentTypeId,
+        explanations: [{ source: 'MANUAL' as const, linkId: component.id + baseComponentId }],
+      })),
+    })),
+  };
+}
+
 const frontendApiBaseUrl = 'http://127.0.0.1:5173/api';
 
 test.beforeEach(async ({ page }) => {
@@ -202,6 +239,66 @@ test.beforeEach(async ({ page }) => {
   await page.route(frontendApiBaseUrl + '/domains/*/components*', async (route) => {
     await route.fulfill({ json: componentPage });
   });
+  await page.route(frontendApiBaseUrl + '/domains/*/configurator/compatible*', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.fallback();
+      return;
+    }
+    const componentId = Number(new URL(route.request().url()).searchParams.get('componentId'));
+    await route.fulfill({ json: configuratorResponse(componentId) });
+  });
+  await page.route(
+    frontendApiBaseUrl + '/domains/*/configurator/compatible/search',
+    async (route) => {
+      const body = route.request().postDataJSON() as { componentIds: number[] };
+      await route.fulfill({
+        json: { results: body.componentIds.map(configuratorResponse) },
+      });
+    },
+  );
+  await page.route(
+    frontendApiBaseUrl + '/domains/*/configurator/compatible/intersection',
+    async (route) => {
+      const body = route.request().postDataJSON() as { componentIds: number[] };
+      const candidates = componentPage.items.filter(
+        (component) =>
+          !body.componentIds.includes(component.id) &&
+          body.componentIds.every((baseComponentId) =>
+            directlyCompatibleComponents(baseComponentId).some(
+              (candidate) => candidate.id === component.id,
+            ),
+          ),
+      );
+      const groups = new Map<number, typeof componentPage.items>();
+      for (const component of candidates) {
+        groups.set(component.componentTypeId, [
+          ...(groups.get(component.componentTypeId) ?? []),
+          component,
+        ]);
+      }
+      await route.fulfill({
+        json: {
+          componentIds: body.componentIds,
+          compatibleByType: [...groups].map(([componentTypeId, components]) => ({
+            componentTypeId,
+            componentTypeName:
+              componentTypes.find((componentType) => componentType.id === componentTypeId)?.name ??
+              'Unknown',
+            components: components.map((component) => ({
+              id: component.id,
+              name: component.name,
+              brand: component.brand,
+              componentTypeId,
+              compatibilityByBase: body.componentIds.map((baseComponentId) => ({
+                baseComponentId,
+                explanations: [{ source: 'MANUAL', linkId: component.id + baseComponentId }],
+              })),
+            })),
+          })),
+        },
+      });
+    },
+  );
   await page.route(frontendApiBaseUrl + '/domains/*/compatibility/graph', async (route) => {
     await route.fulfill({ json: compatibilityGraph });
   });
@@ -352,16 +449,29 @@ test('opens the configurator frontend with the selected domain', async ({ page }
   const assembly = page.getByRole('region', { name: 'Текущая сборка' });
   await browser.getByRole('button', { name: 'Добавить' }).first().click();
   await expect(assembly.getByText('Ryzen 7 7800X3D')).toBeVisible();
+  await expect(browser.getByText('B650 Tomahawk')).toBeVisible();
+  await browser.getByRole('button', { name: 'Добавить' }).click();
+  await expect(assembly.getByText('B650 Tomahawk')).toBeVisible();
+  await expect(assembly.getByText('Сборка совместима напрямую')).toBeVisible();
 
-  await browser.getByRole('button', { name: 'Заменить' }).click();
+  const replacementRequest = page.waitForRequest((request) => {
+    const url = new URL(request.url());
+    return (
+      url.pathname.endsWith('/configurator/compatible') &&
+      url.searchParams.get('componentId') === '102'
+    );
+  });
+  await assembly.getByRole('button', { name: 'Заменить Ryzen 7 7800X3D' }).click();
+  await replacementRequest;
+  const replacementBrowser = page.getByRole('region', { name: 'Выбор замены' });
+  await expect(replacementBrowser.getByText('Core Ultra 9 285K')).toBeVisible();
+  await replacementBrowser.getByRole('button', { name: 'Выбрать' }).click();
   const replaceDialog = page.getByRole('dialog', { name: 'Заменить компонент этого типа?' });
   await expect(replaceDialog.getByText(/Core Ultra 9 285K/)).toBeVisible();
   await replaceDialog.getByRole('button', { name: 'Заменить' }).click();
   await expect(assembly.getByText('Core Ultra 9 285K')).toBeVisible();
   await expect(assembly.getByText('Ryzen 7 7800X3D')).toHaveCount(0);
 
-  await browser.getByRole('button', { name: 'Добавить' }).click();
-  await expect(assembly.getByText('B650 Tomahawk')).toBeVisible();
   await assembly.getByRole('button', { name: 'Убрать Core Ultra 9 285K из сборки' }).click();
   await expect(assembly.getByText('Core Ultra 9 285K')).toHaveCount(0);
 
@@ -403,6 +513,67 @@ test('opens the configurator frontend with the selected domain', async ({ page }
   const workspaceBox = await page.getByRole('main').boundingBox();
   expect(workspaceBox).not.toBeNull();
   expect(workspaceBox!.x + workspaceBox!.width).toBeLessThanOrEqual(390);
+});
+
+test('keeps a conflicting draft and repairs it with a slot-aware replacement', async ({ page }) => {
+  await page.addInitScript({
+    content: `
+      window.localStorage.setItem('configurator.selected-domain-id', '101');
+      window.localStorage.setItem(
+        'configurator.assembly-draft.v1.101',
+        '{"version":1,"updatedAt":"2026-08-23T12:00:00.000Z","items":[{"componentId":101,"componentTypeId":11},{"componentId":102,"componentTypeId":12}]}'
+      );
+    `,
+  });
+  await page.route(
+    frontendApiBaseUrl + '/domains/*/configurator/compatible/search',
+    async (route) => {
+      const body = route.request().postDataJSON() as { componentIds: number[] };
+      if (body.componentIds.includes(101)) {
+        await route.fulfill({
+          json: {
+            results: body.componentIds.map((baseComponentId) => ({
+              baseComponentId,
+              compatibleByType: [],
+            })),
+          },
+        });
+        return;
+      }
+      await route.fallback();
+    },
+  );
+
+  await page.goto('/configurator');
+
+  const assembly = page.getByRole('region', { name: 'Текущая сборка' });
+  await expect(assembly.getByText('В сборке есть конфликт')).toBeVisible();
+  await expect(assembly.getByText('Конфликт', { exact: true })).toHaveCount(2);
+  await expect(
+    page
+      .getByRole('region', { name: 'Доступные компоненты' })
+      .getByText('Подбор временно недоступен'),
+  ).toBeVisible();
+
+  const replacementRequest = page.waitForRequest((request) => {
+    const url = new URL(request.url());
+    return (
+      url.pathname.endsWith('/configurator/compatible') &&
+      url.searchParams.get('componentId') === '102'
+    );
+  });
+  await assembly.getByRole('button', { name: 'Заменить Ryzen 7 7800X3D' }).click();
+  await replacementRequest;
+  const replacementBrowser = page.getByRole('region', { name: 'Выбор замены' });
+  await replacementBrowser.getByRole('button', { name: 'Выбрать' }).click();
+  await page
+    .getByRole('dialog', { name: 'Заменить компонент этого типа?' })
+    .getByRole('button', { name: 'Заменить' })
+    .click();
+
+  await expect(assembly.getByText('Core Ultra 9 285K')).toBeVisible();
+  await expect(assembly.getByText('Сборка совместима напрямую')).toBeVisible();
+  await expect(assembly.getByText('Ryzen 7 7800X3D')).toHaveCount(0);
 });
 
 test('keeps domain management usable on a phone viewport', async ({ page }) => {

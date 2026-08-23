@@ -11,7 +11,13 @@ import {
   ThemeIcon,
   Title,
 } from '@mantine/core';
-import { IconAlertTriangle, IconPhotoOff, IconRefresh, IconTrash } from '@tabler/icons-react';
+import {
+  IconAlertTriangle,
+  IconArrowsExchange,
+  IconPhotoOff,
+  IconRefresh,
+  IconTrash,
+} from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
@@ -20,6 +26,10 @@ import {
   toComponentImageUrl,
 } from '@/features/components/model/catalog-preferences';
 import type { ConfiguratorDraftSlot } from '@/features/configurator/model/use-configurator-draft';
+import {
+  AssemblyCompatibilityStatus,
+  type AssemblyCompatibilityState,
+} from '@/features/configurator/ui/AssemblyCompatibilityStatus';
 import type { ComponentType } from '@/shared/api';
 import { EmptyState } from '@/shared/ui';
 
@@ -28,6 +38,11 @@ import classes from './configurator-workspace.module.css';
 interface CurrentAssemblyProps {
   slots: ReadonlyArray<ConfiguratorDraftSlot>;
   componentTypes: ReadonlyArray<ComponentType>;
+  compatibilityState: AssemblyCompatibilityState;
+  conflictComponentIds: ReadonlySet<number>;
+  conflictCount: number;
+  onRetryCompatibility: () => void;
+  onReplace: (slot: ConfiguratorDraftSlot) => void;
   onRemove: (componentId: number) => void;
   onClear: () => void;
 }
@@ -35,6 +50,11 @@ interface CurrentAssemblyProps {
 export function CurrentAssembly({
   slots,
   componentTypes,
+  compatibilityState,
+  conflictComponentIds,
+  conflictCount,
+  onRetryCompatibility,
+  onReplace,
   onRemove,
   onClear,
 }: CurrentAssemblyProps) {
@@ -65,6 +85,12 @@ export function CurrentAssembly({
             </Button>
           ) : null}
         </Group>
+
+        <AssemblyCompatibilityStatus
+          state={compatibilityState}
+          conflictCount={conflictCount}
+          onRetry={onRetryCompatibility}
+        />
 
         {slots.length === 0 ? (
           <EmptyState
@@ -154,22 +180,41 @@ export function CurrentAssembly({
                             {t('configurator.assembly.archived')}
                           </Badge>
                         ) : null}
+                        {conflictComponentIds.has(component.id) ? (
+                          <Badge color="red" size="xs">
+                            {t('configurator.assembly.conflict')}
+                          </Badge>
+                        ) : null}
                       </Group>
                       <Text size="xs" c="dimmed" truncate>
                         {[component.brand, typeName].filter(Boolean).join(' · ')}
                       </Text>
                     </Stack>
-                    <Button
-                      size="compact-sm"
-                      variant="subtle"
-                      color="red"
-                      aria-label={t('configurator.assembly.removeNamed', {
-                        name: component.name,
-                      })}
-                      onClick={() => onRemove(component.id)}
-                    >
-                      <IconTrash size={17} aria-hidden="true" />
-                    </Button>
+                    <Group gap={2} wrap="nowrap">
+                      {!component.archived ? (
+                        <Button
+                          size="compact-sm"
+                          variant="subtle"
+                          aria-label={t('configurator.assembly.replaceNamed', {
+                            name: component.name,
+                          })}
+                          onClick={() => onReplace(slot)}
+                        >
+                          <IconArrowsExchange size={17} aria-hidden="true" />
+                        </Button>
+                      ) : null}
+                      <Button
+                        size="compact-sm"
+                        variant="subtle"
+                        color="red"
+                        aria-label={t('configurator.assembly.removeNamed', {
+                          name: component.name,
+                        })}
+                        onClick={() => onRemove(component.id)}
+                      >
+                        <IconTrash size={17} aria-hidden="true" />
+                      </Button>
+                    </Group>
                   </Group>
                 </Paper>
               );
