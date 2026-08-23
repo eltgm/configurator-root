@@ -249,6 +249,62 @@ export const resources = {
           loadingTypes: 'Загрузка типов компонентов',
         },
       },
+      configurations: {
+        page: {
+          title: 'Конфигурации',
+          description: 'Сохранённые сборки предметной области «{{domain}}».',
+        },
+        actions: {
+          save: 'Сохранить конфигурацию',
+          openConfigurator: 'Открыть конфигуратор',
+        },
+        save: {
+          unavailable: {
+            pending: 'Дождитесь завершения проверки совместимости.',
+            transitive: 'Сохранение требует прямой совместимости каждой пары компонентов.',
+            conflict: 'Устраните несовместимые пары перед сохранением.',
+            blocked: 'Дождитесь загрузки или удалите недоступные и архивные компоненты.',
+            error: 'Повторите проверку совместимости перед сохранением.',
+          },
+        },
+        form: {
+          title: 'Сохранение конфигурации',
+          name: 'Название',
+          namePlaceholder: 'Например, Домашний компьютер',
+          description: 'Описание',
+          descriptionPlaceholder: 'Необязательный комментарий к сборке',
+          composition: 'Состав',
+          validation: {
+            nameRequired: 'Введите название',
+            nameTooLong: 'Название должно содержать не более 255 символов',
+            descriptionTooLong: 'Описание должно содержать не более 4000 символов',
+          },
+        },
+        notifications: {
+          created: 'Конфигурация сохранена',
+        },
+        states: {
+          loading: 'Загрузка конфигураций',
+          refreshing: 'Обновление конфигураций',
+          emptyTitle: 'Сохранённых конфигураций пока нет',
+          emptyDescription: 'Соберите совместимые компоненты и сохраните первую конфигурацию.',
+          total_one: '{{count}} конфигурация',
+          total_few: '{{count}} конфигурации',
+          total_many: '{{count}} конфигураций',
+          total_other: '{{count}} конфигурации',
+        },
+        card: {
+          createdAt: 'Создана {{date}}',
+          noDescription: 'Описание не задано',
+        },
+        components: {
+          count_one: '{{count}} компонент',
+          count_few: '{{count}} компонента',
+          count_many: '{{count}} компонентов',
+          count_other: '{{count}} компонента',
+          archived: 'В архиве',
+        },
+      },
       components: {
         page: {
           title: 'Компоненты',
@@ -1182,6 +1238,58 @@ export const resources = {
         },
         states: {
           loadingTypes: 'Loading component types',
+        },
+      },
+      configurations: {
+        page: {
+          title: 'Configurations',
+          description: 'Saved assemblies for the “{{domain}}” domain.',
+        },
+        actions: {
+          save: 'Save configuration',
+          openConfigurator: 'Open configurator',
+        },
+        save: {
+          unavailable: {
+            pending: 'Wait until compatibility validation finishes.',
+            transitive: 'Every component pair must be directly compatible before saving.',
+            conflict: 'Resolve incompatible pairs before saving.',
+            blocked: 'Wait for loading or remove unavailable and archived components.',
+            error: 'Retry compatibility validation before saving.',
+          },
+        },
+        form: {
+          title: 'Save configuration',
+          name: 'Name',
+          namePlaceholder: 'For example, Home PC',
+          description: 'Description',
+          descriptionPlaceholder: 'Optional note about this assembly',
+          composition: 'Composition',
+          validation: {
+            nameRequired: 'Enter a name',
+            nameTooLong: 'Name must not exceed 255 characters',
+            descriptionTooLong: 'Description must not exceed 4000 characters',
+          },
+        },
+        notifications: {
+          created: 'Configuration saved',
+        },
+        states: {
+          loading: 'Loading configurations',
+          refreshing: 'Refreshing configurations',
+          emptyTitle: 'There are no saved configurations yet',
+          emptyDescription: 'Build compatible components and save the first configuration.',
+          total_one: '{{count}} configuration',
+          total_other: '{{count}} configurations',
+        },
+        card: {
+          createdAt: 'Created {{date}}',
+          noDescription: 'No description',
+        },
+        components: {
+          count_one: '{{count}} component',
+          count_other: '{{count}} components',
+          archived: 'Archived',
         },
       },
       components: {

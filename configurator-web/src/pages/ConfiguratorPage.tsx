@@ -12,6 +12,7 @@ import {
 import { IconAlertTriangle, IconInfoCircle } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 
 import { useComponentTypesQuery } from '@/features/component-types/api/component-types';
 import { useBatchCompatibilityQuery } from '@/features/configurator/api/configurator-compatibility';
@@ -25,12 +26,21 @@ import { useConfiguratorDraft } from '@/features/configurator/model/use-configur
 import { AvailableComponentBrowser } from '@/features/configurator/ui/AvailableComponentBrowser';
 import { CurrentAssembly } from '@/features/configurator/ui/CurrentAssembly';
 import classes from '@/features/configurator/ui/configurator-workspace.module.css';
+import {
+  getConfigurationSaveEligibility,
+  type ConfigurationSaveBlockReason,
+} from '@/features/configurations/model/configuration-create';
+import {
+  CreateConfigurationModal,
+  type ConfigurationSummaryItem,
+} from '@/features/configurations/ui/CreateConfigurationModal';
 import { useDomainContext } from '@/features/domains/model/domain-context';
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle';
 import { ErrorState, PageHeader } from '@/shared/ui';
 
 function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const componentTypesQuery = useComponentTypesQuery(domainId);
   const draft = useConfiguratorDraft(domainId);
   const [replacementTarget, setReplacementTarget] = useState<ConfiguratorComponentSelection>();
@@ -39,6 +49,10 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
   const [clearRequested, setClearRequested] = useState(false);
   const [message, setMessage] = useState('');
   const [includeTransitive, setIncludeTransitive] = useState(false);
+  const [saveSnapshot, setSaveSnapshot] = useState<{
+    componentIds: Array<number>;
+    components: Array<ConfigurationSummaryItem>;
+  }>();
   const componentIds = draft.items.map((item) => item.componentId);
   const hydratedDraftReady =
     draft.slots.length === draft.items.length &&
@@ -89,6 +103,24 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
       compatibilityState === 'conflict' ||
       compatibilityState === 'blocked' ||
       compatibilityState === 'error';
+  const saveEligibility = getConfigurationSaveEligibility(componentIds.length, compatibilityState);
+
+  const getSaveUnavailableReason = (
+    reason: Exclude<ConfigurationSaveBlockReason, 'empty'>,
+  ): string => {
+    switch (reason) {
+      case 'pending':
+        return t('configurations.save.unavailable.pending');
+      case 'transitive':
+        return t('configurations.save.unavailable.transitive');
+      case 'conflict':
+        return t('configurations.save.unavailable.conflict');
+      case 'blocked':
+        return t('configurations.save.unavailable.blocked');
+      case 'error':
+        return t('configurations.save.unavailable.error');
+    }
+  };
 
   const selectComponent = (component: ConfiguratorComponentSelection) => {
     const result = draft.add(component);
@@ -193,6 +225,35 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
             setMessage(t('configurator.feedback.removed'));
           }}
           onClear={() => setClearRequested(true)}
+          canSave={saveEligibility.allowed}
+          {...(saveEligibility.allowed || saveEligibility.reason === 'empty'
+            ? {}
+            : { saveUnavailableReason: getSaveUnavailableReason(saveEligibility.reason) })}
+          onSave={() => {
+            if (!saveEligibility.allowed) {
+              return;
+            }
+            const typeNames = new Map(componentTypes.map((type) => [type.id, type.name]));
+            setSaveSnapshot({
+              componentIds: [...componentIds],
+              components: draft.slots.flatMap((slot) =>
+                slot.component
+                  ? [
+                      {
+                        id: slot.component.id,
+                        name: slot.component.name,
+                        typeName:
+                          typeNames.get(slot.item.componentTypeId) ??
+                          t('configurator.assembly.unknownType', {
+                            id: slot.item.componentTypeId,
+                          }),
+                        ...(slot.component.brand ? { brand: slot.component.brand } : {}),
+                      },
+                    ]
+                  : [],
+              ),
+            });
+          }}
         />
         <AvailableComponentBrowser
           key={`${domainId}:${includeTransitive}:${replacementTarget?.id ?? 'default'}:${componentIds.join(',')}`}
@@ -279,6 +340,23 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
           </Group>
         </Stack>
       </Modal>
+
+      {saveSnapshot ? (
+        <CreateConfigurationModal
+          opened
+          domainId={domainId}
+          componentIds={saveSnapshot.componentIds}
+          components={saveSnapshot.components}
+          onClose={() => setSaveSnapshot(undefined)}
+          onSaved={() => {
+            draft.clear();
+            setReplacementTarget(undefined);
+            setReplacementCandidate(undefined);
+            setSaveSnapshot(undefined);
+            void navigate('/configurations');
+          }}
+        />
+      ) : null}
     </>
   );
 }

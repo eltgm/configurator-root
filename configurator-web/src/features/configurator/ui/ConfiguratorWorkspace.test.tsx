@@ -185,6 +185,86 @@ function renderPage() {
 afterEach(() => window.localStorage.clear());
 
 describe('configurator workspace', () => {
+  it('saves a single-component assembly, clears its draft and opens the list', async () => {
+    const user = userEvent.setup();
+    let requestBody: unknown;
+    useHandlers();
+    server.use(
+      http.post(`${testApiBaseUrl}/domains/${domainId}/configurations`, async ({ request }) => {
+        requestBody = await request.json();
+        return HttpResponse.json(
+          {
+            id: 501,
+            domainId,
+            name: 'Домашний ПК',
+            description: 'Тихая сборка',
+            createdAt: '2026-08-23T12:00:00Z',
+            components: [
+              {
+                id: ryzen.id,
+                name: ryzen.name,
+                brand: ryzen.brand,
+                componentTypeId: ryzen.componentTypeId,
+                componentTypeName: 'Процессор',
+                archived: false,
+              },
+            ],
+          },
+          { status: 201 },
+        );
+      }),
+      http.get(`${testApiBaseUrl}/domains/${domainId}/configurations`, () =>
+        HttpResponse.json({
+          items: [
+            {
+              id: 501,
+              domainId,
+              name: 'Домашний ПК',
+              description: 'Тихая сборка',
+              createdAt: '2026-08-23T12:00:00Z',
+              components: [],
+            },
+          ],
+          page: 0,
+          size: 10,
+          totalItems: 1,
+        }),
+      ),
+    );
+    renderPage();
+
+    const browser = await screen.findByRole(
+      'region',
+      { name: 'Доступные компоненты' },
+      { timeout: 5000 },
+    );
+    await user.click(
+      (await within(browser).findAllByRole('button', { name: 'Добавить' }, { timeout: 5000 }))[0]!,
+    );
+    const assembly = screen.getByRole('region', { name: 'Текущая сборка' });
+    await within(assembly).findByText('Сборка совместима напрямую', {}, { timeout: 5000 });
+    await user.click(within(assembly).getByRole('button', { name: 'Сохранить конфигурацию' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Сохранение конфигурации' });
+    await user.type(within(dialog).getByRole('textbox', { name: /Название/ }), '  Домашний ПК  ');
+    await user.type(within(dialog).getByRole('textbox', { name: 'Описание' }), ' Тихая сборка ');
+    await user.click(within(dialog).getByRole('button', { name: 'Сохранить конфигурацию' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'Конфигурации', level: 1 }, { timeout: 5000 }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Домашний ПК' }, { timeout: 5000 }),
+    ).toBeInTheDocument();
+    expect(requestBody).toEqual({
+      name: 'Домашний ПК',
+      description: 'Тихая сборка',
+      componentIds: [ryzen.id],
+    });
+    expect(
+      JSON.parse(window.localStorage.getItem(configuratorDraftStorageKey(domainId)) ?? ''),
+    ).toMatchObject({ version: 1, items: [] });
+  });
+
   it('adds direct and intersected candidates, explicitly replaces and clears the draft', async () => {
     const user = userEvent.setup();
     useHandlers();
