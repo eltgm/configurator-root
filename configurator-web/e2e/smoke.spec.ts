@@ -62,23 +62,29 @@ const componentPage = {
   totalItems: 1,
 };
 
+const frontendApiBaseUrl = 'http://127.0.0.1:5173/api';
+
 test.beforeEach(async ({ page }) => {
-  await page.route('**/api/domains*', async (route) => {
+  let componentImages = [
+    { id: 9001, url: '/component-images/9001/content', orderIndex: 0 },
+    { id: 9002, url: '/component-images/9002/content', orderIndex: 1 },
+  ];
+  await page.route(frontendApiBaseUrl + '/domains*', async (route) => {
     await route.fulfill({ json: domainPage });
   });
-  await page.route('**/api/domains/*/component-types', async (route) => {
+  await page.route(frontendApiBaseUrl + '/domains/*/component-types', async (route) => {
     await route.fulfill({ json: componentTypes });
   });
-  await page.route('**/api/component-types/*/attributes', async (route) => {
+  await page.route(frontendApiBaseUrl + '/component-types/*/attributes', async (route) => {
     await route.fulfill({ json: attributes });
   });
-  await page.route('**/api/domains/*/components*', async (route) => {
+  await page.route(frontendApiBaseUrl + '/domains/*/components*', async (route) => {
     await route.fulfill({ json: componentPage });
   });
-  await page.route('**/api/components/*', async (route) => {
+  await page.route(frontendApiBaseUrl + '/components/*', async (route) => {
     await route.fulfill({ json: componentPage.items[0] });
   });
-  await page.route('**/api/components', async (route) => {
+  await page.route(frontendApiBaseUrl + '/components', async (route) => {
     if (route.request().method() !== 'POST') {
       await route.fallback();
       return;
@@ -88,6 +94,41 @@ test.beforeEach(async ({ page }) => {
       status: 201,
       json: { ...componentPage.items[0], ...body, id: 202 },
     });
+  });
+  await page.route(frontendApiBaseUrl + '/components/*/images/order', async (route) => {
+    const body = route.request().postDataJSON() as { imageIds: Array<number> };
+    componentImages = body.imageIds.map((id, orderIndex) => ({
+      ...componentImages.find((image) => image.id === id)!,
+      orderIndex,
+    }));
+    await route.fulfill({ json: componentImages });
+  });
+  await page.route(frontendApiBaseUrl + '/components/*/images', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ json: componentImages });
+      return;
+    }
+    const image = {
+      id: 9003,
+      url: '/component-images/9003/content',
+      orderIndex: componentImages.length,
+    };
+    componentImages = [...componentImages, image];
+    await route.fulfill({ status: 201, json: image });
+  });
+  await page.route(frontendApiBaseUrl + '/component-images/*/content', async (route) => {
+    await route.fulfill({
+      contentType: 'image/png',
+      body: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+        'base64',
+      ),
+    });
+  });
+  await page.route(frontendApiBaseUrl + '/component-images/*', async (route) => {
+    const imageId = Number(new URL(route.request().url()).pathname.split('/').at(-1));
+    componentImages = componentImages.filter((image) => image.id !== imageId);
+    await route.fulfill({ status: 204 });
   });
 });
 
@@ -156,4 +197,44 @@ test('opens component details and creates a component with dynamic attributes', 
 
   await expect(page).toHaveURL(/\/components\/202$/);
   await expect(page.getByText('Компонент создан')).toBeVisible();
+});
+
+test('manages the component image gallery on desktop and mobile', async ({ page }) => {
+  await page.goto('/components');
+  await page.getByRole('link', { name: 'Ryzen 7 7800X3D' }).first().click();
+
+  await expect(page.getByRole('heading', { level: 1, name: 'Ryzen 7 7800X3D' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Открыть изображение 1' })).toBeVisible();
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'component.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+      'base64',
+    ),
+  });
+  await page.getByRole('button', { name: 'Загрузить' }).click();
+  await expect(page.getByText('Изображение загружено')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Открыть изображение 3' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Изменить порядок' }).click();
+  await page.getByRole('button', { name: 'Переместить позже' }).first().click();
+  await page.getByRole('button', { name: 'Сохранить порядок' }).click();
+  await expect(page.getByText('Порядок изображений сохранён')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Удалить изображение 1' }).click();
+  await page
+    .getByRole('dialog', { name: 'Удалить изображение?' })
+    .getByRole('button', {
+      name: 'Удалить',
+    })
+    .click();
+  await expect(page.getByText('Изображение удалено')).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const filePicker = page.getByLabel('Новое изображение');
+  await expect(filePicker).toBeVisible();
+  const filePickerBox = await filePicker.boundingBox();
+  expect(filePickerBox).not.toBeNull();
+  expect(filePickerBox!.x + filePickerBox!.width).toBeLessThanOrEqual(390);
 });

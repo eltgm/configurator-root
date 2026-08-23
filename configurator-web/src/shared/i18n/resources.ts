@@ -153,9 +153,56 @@ export const resources = {
           description: 'Описание',
           noDescription: 'Описание не задано',
           noAttributes: 'Характеристики для компонента не заданы.',
-          imagesHint: 'Управление галереей будет добавлено на следующем этапе.',
-          noImages: 'Изображений пока нет.',
           imageAlt: '{{name}}, изображение {{number}}',
+        },
+        gallery: {
+          activeHint: 'Добавляйте изображения и управляйте порядком их показа.',
+          readOnlyHint: 'Архивная галерея доступна только для просмотра.',
+          imageNumber: 'Изображение {{number}}',
+          file: {
+            label: 'Новое изображение',
+            placeholder: 'Выберите файл',
+            description: 'JPEG, PNG или WebP, не более 10 МиБ',
+          },
+          states: {
+            loading: 'Загрузка галереи',
+            empty: 'Изображений пока нет.',
+          },
+          actions: {
+            upload: 'Загрузить',
+            view: 'Открыть изображение {{number}}',
+            delete: 'Удалить',
+            deleteImage: 'Удалить изображение {{number}}',
+            reorder: 'Изменить порядок',
+            moveEarlier: 'Переместить раньше',
+            moveLater: 'Переместить позже',
+            saveOrder: 'Сохранить порядок',
+            cancelOrder: 'Отменить изменения',
+          },
+          order: {
+            title: 'Изменение порядка',
+            description:
+              'Перемещайте изображения кнопками «раньше» и «позже», затем сохраните итоговый порядок.',
+          },
+          preview: {
+            title: 'Просмотр изображения',
+            alt: '{{name}}, увеличенное изображение',
+          },
+          delete: {
+            title: 'Удалить изображение?',
+            description: 'Изображение будет безвозвратно удалено из галереи.',
+            warning: 'Это действие нельзя отменить.',
+          },
+          validation: {
+            empty: 'Файл изображения не должен быть пустым',
+            tooLarge: 'Размер изображения не должен превышать 10 МиБ',
+            unsupported: 'Поддерживаются только JPEG, PNG и WebP',
+          },
+          notifications: {
+            uploaded: 'Изображение загружено',
+            deleted: 'Изображение удалено',
+            reordered: 'Порядок изображений сохранён',
+          },
         },
         form: {
           createTitle: 'Новый компонент',
@@ -571,9 +618,56 @@ export const resources = {
           description: 'Description',
           noDescription: 'No description',
           noAttributes: 'No properties are set for this component.',
-          imagesHint: 'Gallery management will be added in the next stage.',
-          noImages: 'There are no images yet.',
           imageAlt: '{{name}}, image {{number}}',
+        },
+        gallery: {
+          activeHint: 'Add images and manage their display order.',
+          readOnlyHint: 'The archived gallery is available in read-only mode.',
+          imageNumber: 'Image {{number}}',
+          file: {
+            label: 'New image',
+            placeholder: 'Select a file',
+            description: 'JPEG, PNG, or WebP, up to 10 MiB',
+          },
+          states: {
+            loading: 'Loading gallery',
+            empty: 'There are no images yet.',
+          },
+          actions: {
+            upload: 'Upload',
+            view: 'Open image {{number}}',
+            delete: 'Delete',
+            deleteImage: 'Delete image {{number}}',
+            reorder: 'Change order',
+            moveEarlier: 'Move earlier',
+            moveLater: 'Move later',
+            saveOrder: 'Save order',
+            cancelOrder: 'Cancel changes',
+          },
+          order: {
+            title: 'Change order',
+            description:
+              'Move images with the earlier and later buttons, then save the final order.',
+          },
+          preview: {
+            title: 'Image preview',
+            alt: '{{name}}, enlarged image',
+          },
+          delete: {
+            title: 'Delete image?',
+            description: 'The image will be permanently removed from the gallery.',
+            warning: 'This action cannot be undone.',
+          },
+          validation: {
+            empty: 'The image file must not be empty',
+            tooLarge: 'The image size must not exceed 10 MiB',
+            unsupported: 'Only JPEG, PNG, and WebP are supported',
+          },
+          notifications: {
+            uploaded: 'Image uploaded',
+            deleted: 'Image deleted',
+            reordered: 'Image order saved',
+          },
         },
         form: {
           createTitle: 'New component',

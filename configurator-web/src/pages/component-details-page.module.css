@@ -5,11 +5,6 @@
   align-items: start;
 }
 
-.image {
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
-}
-
 @media (width <= 62em) {
   .layout {
     grid-template-columns: minmax(0, 1fr);
