@@ -1,9 +1,4 @@
-import {
-  IconAssembly,
-  IconFileDescription,
-  IconListDetails,
-  IconSettings,
-} from '@tabler/icons-react';
+import { IconAssembly, IconFileDescription, IconSettings } from '@tabler/icons-react';
 import { Navigate, type RouteObject } from 'react-router-dom';
 
 import { AppLayout } from '@/app/layout/AppLayout';
@@ -13,6 +8,8 @@ import { ComponentDetailsPage } from '@/pages/ComponentDetailsPage';
 import { ComponentFormPage } from '@/pages/ComponentFormPage';
 import { ComponentTypesPage } from '@/pages/ComponentTypesPage';
 import { CompatibilityGraphPage } from '@/pages/CompatibilityGraphPage';
+import { CompatibilityRuleFormPage } from '@/pages/CompatibilityRuleFormPage';
+import { CompatibilityRulesPage } from '@/pages/CompatibilityRulesPage';
 import { DomainSettingsPage } from '@/pages/DomainSettingsPage';
 import { ManualCompatibilityPage } from '@/pages/ManualCompatibilityPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -103,11 +100,23 @@ export const appRoutes: RouteObject[] = [
         path: 'settings/compatibility/rules',
         element: (
           <RequireDomain>
-            <RoutePlaceholder
-              icon={IconListDetails}
-              titleKey="pages.compatibilityRules.title"
-              descriptionKey="pages.compatibilityRules.description"
-            />
+            <CompatibilityRulesPage />
+          </RequireDomain>
+        ),
+      },
+      {
+        path: 'settings/compatibility/rules/new',
+        element: (
+          <RequireDomain>
+            <CompatibilityRuleFormPage />
+          </RequireDomain>
+        ),
+      },
+      {
+        path: 'settings/compatibility/rules/:ruleId/edit',
+        element: (
+          <RequireDomain>
+            <CompatibilityRuleFormPage />
           </RequireDomain>
         ),
       },

@@ -1,0 +1,22 @@
+.filters {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--mantine-spacing-md);
+  justify-content: space-between;
+}
+
+.search {
+  flex: 1 1 22rem;
+  max-width: 38rem;
+}
+
+@media (width <= 48em) {
+  .filters {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .search {
+    max-width: none;
+  }
+}
