@@ -20,7 +20,7 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
 - каталог поддерживает режимы «Карточки» и «Таблица»;
 - последняя предметная область открывается автоматически и остаётся доступен переключатель области;
 - интерфейс поддерживает светлую, тёмную и системную темы;
-- минимальная поддерживаемая ширина — 360 px;
+- основной пользовательский phone viewport — 360 px, обязательный WCAG reflow baseline — 320 CSS px;
 - основной язык первого релиза — русский, структура должна быть готова к локализации;
 - runtime-аутентификация в первый frontend-релиз не входит.
 
@@ -227,7 +227,7 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
   `/settings/compatibility/rules`, `/settings/compatibility/graph` и `/settings/domain`;
 - в 9.10 маршруты отображают информативные placeholder-экраны; загрузка предметных данных начинается с 9.12;
 - Mantine AppShell содержит header, desktop sidebar, main content и mobile bottom navigation; layout поддерживает
-  ширину от 360 px без горизонтальной прокрутки;
+  WCAG reflow от 320 CSS px без горизонтальной прокрутки;
 - desktop navigation показывает все разделы и вложенные настройки, mobile navigation — четыре верхнеуровневых пункта:
   конфигуратор, компоненты, конфигурации и настройки;
 - текущий маршрут визуально выделен и обозначен `aria-current`; навигация и controls доступны с клавиатуры и имеют
@@ -536,7 +536,7 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
   ID/status, retry при ошибке и явное удаление/замену;
 - corrupted JSON, неизвестная storage version и недоступный `localStorage` не приводят к падению страницы; при ошибке
   записи in-memory draft продолжает работать, а пользователь получает доступное уведомление;
-- desktop использует двухколоночный workspace, mobile от 360 px показывает текущую сборку перед браузером без
+- desktop использует двухколоночный workspace, mobile при узком viewport показывает текущую сборку перед браузером без
   горизонтальной прокрутки; все add/replace/remove/clear/retry actions доступны с клавиатуры;
 - экран явно сообщает, что compatibility validation появится в 9.21, транзитивный режим — в 9.22, а серверное
   сохранение — в 9.23; текущий черновик не называется совместимой или сохранённой конфигурацией;
@@ -577,7 +577,8 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
 - 9.21 показывает итог прямой проверки, но не раскрывает manual/automatic evidence; транзитивный переключатель,
   shortest paths и подробные объяснения остаются в 9.22;
 - клавиатурные add/replace/remove/retry actions, live announcements, восстановленный конфликтный draft, empty/error
-  states, смена области и layout от 360 px покрываются unit/component tests с MSW и E2E в Chromium, Firefox и WebKit;
+  states, смена области и layout от 320 CSS px покрываются unit/component tests с MSW и E2E в Chromium, Firefox и
+  WebKit;
 - OpenAPI, backend, Flyway, jOOQ, БД и generated API client в 9.21 не меняются.
 
 #### 9.22 — Транзитивный режим и объяснения совместимости
@@ -605,7 +606,7 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
 - loading/error/retry/missing-node состояния объяснений не закрывают Drawer и не изменяют черновик; неизвестный узел
   пути показывается как `Компонент #id`;
 - switch, badges, Drawer, focus return, keyboard open/close, status announcements, mixed direct/transitive intersection,
-  shortest path, toggle-off conflict, смена области и layout от 360 px покрываются unit/component tests с MSW и E2E
+  shortest path, toggle-off conflict, смена области и layout от 320 CSS px покрываются unit/component tests с MSW и E2E
   в Chromium, Firefox и WebKit;
 - сохранение конфигурации остаётся в 9.23; OpenAPI, backend, Flyway, jOOQ, БД и generated API client в 9.22 не
   меняются.
@@ -641,7 +642,7 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
   карточки не выполняют дополнительных detail-запросов;
 - search, filters, cards/table toggle, detail route, edit, copy, export и delete не входят в 9.23 и не показываются как
   неработающие действия; просмотр/редактирование реализуются в 9.24, остальные операции — в 9.25;
-- modal, список и pagination доступны с клавиатуры и не создают горизонтальную прокрутку от 360 px; create/list,
+- modal, список и pagination доступны с клавиатуры и не создают горизонтальную прокрутку от 320 CSS px; create/list,
   ошибки, single/direct/transitive eligibility, archived composition, pagination и domain isolation покрываются
   unit/component tests с MSW и Playwright в Chromium, Firefox и WebKit;
 - OpenAPI, backend, Flyway, jOOQ, БД и generated API client в 9.23 не меняются.
@@ -683,7 +684,7 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
   явное действие перехода в область конфигурации; после обычной смены области read-only detail открывает список новой
   области;
 - detail/editor, archived remediation, strict direct add/intersection/replacement, `400/404/409`, unsaved guard,
-  domain isolation и layout от 360 px покрываются unit/component tests с MSW и Playwright в Chromium, Firefox и
+  domain isolation и layout от 320 CSS px покрываются unit/component tests с MSW и Playwright в Chromium, Firefox и
   WebKit;
 - OpenAPI, backend, Flyway, jOOQ, БД и generated API client в 9.24 не меняются.
 
@@ -720,7 +721,7 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
 - удаление не очищает configurator draft, не изменяет catalog components и другие configurations; восстановление,
   version history, import, sharing и bulk operations в 9.25 не входят;
 - copy/export/delete не показываются на edit route; все действия доступны с клавиатуры, имеют понятные accessible
-  names, pending/error/success feedback и не создают горизонтальную прокрутку от 360 px;
+  names, pending/error/success feedback и не создают горизонтальную прокрутку от 320 CSS px;
 - API/cache isolation, copy name и archived blocker, JSON serialization/download cleanup, modal error paths,
   detail/list navigation, pagination fallback и полный copy/export/delete flow покрываются unit/component tests с MSW
   и Playwright в Chromium, Firefox и WebKit;
@@ -735,6 +736,38 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
 | 9.28  | Web gateway, reverse proxy и production Docker image |
 | 9.29  | Пакеты запуска, обновления, backup и restore         |
 | 9.30  | CI, документация и подготовка локального релиза      |
+
+#### 9.26 — Адаптивность, WCAG 2.2 AA и мобильная доработка
+
+- интерфейс реализует применимые критерии WCAG 2.2 уровней A и AA; статус и evidence фиксируются во внутренней
+  матрице аудита, но результат не описывается как формальная внешняя сертификация;
+- основной пользовательский phone viewport остаётся 360 px, при этом все линейные экраны поддерживают reflow от
+  320 CSS px без горизонтальной прокрутки, обрезания текста, controls и focus indicator;
+- исключение reflow разрешено только локальным двумерным представлениям, таким как canvas графа; поиск, controls и
+  линейная панель деталей предоставляют доступную альтернативу изучения содержимого;
+- layout проверяется на phone, tablet и desktop в portrait/landscape, в светлой, тёмной и системной теме, с длинными
+  русскими и английскими строками, пользовательским text spacing и увеличением масштаба до 200%;
+- AppShell сохраняет рабочие skip link, landmarks, логичную heading hierarchy, локализованный document title и
+  ненавязчивое объявление SPA-перехода; фиксированные header/footer не скрывают focused element;
+- все сценарии доступны с клавиатуры без keyboard trap, имеют предсказуемый tab order, видимый focus и возврат focus
+  после закрытия modal/drawer;
+- interactive targets соответствуют WCAG 2.5.8 (не менее 24 x 24 CSS px либо допустимое исключение/расстояние), а
+  основные мобильные действия по возможности используют практический размер 44 x 44 px;
+- бизнес-действия не требуют drag-and-drop; непредметное перетаскивание узлов графа отключается, а pan/zoom, поиск,
+  fit/reset, selection и доступная панель деталей сохраняются;
+- accessible name, role, state и value controls доступны assistive technologies; icon-only controls получают
+  локализованные labels, а visible label входит в accessible name;
+- loading, empty, success, validation, conflict и request-error состояния не передаются одним цветом; важные изменения
+  объявляются через подходящий `status`, `alert` или live region без дублирующего шума;
+- формы связывают label, help и field error, передают required/invalid state, показывают общие ошибки и перемещают
+  focus к первой ошибке после неуспешного submit;
+- desktop tables и mobile cards предоставляют одинаковые ключевые данные и действия; destructive confirmations,
+  unsaved-change guards, pagination и server states работают на любом поддерживаемом viewport;
+- текст, controls, focus indicator и значимые графические элементы сохраняют требуемый контраст в обеих темах;
+  изображения имеют содержательный alt только когда несут информацию, декоративные previews не дублируются;
+- component tests покрывают семантику, keyboard/focus и responsive variants, Playwright — representative пути на
+  320/360/tablet/desktop в Chromium, Firefox и WebKit; axe automation и visual regression реализуются отдельно в 9.27;
+- OpenAPI, backend, Flyway, jOOQ, БД и generated API client в 9.26 не меняются.
 
 ## Демонстрационная предметная область
 

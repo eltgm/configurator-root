@@ -1,5 +1,6 @@
-import { Anchor, AppShell, Group, Text, ThemeIcon } from '@mantine/core';
+import { Anchor, AppShell, Group, Text, ThemeIcon, VisuallyHidden } from '@mantine/core';
 import { IconAssembly } from '@tabler/icons-react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Outlet } from 'react-router-dom';
 
@@ -10,6 +11,10 @@ import classes from '@/app/layout/app-layout.module.css';
 import { DomainProvider } from '@/features/domains/model/DomainProvider';
 import { DomainChangeGuardProvider } from '@/features/domains/model/DomainChangeGuardProvider';
 import { DomainSelector } from '@/features/domains/ui/DomainSelector';
+import {
+  documentTitleChangedEvent,
+  type DocumentTitleChangedEvent,
+} from '@/shared/lib/useDocumentTitle';
 
 export function AppLayout() {
   return (
@@ -23,10 +28,34 @@ export function AppLayout() {
 
 function AppLayoutContent() {
   const { t } = useTranslation();
+  const [pageAnnouncement, setPageAnnouncement] = useState('');
+
+  useEffect(() => {
+    const announceTitle = (event: Event) => {
+      setPageAnnouncement((event as DocumentTitleChangedEvent).detail.title);
+    };
+    window.addEventListener(documentTitleChangedEvent, announceTitle);
+    return () => window.removeEventListener(documentTitleChangedEvent, announceTitle);
+  }, []);
 
   return (
     <>
-      <Anchor className={classes['skip-link']} href="#main-content">
+      <VisuallyHidden
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-testid="route-announcement"
+      >
+        {pageAnnouncement}
+      </VisuallyHidden>
+      <Anchor
+        className={classes['skip-link']}
+        href="#main-content"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById('main-content')?.focus();
+        }}
+      >
         {t('navigation.skipToContent')}
       </Anchor>
 
@@ -66,7 +95,7 @@ function AppLayoutContent() {
           <DesktopNavigation />
         </AppShell.Navbar>
 
-        <AppShell.Main id="main-content" className={classes.main}>
+        <AppShell.Main id="main-content" className={classes.main} tabIndex={-1}>
           <Outlet />
         </AppShell.Main>
 

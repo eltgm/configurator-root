@@ -59,6 +59,10 @@ describe('compatibility graph exploration', () => {
     expect(await screen.findByText(/1 ручная связь/)).toBeInTheDocument();
     expect(await screen.findByText(/1 без связей/)).toBeInTheDocument();
     expect(screen.getByTestId('compatibility-graph-canvas')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Узлы не перетаскиваются\. Выберите компонент через поиск/),
+    ).toBeInTheDocument();
+    expect(document.querySelector('.react-flow__node.draggable')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Сбросить раскладку' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Управлять связями' })).toHaveAttribute(
       'href',

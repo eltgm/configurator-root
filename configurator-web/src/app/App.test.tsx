@@ -58,6 +58,7 @@ describe('application shell', () => {
       await screen.findByRole('heading', { level: 1, name: 'Компоненты' }),
     ).toBeInTheDocument();
     expect(document.title).toBe('Компоненты — Конфигуратор');
+    expect(screen.getByTestId('route-announcement')).toHaveTextContent('Компоненты');
 
     await user.click(
       within(desktopNavigation).getByRole('link', { name: 'Автоматические правила' }),
@@ -65,6 +66,19 @@ describe('application shell', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Автоматические правила' }),
     ).toBeInTheDocument();
+  });
+
+  it('moves keyboard focus to main content through the skip link', async () => {
+    const user = userEvent.setup();
+    renderRoute('/components');
+    await screen.findByRole('heading', { level: 1, name: 'Компоненты' });
+
+    await user.tab();
+    const skipLink = screen.getByRole('link', { name: 'Перейти к содержимому' });
+    expect(skipLink).toHaveFocus();
+    await user.keyboard('{Enter}');
+
+    expect(document.getElementById('main-content')).toHaveFocus();
   });
 
   it('shows a localized not-found page inside the shell', () => {
