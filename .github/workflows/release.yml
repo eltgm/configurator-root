@@ -55,21 +55,21 @@ jobs:
       - name: Start external environment
         env:
           JAR_FILE: configurator/build/libs/configurator-${{ steps.release.outputs.version }}.jar
-        run: docker compose up -d --build
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 
       - name: Wait for API
-        run: curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors http://localhost:8080/v3/api-docs >/dev/null
+        run: curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors http://127.0.0.1:8080/api/v3/api-docs >/dev/null
 
       - name: Run external integration contracts
         run: ./gradlew --no-daemon :configurator-integration-tests:externalIntegrationTest -PreleaseVersion=${{ steps.release.outputs.version }}
 
       - name: Print service logs on failure
         if: failure()
-        run: docker compose logs --no-color
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml logs --no-color
 
       - name: Stop external environment
         if: always()
-        run: docker compose down --volumes
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml down --volumes
 
       - name: Prepare release assets
         shell: bash

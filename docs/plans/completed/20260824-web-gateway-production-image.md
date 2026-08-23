@@ -240,11 +240,11 @@ with `/`. Tests must lock this behavior because changing either slash silently c
 - Modify: `docs/requirements/epic-9-frontend.md`
 - Modify: `docs/plans/20260824-web-gateway-production-image.md`
 
-- [ ] add detailed 9.28 acceptance criteria from Proposed Product Contract
-- [ ] explicitly separate 9.28 image/topology work from 9.29 scripts and 9.30 publishing/release automation
-- [ ] document OpenAPI/DB/security non-goals and local-only trust boundary
-- [ ] verify requirement wording against accepted epic-level architecture and 9.27/9.29 boundaries
-- [ ] run documentation formatting check before Task 2
+- [x] add detailed 9.28 acceptance criteria from Proposed Product Contract
+- [x] explicitly separate 9.28 image/topology work from 9.29 scripts and 9.30 publishing/release automation
+- [x] document OpenAPI/DB/security non-goals and local-only trust boundary
+- [x] verify requirement wording against accepted epic-level architecture and 9.27/9.29 boundaries
+- [x] run documentation formatting check before Task 2
 
 ### Task 2: Build the unprivileged frontend gateway image
 
@@ -256,14 +256,14 @@ with `/`. Tests must lock this behavior because changing either slash silently c
 - Modify: `.github/dependabot.yml`
 - Create/Modify: focused gateway configuration tests or validation scripts as implementation requires
 
-- [ ] add digest-pinned Node 24 builder with lockfile-first `npm ci` and production build
-- [ ] add digest-pinned unprivileged NGINX runtime containing only `dist` and gateway config
-- [ ] configure explicit `/api` prefix stripping, SPA fallback, 16 MB request limit and liveness
-- [ ] configure deterministic caching, compression, MIME behavior, proxy headers and security headers
-- [ ] keep runtime non-root and compatible with read-only root filesystem/tmpfs
-- [ ] add nested Docker Dependabot coverage for `/configurator-web`
-- [ ] add success/error checks for NGINX config, runtime user and build-context exclusions
-- [ ] build and start the gateway image successfully before Task 3
+- [x] add digest-pinned Node 24 builder with lockfile-first `npm ci` and production build
+- [x] add digest-pinned unprivileged NGINX runtime containing only `dist` and gateway config
+- [x] configure explicit `/api` prefix stripping, SPA fallback, 16 MB request limit and liveness
+- [x] configure deterministic caching, compression, MIME behavior, proxy headers and security headers
+- [x] keep runtime non-root and compatible with read-only root filesystem/tmpfs
+- [x] add nested Docker Dependabot coverage for `/configurator-web`
+- [x] add success/error checks for NGINX config, runtime user and build-context exclusions
+- [x] build and start the gateway image successfully before Task 3
 
 ### Task 3: Introduce production-like and development Compose topologies
 
@@ -274,14 +274,14 @@ with `/`. Tests must lock this behavior because changing either slash silently c
 - Modify as needed: `.dockerignore`
 - Create/Modify: focused Compose topology validation script/test if needed
 
-- [ ] add gateway service built from `configurator-web` and bind only `127.0.0.1:8080`
-- [ ] remove base host ports from app, PostgreSQL and MinIO without changing named data volumes
-- [ ] harden gateway with `read_only`, `no-new-privileges`, dropped capabilities and minimum tmpfs paths
-- [ ] add loopback-only development ports including backend `8081` without default conflicts
-- [ ] preserve internal DNS, service dependencies and backend DB/MinIO environment contract
-- [ ] validate base and merged development Compose models
-- [ ] add checks proving base publishes only gateway and development override publishes only documented loopback ports
-- [ ] start both intended service selections successfully before Task 4
+- [x] add gateway service built from `configurator-web` and bind only `127.0.0.1:8080`
+- [x] remove base host ports from app, PostgreSQL and MinIO without changing named data volumes
+- [x] harden gateway with `read_only`, `no-new-privileges`, dropped capabilities and minimum tmpfs paths
+- [x] add loopback-only development ports including backend `8081` without default conflicts
+- [x] preserve internal DNS, service dependencies and backend DB/MinIO environment contract
+- [x] validate base and merged development Compose models
+- [x] add checks proving base publishes only gateway and development override publishes only documented loopback ports
+- [x] start both intended service selections successfully before Task 4
 
 ### Task 4: Route external integration contracts through the gateway
 
@@ -293,14 +293,16 @@ with `/`. Tests must lock this behavior because changing either slash silently c
 - Modify: `.github/workflows/ci.yml`
 - Modify: `.github/workflows/release.yml`
 
-- [ ] centralize external gateway base URI/base path while preserving `test.baseUrl` override compatibility
-- [ ] run existing external API scenarios through `/api` without changing shared business assertions
-- [ ] update CI/release readiness to wait for proxied `/api/v3/api-docs`
-- [ ] add gateway contract for root HTML, built asset, deep link and liveness success cases
-- [ ] add API-prefix isolation and unknown API/proxy error cases proving no SPA masking
-- [ ] assert cache, content type and security headers for representative responses
-- [ ] verify multipart upload and image content response through gateway
-- [ ] run all external contracts successfully before Task 5
+- [x] centralize external gateway base URI/base path while preserving `test.baseUrl` override compatibility
+- [x] run host-side SQL fixture setup with the loopback-only development Compose override while keeping all REST
+      contracts on the gateway API base
+- [x] run existing external API scenarios through `/api` without changing shared business assertions
+- [x] update CI/release readiness to wait for proxied `/api/v3/api-docs`
+- [x] add gateway contract for root HTML, built asset, deep link and liveness success cases
+- [x] add API-prefix isolation and unknown API/proxy error cases proving no SPA masking
+- [x] assert cache, content type and security headers for representative responses
+- [x] verify multipart upload and image content response through gateway
+- [x] run all external contracts successfully before Task 5
 
 ### Task 5: Verify the production browser boundary
 
@@ -311,12 +313,12 @@ with `/`. Tests must lock this behavior because changing either slash silently c
 - Modify: `configurator-web/package.json`
 - Modify: `.github/workflows/ci.yml`
 
-- [ ] add a focused Playwright delivery smoke against an already running production gateway without mock routes
-- [ ] verify SPA bootstrap and first `/api` request from `http://127.0.0.1:8080`
-- [ ] verify direct navigation/refresh on representative nested route
-- [ ] keep delivery suite separate from deterministic mock functional/accessibility/visual suites
-- [ ] add failure diagnostics without credentials or persistent user data
-- [ ] run delivery smoke against the full Compose stack before Task 6
+- [x] add a focused Playwright delivery smoke against an already running production gateway without mock routes
+- [x] verify SPA bootstrap and first `/api` request from `http://127.0.0.1:8080`
+- [x] verify direct navigation/refresh on representative nested route
+- [x] keep delivery suite separate from deterministic mock functional/accessibility/visual suites
+- [x] add failure diagnostics without credentials or persistent user data
+- [x] run delivery smoke against the full Compose stack before Task 6
 
 ### Task 6: Document the gateway and development workflows
 
@@ -327,13 +329,13 @@ with `/`. Tests must lock this behavior because changing either slash silently c
 - Modify: `AGENTS.md`
 - Create/Modify as needed: `docs/testing/FRONTEND_TESTING.md`
 
-- [ ] document default production-like entry point and internal-only services
-- [ ] document development override ports and commands, including backend container on 8081
-- [ ] preserve the Vite + IDE backend workflow on 8080 and explain when the gateway is or is not started
-- [ ] document image build, gateway delivery checks and troubleshooting for 502/startup/cache issues
-- [ ] repeat current authentication limitation and prohibit exposure to untrusted networks
-- [ ] update project/testing Definition of Done for Docker delivery changes
-- [ ] run documentation formatting and link/path checks before Task 7
+- [x] document default production-like entry point and internal-only services
+- [x] document development override ports and commands, including backend container on 8081
+- [x] preserve the Vite + IDE backend workflow on 8080 and explain when the gateway is or is not started
+- [x] document image build, gateway delivery checks and troubleshooting for 502/startup/cache issues
+- [x] repeat current authentication limitation and prohibit exposure to untrusted networks
+- [x] update project/testing Definition of Done for Docker delivery changes
+- [x] run documentation formatting and link/path checks before Task 7
 
 ### Task 7: Verify all acceptance criteria
 
@@ -342,19 +344,51 @@ with `/`. Tests must lock this behavior because changing either slash silently c
 - Modify: `docs/plans/20260824-web-gateway-production-image.md`
 - Move after completion: `docs/plans/20260824-web-gateway-production-image.md` to `docs/plans/completed/`
 
-- [ ] run `npm ci`, `npm run check` and `npm run test:coverage`
-- [ ] run `./gradlew build`
-- [ ] build boot JAR and both Docker images from clean contexts
-- [ ] start base Compose and wait for `/api/v3/api-docs`
-- [ ] run all external integration contracts through gateway
-- [ ] run production delivery Playwright smoke
-- [ ] verify SPA/cache/security/upload/image/unknown-API gateway cases
-- [ ] inspect runtime user, health, published ports, read-only filesystem and image contents
-- [ ] validate merged development Compose and loopback-only port bindings
-- [ ] run `git diff --check` and verify OpenAPI/generated client/DB migration drift is absent
-- [ ] confirm `testcontainers.properties`, credentials, host paths, reports and OS/IDE metadata are unstaged
-- [ ] record actual test counts, image identifiers, platform verified and remaining 9.29/9.30 work
-- [ ] move the completed plan to `docs/plans/completed/`
+- [x] run `npm ci`, `npm run check` and `npm run test:coverage`
+- [x] run `./gradlew build`
+- [x] build boot JAR and both Docker images from clean contexts
+- [x] start base Compose and wait for `/api/v3/api-docs`
+- [x] run all external integration contracts through gateway
+- [x] run production delivery Playwright smoke
+- [x] verify SPA/cache/security/upload/image/unknown-API gateway cases
+- [x] inspect runtime user, health, published ports, read-only filesystem and image contents
+- [x] validate merged development Compose and loopback-only port bindings
+- [x] run `git diff --check` and verify OpenAPI/generated client/DB migration drift is absent
+- [x] confirm `testcontainers.properties`, credentials, host paths, reports and OS/IDE metadata are unstaged
+- [x] record actual test counts, image identifiers, platform verified and remaining 9.29/9.30 work
+- [x] move the completed plan to `docs/plans/completed/`
+
+## Verification Results
+
+- `npm ci` completed from the committed lockfile; `npm run check` passed API drift, formatting, ESLint, Stylelint,
+  TypeScript, production build and 207 unit/component tests in 41 files.
+- `npm run test:coverage` passed the same 207 tests with 90.25% statements, 83.94% branches, 88.79% functions and
+  90.84% lines.
+- `./gradlew --no-daemon build -PspotlessRatchetFrom=origin/develop` passed 410 backend tests and 200 local integration
+  contracts.
+- All 204 external integration contracts passed through `http://127.0.0.1:8080/api`, including 4 focused gateway
+  contracts and existing multipart/image scenarios.
+- The production Playwright delivery smoke passed against the real Compose gateway and backend; no API mocks were
+  active.
+- Gateway image `sha256:8d7c953ed1213f195ab13ffc4231da51b68c71bfdc77a2b1c1e95dd08a944bd9` was built and
+  inspected on `linux/arm64`; size is 55,651,232 bytes, runtime user is UID 101, health is green, Node and the source
+  tree are absent from the runtime layer.
+- The running container was verified with a read-only root filesystem, `cap_drop: ALL`,
+  `no-new-privileges:true` and a 32 MB `noexec,nosuid` `/tmp` tmpfs.
+- Base Compose publishes only gateway `127.0.0.1:8080`. The development overlay additionally publishes backend 8081,
+  PostgreSQL 5432 and MinIO 9000/9001, all on `127.0.0.1`.
+- `/api/v3/api-docs`, SPA root/direct deep link, immutable hashed assets, no-cache HTML, security headers, `/healthz`,
+  prefix isolation and proxy error non-masking were verified. OpenAPI reports the public gateway origin with its port.
+- OpenAPI source, generated clients, Flyway, jOOQ and database schema were not changed; `npm run api:check` found no
+  generated-client drift.
+- The unrelated local `testcontainers.properties` change remained untouched and unstaged. No credentials, host paths,
+  reports or IDE/OS metadata were added.
+- The backend currently returns its existing 500 response for an unknown API route; the gateway preserves that response
+  and proves it is not replaced with SPA HTML. Converting this backend behavior to 404 is outside 9.28.
+- Full mock browser, accessibility and visual suites were not rerun because no UI source or visual baseline changed;
+  the new real production delivery boundary was covered by its dedicated Playwright smoke.
+- Windows x86-64 and macOS Intel clean-machine verification remains manual. Packaging/scripts are 9.29; published
+  `linux/amd64` + `linux/arm64` manifests, signing, provenance and release automation are 9.30.
 
 ## Non-Goals
 

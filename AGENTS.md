@@ -140,12 +140,13 @@ Spring Boot работает in-process, PostgreSQL поднимается Testc
 
 ```bash
 ./gradlew :configurator:bootJar
-docker compose up -d --build
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ./gradlew :configurator-integration-tests:externalIntegrationTest
 ```
 
-External transport использует RestAssured, а setup — PostgreSQL SQL fixtures. Параметры: `test.baseUrl`, `test.dbUrl`,
-`test.dbUser`, `test.dbPassword`.
+External transport использует RestAssured через gateway (`test.baseUrl` по умолчанию
+`http://127.0.0.1:8080/api`), а setup — PostgreSQL SQL fixtures через loopback development port. Gateway delivery
+использует `test.gatewayUrl`; остальные параметры: `test.dbUrl`, `test.dbUser`, `test.dbPassword`.
 
 Local и external сценарии должны оставаться единым контрактом. Нельзя дублировать одинаковый кейс с разной логикой.
 Общие deterministic fixtures находятся в `configurator-integration-tests/src/test/resources/sql`.
@@ -161,12 +162,16 @@ npm run test:coverage
 npm run test:e2e
 npm run test:accessibility
 npm run test:visual
+npm run test:delivery
 ```
 
 `npm run check` объединяет format check, ESLint, Stylelint, unit tests, TypeScript typecheck и production build. E2E
 и accessibility запускаются отдельно после однократного `npx playwright install`; browser binaries не скачиваются
 автоматически при `npm ci`. Visual regression выполняется только в pinned Docker image; baselines обновляются через
 `npm run test:visual:update` и требуют review. Полный workflow описан в `docs/testing/FRONTEND_TESTING.md`.
+
+`npm run test:delivery` выполняется после запуска полного Compose, не использует HTTP mocks и проверяет production
+gateway, SPA deep links и реальный `/api` boundary.
 
 ### Definition of Done
 
@@ -185,11 +190,14 @@ npm run test:visual
 
 ## 6. Локальное окружение
 
-`docker-compose.yml` поднимает:
+`docker-compose.yml` поднимает production-like topology и публикует только gateway — `127.0.0.1:8080`. Backend,
+PostgreSQL 17 и MinIO остаются во внутренней Docker network.
 
-- PostgreSQL 17 — `localhost:5432`;
-- MinIO — `localhost:9000`, console `localhost:9001`;
-- приложение — `localhost:8080`.
+`docker-compose.dev.yml` добавляет loopback-only developer ports:
+
+- backend — `127.0.0.1:8081`;
+- PostgreSQL — `127.0.0.1:5432`;
+- MinIO — `127.0.0.1:9000`, console `127.0.0.1:9001`.
 
 Локальные credentials из Compose нельзя использовать в production. Host-specific Docker socket paths не коммитить;
 задавать их локально через environment/IDE или локально изменённый `testcontainers.properties`.
@@ -202,6 +210,9 @@ npm run test:visual
 
 Frontend dev server запускается из `configurator-web` командой `npm run dev` на `http://127.0.0.1:5173`. Запросы
 `/api/*` проксируются на `http://127.0.0.1:8080/*` с удалением префикса `/api`.
+
+При запуске backend из IDE поднимать только `postgres` и `minio` с development override; gateway не запускать, чтобы
+не конфликтовать с backend на 8080. Host wildcards, credentials и Docker socket paths не коммитить.
 
 ## 7. Git и релизы
 

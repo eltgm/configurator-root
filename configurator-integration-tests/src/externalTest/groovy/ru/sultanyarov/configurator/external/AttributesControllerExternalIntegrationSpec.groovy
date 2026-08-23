@@ -12,7 +12,7 @@ import ru.sultanyarov.configurator.contract.AbstractAttributesControllerContract
 import ru.sultanyarov.configurator.contract.TestResponse
 
 class AttributesControllerExternalIntegrationSpec extends AbstractAttributesControllerContract {
-    final String baseUrl = System.getProperty("test.baseUrl", "http://localhost:8080")
+    final String baseUrl = ExternalTestEnvironment.apiBaseUrl()
     final String dbUrl = System.getProperty("test.dbUrl", "jdbc:postgresql://localhost:5432/configurator")
     final String dbUser = System.getProperty("test.dbUser", "configurator")
     final String dbPassword = System.getProperty("test.dbPassword", "configurator")

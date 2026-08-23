@@ -1,8 +1,7 @@
 # Configurator Web
 
-Frontend Configurator на React, TypeScript и Vite. На этапе 9.15 доступны application shell,
-первый запуск, управление областями, типами, атрибутами, каталог с поиском, фильтрами и архивом, а также создание,
-просмотр и редактирование компонентов с динамическими характеристиками.
+Frontend Configurator на React, TypeScript и Vite. Реализованы предметные области, каталог, типы и атрибуты,
+совместимость, конфигуратор, конфигурации, адаптивный AppShell и production NGINX gateway.
 
 ## Требования для разработки
 
@@ -17,6 +16,7 @@ npm run api:generate
 npm run dev
 npm run check
 npm run test:coverage
+npm run test:delivery
 ```
 
 Dev server доступен на `http://127.0.0.1:5173`. Запросы к `/api/*` проксируются на backend
@@ -30,6 +30,20 @@ npm run test:e2e
 ```
 
 Production build создаётся в `dist/`.
+
+## Production gateway
+
+`Dockerfile` выполняет `npm ci`/production build в Node 24 builder и копирует только `dist` в digest-pinned
+unprivileged NGINX. Gateway слушает 8080, раздаёт SPA, поддерживает direct navigation и проксирует `/api/*` во
+внутренний service `app:8080`.
+
+Сборка из этого каталога:
+
+```bash
+docker build -t configurator-web:local .
+```
+
+`npm run test:delivery` требует полный Compose, доступный на `http://127.0.0.1:8080`; этот suite не использует mocks.
 
 ## Навигационный каркас
 

@@ -88,23 +88,36 @@ controller -> facade -> service -> outbound port -> infrastructure
 - схема БД — [`configurator/src/main/resources/db/migration`](configurator/src/main/resources/db/migration);
 - правила для AI-агентов — [`AGENTS.md`](AGENTS.md).
 
-## Быстрый старт
+## Быстрый старт из исходного кода
 
-Понадобятся JDK 21 и Docker с Compose plugin. Отдельно устанавливать Gradle не нужно.
+До появления готовых пользовательских архивов 9.29 понадобятся JDK 21 и Docker Desktop с Compose plugin. Отдельно
+устанавливать Gradle и Node.js не нужно: frontend собирается внутри gateway image.
 
 ```bash
 ./gradlew :configurator:bootJar
-docker compose up --build
+docker compose up -d --build
 ```
 
 После запуска доступны:
 
-- приложение — <http://localhost:8080>;
-- Swagger UI — <http://localhost:8080/swagger-ui/index.html>;
-- OpenAPI JSON — <http://localhost:8080/v3/api-docs>;
-- MinIO API — <http://localhost:9000>;
-- MinIO Console — <http://localhost:9001>;
-- PostgreSQL — `localhost:5432/configurator`.
+- приложение — <http://127.0.0.1:8080>;
+- OpenAPI JSON через gateway — <http://127.0.0.1:8080/api/v3/api-docs>.
+
+Основной Compose публикует только loopback-порт gateway. Backend, PostgreSQL и MinIO доступны внутри Docker network.
+Это уменьшает поверхность локального приложения, но не заменяет отсутствующую runtime-аутентификацию.
+
+### Development Compose override
+
+Для прямого доступа к инфраструктуре и container backend используйте development override:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+- backend и Swagger UI — <http://127.0.0.1:8081/swagger-ui/index.html>;
+- PostgreSQL — `127.0.0.1:5432/configurator`;
+- MinIO API — <http://127.0.0.1:9000>;
+- MinIO Console — <http://127.0.0.1:9001>.
 
 Локальные значения `configurator/configurator`, `minioadmin/minioadmin` предназначены только для разработки.
 
@@ -119,19 +132,19 @@ npm run dev
 ```
 
 Web-интерфейс будет доступен на <http://127.0.0.1:5173>. Dev server проксирует `/api/*` на backend
-`http://127.0.0.1:8080`. Готовая однокнопочная поставка для нетехнического пользователя будет добавлена отдельной
-задачей; текущий вариант предназначен для разработки.
+`http://127.0.0.1:8080`. Готовая однокнопочная поставка для нетехнического пользователя будет добавлена в 9.29;
+текущая команда предназначена для разработки.
 
 ### Запуск приложения из IDE
 
 Поднимите инфраструктуру и запустите main-класс Spring Boot из IntelliJ IDEA:
 
 ```bash
-docker compose up -d postgres minio
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres minio
 ```
 
-По умолчанию приложение использует локальные адреса сервисов из `application.yml`. При необходимости задайте переменные
-окружения в Run Configuration.
+Не запускайте gateway в этом сценарии: backend из IDE занимает `127.0.0.1:8080`, а Vite proxy удаляет `/api` и
+обращается к нему напрямую. При необходимости задайте переменные окружения в Run Configuration.
 
 ## Конфигурация
 
@@ -164,7 +177,7 @@ verification. Для Testcontainers должен быть доступен Docke
 
 ```bash
 ./gradlew :configurator:bootJar
-docker compose up -d --build
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ./gradlew :configurator-integration-tests:externalIntegrationTest
 ```
 
@@ -172,13 +185,14 @@ docker compose up -d --build
 
 ```bash
 ./gradlew :configurator-integration-tests:externalIntegrationTest \
-  -Dtest.baseUrl=http://localhost:8080 \
+  -Dtest.baseUrl=http://127.0.0.1:8080/api \
   -Dtest.dbUrl=jdbc:postgresql://localhost:5432/configurator \
   -Dtest.dbUser=configurator \
   -Dtest.dbPassword=configurator
 ```
 
-Local и external режимы используют одни и те же контрактные сценарии; различается только transport/setup.
+Local и external режимы используют одни и те же контрактные сценарии; external transport проходит через web gateway,
+а development override публикует PostgreSQL на loopback для deterministic SQL fixtures.
 
 ### Frontend
 
@@ -193,6 +207,8 @@ npm run test:coverage
 production build. После `npx playwright install` функциональные E2E запускаются `npm run test:e2e`, автоматическая
 проверка доступности — `npm run test:accessibility`. Visual regression требует Docker Desktop и запускается
 `npm run test:visual`; подробный процесс описан в [`docs/testing/FRONTEND_TESTING.md`](docs/testing/FRONTEND_TESTING.md).
+При запущенном полном Compose `npm run test:delivery` проверяет production bundle, reverse proxy и deep-link fallback
+без HTTP mocks.
 
 ## Разработка
 

@@ -28,7 +28,7 @@ cd configurator-root
 ```bash
 ./gradlew build
 ./gradlew :configurator:bootJar
-docker compose up -d --build
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ./gradlew :configurator-integration-tests:externalIntegrationTest
 ```
 
@@ -47,11 +47,16 @@ npx playwright install
 npm run test:e2e
 npm run test:accessibility
 npm run test:visual
+npm run test:delivery
 ```
 
 Visual regression выполняется в pinned Playwright Docker image. Эталоны обновляются только после намеренного UI
 изменения через `npm run test:visual:update`, просматриваются в diff и подтверждаются повторным обычным прогоном.
 Подробности: `docs/testing/FRONTEND_TESTING.md`.
+
+`test:delivery` выполняется только при запущенном полном Compose и не использует HTTP mocks. Основной
+`docker-compose.yml` публикует gateway `127.0.0.1:8080`; development override добавляет loopback-порты backend `8081`,
+PostgreSQL `5432` и MinIO `9000/9001`. Не заменяйте loopback bind на wildcard host bind.
 
 ## Стиль и архитектура
 

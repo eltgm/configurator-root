@@ -145,22 +145,41 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@4c125117fe7c5aed11272ec4213f602f012f89f2 # v5
 
+      - name: Set up Node.js 24
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: configurator-web/package-lock.json
+
+      - name: Install frontend delivery dependencies
+        working-directory: configurator-web
+        run: npm ci
+
+      - name: Install delivery browser
+        working-directory: configurator-web
+        run: npx playwright install --with-deps chromium
+
       - name: Build runtime JAR
         run: ./gradlew --no-daemon :configurator:bootJar
 
       - name: Start external environment
-        run: docker compose up -d --build
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 
       - name: Wait for API
-        run: curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors http://localhost:8080/v3/api-docs >/dev/null
+        run: curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors http://127.0.0.1:8080/api/v3/api-docs >/dev/null
 
       - name: Run external integration contracts
         run: ./gradlew --no-daemon :configurator-integration-tests:externalIntegrationTest
 
+      - name: Run production gateway browser smoke
+        working-directory: configurator-web
+        run: npm run test:delivery
+
       - name: Print service logs on failure
         if: failure()
-        run: docker compose logs --no-color
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml logs --no-color
 
       - name: Stop external environment
         if: always()
-        run: docker compose down --volumes
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml down --volumes

@@ -803,6 +803,47 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
   `docs/testing/FRONTEND_TESTING.md` и `docs/accessibility/WCAG_2_2_AA_AUDIT.md`;
 - OpenAPI, backend, Flyway, jOOQ, БД и generated API client в 9.27 не меняются.
 
+#### 9.28 — Web gateway, reverse proxy и production Docker image
+
+- production frontend поставляется отдельным multi-stage Docker image: digest-pinned Node 24 builder выполняет
+  reproducible `npm ci` и `npm run build`, а final runtime содержит только Vite bundle и digest-pinned unprivileged
+  NGINX;
+- gateway запускается non-root на внутреннем порту 8080; основной Compose включает read-only root filesystem,
+  `no-new-privileges`, удаляет Linux capabilities и предоставляет только минимальные временные writable paths;
+- единственная default host entry point — `http://127.0.0.1:8080`; backend, PostgreSQL, MinIO API и MinIO Console
+  доступны только во внутренней Docker network и не публикуют host ports;
+- отдельный `docker-compose.dev.yml` добавляет только loopback developer ports: backend `8081`, PostgreSQL `5432`,
+  MinIO `9000/9001`; gateway сохраняет `8080`, поэтому full development overlay не создаёт конфликт портов;
+- gateway раздаёт production SPA и проксирует `/api/*` в `app:8080` с детерминированным удалением префикса `/api`;
+  HTTP method, query, body, multipart и backend status/headers/body не преобразуются прикладной логикой gateway;
+- `/api` и `/api/` обрабатываются отдельно и никогда не попадают в SPA fallback; неизвестный или недоступный
+  `/api/*` возвращает backend/proxy error, а не `index.html`;
+- неизвестный non-API deep link возвращает `index.html` для React Router; существующие static assets отдаются напрямую;
+- gateway request limit равен 16 MB, чтобы пропускать backend file limit 10 MB вместе с multipart overhead; backend
+  остаётся окончательным источником validation;
+- `index.html` и SPA fallback используют `Cache-Control: no-cache`, а content-hashed `/assets/*` — долгий
+  `public, max-age=31536000, immutable` cache; текстовые ресурсы сжимаются, binary images не перекодируются;
+- gateway задаёт проверяемые `X-Content-Type-Options`, frame protection, `Referrer-Policy`, `Permissions-Policy` и CSP;
+  CSP ограничивает ресурсы same-origin и добавляет только минимально необходимые разрешения для текущего UI и image
+  previews;
+- `/healthz` проверяет liveness самого gateway; full readiness проверяется через proxied `/api/v3/api-docs`, Spring
+  Boot Actuator ради 9.28 не добавляется;
+- container logs направляются в stdout/stderr и не содержат request bodies, credentials или response payloads;
+- существующие external integration contracts выполняются через gateway prefix `/api`; отдельный delivery contract
+  проверяет root HTML, built asset, deep-link fallback, API isolation, cache/security headers, liveness, upload и image
+  content;
+- отдельный Playwright delivery smoke открывает production gateway без HTTP mocks и проверяет SPA bootstrap, первый API
+  request и direct navigation; mock functional/accessibility/visual suites сохраняются отдельно;
+- Vite + backend из IDE продолжают работать через `127.0.0.1:8080`; backend container из development overlay доступен
+  на `127.0.0.1:8081` только для developer diagnostics;
+- gateway image не содержит architecture-specific artifacts и готов к `linux/amd64`/`linux/arm64`; публикация общего
+  multi-platform manifest выполняется в 9.30, а Start/Stop/Update/Backup/Restore packages — в 9.29;
+- Docker Dependabot отслеживает nested Dockerfile в `/configurator-web`; exact base image digest обновляется только
+  reviewed dependency change;
+- runtime authentication/authorization в 9.28 не добавляется: поставка остаётся local-only preview и не считается
+  безопасной для публикации в недоверенной сети;
+- OpenAPI, backend business logic, Flyway, jOOQ, БД и generated API client в 9.28 не меняются.
+
 ## Демонстрационная предметная область
 
 Пункт 9.7 добавляет атомарное создание примера «Сборка ПК» через `POST /domains/demo`. Пример содержит типы, определения
