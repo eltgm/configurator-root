@@ -252,7 +252,22 @@ test.beforeEach(async ({ page }) => {
     });
   });
   await page.route(frontendApiBaseUrl + '/domains/*/components*', async (route) => {
-    await route.fulfill({ json: componentPage });
+    const url = new URL(route.request().url());
+    const componentTypeValue = url.searchParams.get('componentTypeId');
+    const componentTypeId = componentTypeValue === null ? null : Number(componentTypeValue);
+    const name = url.searchParams.get('name')?.trim().toLocaleLowerCase() ?? '';
+    const items = componentPage.items.filter(
+      (component) =>
+        (componentTypeId === null || component.componentTypeId === componentTypeId) &&
+        (!name || component.name.toLocaleLowerCase().includes(name)),
+    );
+    await route.fulfill({
+      json: {
+        ...componentPage,
+        items,
+        totalItems: items.length,
+      },
+    });
   });
   await page.route(frontendApiBaseUrl + '/domains/*/configurations*', async (route) => {
     const request = route.request();
@@ -302,6 +317,64 @@ test.beforeEach(async ({ page }) => {
         totalItems: configurations.length,
       },
     });
+  });
+  await page.route(frontendApiBaseUrl + '/configurations/*', async (route) => {
+    const request = route.request();
+    const configurationId = Number(new URL(request.url()).pathname.split('/').at(-1));
+    const index = configurations.findIndex((configuration) => configuration.id === configurationId);
+    if (index < 0) {
+      await route.fulfill({
+        status: 404,
+        json: {
+          timestamp: '2026-08-23T12:00:00Z',
+          status: 404,
+          error: 'Not Found',
+          code: 'NOT_FOUND',
+          message: 'Configuration not found',
+          path: `/configurations/${configurationId}`,
+          details: [],
+        },
+      });
+      return;
+    }
+    if (request.method() === 'GET') {
+      await route.fulfill({ json: configurations[index] });
+      return;
+    }
+    if (request.method() === 'PUT') {
+      const body = request.postDataJSON() as {
+        name: string;
+        description?: string;
+        componentIds: number[];
+      };
+      const current = configurations[index];
+      const updated = {
+        ...current,
+        name: body.name,
+        ...(body.description ? { description: body.description } : {}),
+        components: body.componentIds.flatMap((componentId) => {
+          const component = componentPage.items.find((item) => item.id === componentId);
+          if (!component) return [];
+          return [
+            {
+              id: component.id,
+              name: component.name,
+              brand: component.brand,
+              componentTypeId: component.componentTypeId,
+              componentTypeName:
+                componentTypes.find((type) => type.id === component.componentTypeId)?.name ??
+                'Unknown',
+              archived: false,
+            },
+          ];
+        }),
+      };
+      if (!body.description) delete updated.description;
+      configurations[index] = updated;
+      await route.fulfill({ json: updated });
+      return;
+    }
+    await route.fallback();
   });
   await page.route(frontendApiBaseUrl + '/domains/*/configurator/compatible*', async (route) => {
     if (route.request().method() !== 'GET') {
@@ -614,6 +687,34 @@ test('saves the current assembly and shows it in the configurations list', async
     "window.localStorage.getItem('configurator.assembly-draft.v1.101')",
   );
   expect(JSON.parse(storedDraft ?? '{}') as unknown).toMatchObject({ version: 1, items: [] });
+
+  await card.getByRole('link', { name: 'Открыть конфигурацию' }).click();
+  await expect(page).toHaveURL(/\/configurations\/901$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Домашний ПК' })).toBeVisible();
+  await page.getByRole('link', { name: 'Редактировать' }).click();
+  await expect(page).toHaveURL(/\/configurations\/901\/edit$/);
+
+  await page.getByRole('textbox', { name: 'Название' }).fill('Домашний ПК 2026');
+  const composition = page.getByRole('region', { name: 'Состав конфигурации' });
+  await composition.getByRole('button', { name: 'Заменить' }).click();
+  const replacementBrowser = page.getByRole('region', { name: 'Выбор замены' });
+  await expect(replacementBrowser.getByText('Core Ultra 9 285K')).toBeVisible();
+  await replacementBrowser.getByRole('button', { name: 'Выбрать' }).click();
+  await expect(composition.getByText('Core Ultra 9 285K')).toBeVisible();
+
+  const updateRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'PUT' && new URL(request.url()).pathname.endsWith('/configurations/901'),
+  );
+  await page.getByRole('button', { name: 'Сохранить изменения' }).click();
+  expect((await updateRequest).postDataJSON()).toEqual({
+    name: 'Домашний ПК 2026',
+    description: 'Тихая сборка',
+    componentIds: [104],
+  });
+  await expect(page).toHaveURL(/\/configurations\/901$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Домашний ПК 2026' })).toBeVisible();
+  await expect(page.getByText('Core Ultra 9 285K')).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   const mainBox = await page.getByRole('main').boundingBox();

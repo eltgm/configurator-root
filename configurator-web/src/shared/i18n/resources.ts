@@ -28,6 +28,12 @@ export const resources = {
           empty: 'Создать первую область',
           manage: 'Управление областями',
         },
+        changeGuard: {
+          title: 'Сменить область без сохранения?',
+          description: 'Несохранённые изменения будут потеряны. Перейти в область «{{domain}}»?',
+          stay: 'Остаться',
+          leave: 'Сменить область',
+        },
         actions: {
           create: 'Новая область',
           createDemo: 'Добавить демо',
@@ -257,6 +263,10 @@ export const resources = {
         actions: {
           save: 'Сохранить конфигурацию',
           openConfigurator: 'Открыть конфигуратор',
+          open: 'Открыть конфигурацию',
+          edit: 'Редактировать',
+          backToList: 'К списку',
+          cancelEditing: 'Отменить редактирование',
         },
         save: {
           unavailable: {
@@ -282,6 +292,7 @@ export const resources = {
         },
         notifications: {
           created: 'Конфигурация сохранена',
+          updated: 'Конфигурация обновлена',
         },
         states: {
           loading: 'Загрузка конфигураций',
@@ -296,6 +307,46 @@ export const resources = {
         card: {
           createdAt: 'Создана {{date}}',
           noDescription: 'Описание не задано',
+        },
+        detail: {
+          title: 'Конфигурация',
+          subtitle: 'Предметная область «{{domain}}»',
+          about: 'О конфигурации',
+          loading: 'Загрузка конфигурации',
+          refreshing: 'Обновление конфигурации',
+          notFoundTitle: 'Конфигурация не найдена',
+          notFoundDescription:
+            'Проверьте адрес или вернитесь к списку конфигураций выбранной области.',
+          domainMismatchTitle: 'Конфигурация находится в другой области',
+          domainMismatchDescription: 'Для просмотра переключитесь на область «{{domain}}».',
+          switchDomain: 'Переключиться на «{{domain}}»',
+        },
+        editor: {
+          title: 'Редактирование конфигурации',
+          subtitle: 'Полная замена данных конфигурации «{{name}}».',
+          loading: 'Загрузка редактора конфигурации',
+          metadataTitle: 'Название и описание',
+          compositionTitle: 'Состав конфигурации',
+          emptyComposition: 'Добавьте хотя бы один компонент.',
+          replace: 'Заменить',
+          remove: 'Убрать',
+          save: 'Сохранить изменения',
+          validation: {
+            ready: 'Состав напрямую совместим и готов к сохранению.',
+            empty: 'Добавьте хотя бы один компонент.',
+            limit: 'В конфигурации может быть не более 50 компонентов.',
+            archived: 'Удалите или замените все архивные компоненты.',
+            pending: 'Дождитесь строгой проверки совместимости состава.',
+            transitive: 'Для сохранения каждой паре нужна прямая совместимость.',
+            conflict: 'В составе есть несовместимые компоненты. Удалите или замените их.',
+            error: 'Не удалось проверить совместимость. Измените состав или повторите запрос.',
+          },
+          unsaved: {
+            title: 'Выйти без сохранения?',
+            description: 'Изменения конфигурации будут потеряны.',
+            stay: 'Остаться',
+            leave: 'Выйти',
+          },
         },
         components: {
           count_one: '{{count}} компонент',
@@ -1029,6 +1080,12 @@ export const resources = {
           empty: 'Create the first domain',
           manage: 'Manage domains',
         },
+        changeGuard: {
+          title: 'Switch domain without saving?',
+          description: 'Unsaved changes will be lost. Switch to the “{{domain}}” domain?',
+          stay: 'Stay',
+          leave: 'Switch domain',
+        },
         actions: {
           create: 'New domain',
           createDemo: 'Add demo',
@@ -1248,6 +1305,10 @@ export const resources = {
         actions: {
           save: 'Save configuration',
           openConfigurator: 'Open configurator',
+          open: 'Open configuration',
+          edit: 'Edit',
+          backToList: 'Back to list',
+          cancelEditing: 'Cancel editing',
         },
         save: {
           unavailable: {
@@ -1273,6 +1334,7 @@ export const resources = {
         },
         notifications: {
           created: 'Configuration saved',
+          updated: 'Configuration updated',
         },
         states: {
           loading: 'Loading configurations',
@@ -1285,6 +1347,46 @@ export const resources = {
         card: {
           createdAt: 'Created {{date}}',
           noDescription: 'No description',
+        },
+        detail: {
+          title: 'Configuration',
+          subtitle: '“{{domain}}” domain',
+          about: 'About configuration',
+          loading: 'Loading configuration',
+          refreshing: 'Refreshing configuration',
+          notFoundTitle: 'Configuration not found',
+          notFoundDescription:
+            'Check the address or return to the configuration list for the selected domain.',
+          domainMismatchTitle: 'Configuration belongs to another domain',
+          domainMismatchDescription: 'Switch to the “{{domain}}” domain to view it.',
+          switchDomain: 'Switch to “{{domain}}”',
+        },
+        editor: {
+          title: 'Edit configuration',
+          subtitle: 'Fully replace the mutable data of “{{name}}”.',
+          loading: 'Loading configuration editor',
+          metadataTitle: 'Name and description',
+          compositionTitle: 'Configuration composition',
+          emptyComposition: 'Add at least one component.',
+          replace: 'Replace',
+          remove: 'Remove',
+          save: 'Save changes',
+          validation: {
+            ready: 'The composition is directly compatible and ready to save.',
+            empty: 'Add at least one component.',
+            limit: 'A configuration cannot contain more than 50 components.',
+            archived: 'Remove or replace every archived component.',
+            pending: 'Wait for strict compatibility validation to finish.',
+            transitive: 'Every pair must be directly compatible before saving.',
+            conflict: 'The composition contains incompatible components. Remove or replace them.',
+            error: 'Compatibility could not be validated. Change the composition or retry.',
+          },
+          unsaved: {
+            title: 'Leave without saving?',
+            description: 'Configuration changes will be lost.',
+            stay: 'Stay',
+            leave: 'Leave',
+          },
         },
         components: {
           count_one: '{{count}} component',

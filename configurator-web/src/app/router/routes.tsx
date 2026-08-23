@@ -11,6 +11,8 @@ import { CompatibilityGraphPage } from '@/pages/CompatibilityGraphPage';
 import { CompatibilityRuleFormPage } from '@/pages/CompatibilityRuleFormPage';
 import { CompatibilityRulesPage } from '@/pages/CompatibilityRulesPage';
 import { ConfiguratorPage } from '@/pages/ConfiguratorPage';
+import { ConfigurationDetailsPage } from '@/pages/ConfigurationDetailsPage';
+import { ConfigurationEditPage } from '@/pages/ConfigurationEditPage';
 import { ConfigurationsPage } from '@/pages/ConfigurationsPage';
 import { DomainSettingsPage } from '@/pages/DomainSettingsPage';
 import { ManualCompatibilityPage } from '@/pages/ManualCompatibilityPage';
@@ -69,6 +71,22 @@ export const appRoutes: RouteObject[] = [
         element: (
           <RequireDomain>
             <ConfigurationsPage />
+          </RequireDomain>
+        ),
+      },
+      {
+        path: 'configurations/:configurationId',
+        element: (
+          <RequireDomain>
+            <ConfigurationDetailsPage />
+          </RequireDomain>
+        ),
+      },
+      {
+        path: 'configurations/:configurationId/edit',
+        element: (
+          <RequireDomain>
+            <ConfigurationEditPage />
           </RequireDomain>
         ),
       },

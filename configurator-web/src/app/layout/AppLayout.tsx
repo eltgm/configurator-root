@@ -8,12 +8,15 @@ import { MobileNavigation } from '@/app/layout/MobileNavigation';
 import { PreferencesMenu } from '@/app/layout/PreferencesMenu';
 import classes from '@/app/layout/app-layout.module.css';
 import { DomainProvider } from '@/features/domains/model/DomainProvider';
+import { DomainChangeGuardProvider } from '@/features/domains/model/DomainChangeGuardProvider';
 import { DomainSelector } from '@/features/domains/ui/DomainSelector';
 
 export function AppLayout() {
   return (
     <DomainProvider>
-      <AppLayoutContent />
+      <DomainChangeGuardProvider>
+        <AppLayoutContent />
+      </DomainChangeGuardProvider>
     </DomainProvider>
   );
 }
