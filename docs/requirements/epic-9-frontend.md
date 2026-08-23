@@ -646,6 +646,47 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
   unit/component tests с MSW и Playwright в Chromium, Firefox и WebKit;
 - OpenAPI, backend, Flyway, jOOQ, БД и generated API client в 9.23 не меняются.
 
+#### 9.24 — Просмотр и полное редактирование конфигурации
+
+- название и действие карточки в `/configurations` открывают отдельный маршрут
+  `/configurations/:configurationId`; просмотр показывает название, описание, дату создания, область и возвращённый
+  сервером ordered состав без дополнительных component detail requests;
+- каждый компонент показывает тип, название, бренд, ссылку на существующую карточку и явную отметку архива;
+  архивированные после сохранения позиции остаются видимыми как часть исторического состава;
+- detail page различает loading, background refresh, retryable error, invalid identifier и not-found; отсутствующая и
+  чужая конфигурация одинаково не раскрываются в соответствии с backend `404`;
+- редактирование выполняется на отдельном маршруте `/configurations/:configurationId/edit`; read-only просмотр и
+  editor имеют действия возврата, а copy, JSON export и permanent delete не появляются до 9.25;
+- edit page создаёт отдельный in-memory draft из `GET /configurations/{id}` и не читает, не перезаписывает и не очищает
+  domain-scoped localStorage-черновик основного `/configurator`;
+- пользователь может изменить trimmed-название до 255 символов, nullable-описание до 4000 символов, добавить,
+  удалить или явно заменить компонент; drag and drop и ручное изменение канонического порядка не добавляются;
+- состав содержит от 1 до 50 активных компонентов выбранной области, не более одного компонента каждого типа; один
+  активный компонент допустим без batch-проверки;
+- подбор кандидатов использует существующие catalog/direct/intersection endpoints только с
+  `includeTransitive=false`; для замены текущая позиция исключается из совместимой основы;
+- для двух и более компонентов весь draft проверяется batch-запросом в строгом direct-режиме; pending, request error,
+  conflict, transitive-only, пустой состав, превышение лимита или архивная позиция блокируют сохранение и объясняют
+  причину;
+- архивная позиция остаётся видимой в editor, но backend не допускает её даже для metadata-only PUT, поэтому перед
+  сохранением пользователь обязан удалить или заменить все архивные позиции;
+- `PUT /configurations/{id}` отправляет полный immutable snapshot `{ name, description?, componentIds }`; blank
+  description не отправляется, mutation автоматически не повторяется, а backend повторно проверяет область,
+  активность, уникальность типов и прямую попарную совместимость;
+- structured backend details для `name` и `description` привязываются к полям; ошибки состава показываются рядом со
+  сборкой, при любой ошибке metadata и draft сохраняются для исправления и повторной попытки;
+- после успешного PUT detail cache обновляется серверным ответом, list queries текущей области инвалидируются, UI
+  показывает success notification и возвращается на detail; domain, owner и `createdAt` остаются неизменными;
+- dirty state учитывает metadata и множество component IDs, но не серверный/display order; переход по маршруту,
+  reload и смена предметной области не теряют изменения без подтверждения;
+- если deep link принадлежит другой доступной области, UI не переключает глобальный контекст неожиданно, а показывает
+  явное действие перехода в область конфигурации; после обычной смены области read-only detail открывает список новой
+  области;
+- detail/editor, archived remediation, strict direct add/intersection/replacement, `400/404/409`, unsaved guard,
+  domain isolation и layout от 360 px покрываются unit/component tests с MSW и Playwright в Chromium, Firefox и
+  WebKit;
+- OpenAPI, backend, Flyway, jOOQ, БД и generated API client в 9.24 не меняются.
+
 ### Качество и поставка
 
 | Пункт | Требование                                           |

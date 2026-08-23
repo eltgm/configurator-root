@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useBlocker } from 'react-router-dom';
 
 export function useUnsavedChangesGuard(isDirty: boolean) {
@@ -15,10 +15,12 @@ export function useUnsavedChangesGuard(isDirty: boolean) {
     return () => window.removeEventListener('beforeunload', preventWindowClose);
   }, [isDirty]);
 
+  const allowNavigation = useCallback(() => {
+    allowNavigationRef.current = true;
+  }, []);
+
   return {
     blocker,
-    allowNavigation: () => {
-      allowNavigationRef.current = true;
-    },
+    allowNavigation,
   };
 }

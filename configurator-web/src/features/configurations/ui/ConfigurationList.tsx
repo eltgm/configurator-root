@@ -1,5 +1,5 @@
-import { Badge, Group, Paper, SimpleGrid, Stack, Text, Title } from '@mantine/core';
-import { IconArchive } from '@tabler/icons-react';
+import { Badge, Button, Group, Paper, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import { IconArchive, IconChevronRight } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
@@ -23,7 +23,9 @@ export function ConfigurationList({ configurations }: ConfigurationListProps) {
           <Stack gap="md">
             <Stack gap={4}>
               <Title order={2} size="h3">
-                {configuration.name}
+                <Text component={Link} to={`/configurations/${configuration.id}`} inherit>
+                  {configuration.name}
+                </Text>
               </Title>
               <Text size="xs" c="dimmed">
                 {t('configurations.card.createdAt', {
@@ -66,6 +68,14 @@ export function ConfigurationList({ configurations }: ConfigurationListProps) {
                 </Paper>
               ))}
             </Stack>
+            <Button
+              component={Link}
+              to={`/configurations/${configuration.id}`}
+              variant="light"
+              rightSection={<IconChevronRight size={16} aria-hidden="true" />}
+            >
+              {t('configurations.actions.open')}
+            </Button>
           </Stack>
         </Paper>
       ))}
