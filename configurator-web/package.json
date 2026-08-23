@@ -32,6 +32,7 @@
     "test:visual": "node scripts/run-visual-tests.mjs",
     "test:visual:update": "node scripts/run-visual-tests.mjs --update-snapshots",
     "test:visual:container": "playwright test --config=playwright.visual.config.ts",
+    "test:delivery": "playwright test --config=playwright.delivery.config.ts",
     "check": "npm run api:check && npm run format:check && npm run lint && npm run lint:styles && npm run test && npm run build"
   },
   "dependencies": {
