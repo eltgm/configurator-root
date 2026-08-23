@@ -265,6 +265,12 @@ export const resources = {
           openConfigurator: 'Открыть конфигуратор',
           open: 'Открыть конфигурацию',
           edit: 'Редактировать',
+          copy: 'Копировать',
+          createCopy: 'Создать копию',
+          export: 'Скачать JSON',
+          exporting: 'Подготовка JSON…',
+          delete: 'Удалить',
+          menuNamed: 'Действия с конфигурацией {{name}}',
           backToList: 'К списку',
           cancelEditing: 'Отменить редактирование',
         },
@@ -292,7 +298,21 @@ export const resources = {
         },
         notifications: {
           created: 'Конфигурация сохранена',
+          copied: 'Копия конфигурации создана',
           updated: 'Конфигурация обновлена',
+          exported: 'JSON-экспорт скачан',
+          deleted: 'Конфигурация удалена',
+        },
+        copy: {
+          title: 'Копирование конфигурации',
+          suffix: ' — копия',
+          archivedReason: 'Сначала удалите или замените архивные компоненты в редакторе.',
+        },
+        delete: {
+          title: 'Удалить конфигурацию?',
+          description: 'Конфигурация «{{name}}» будет удалена.',
+          warning:
+            'Это действие нельзя отменить. Компоненты каталога и другие конфигурации останутся без изменений.',
         },
         states: {
           loading: 'Загрузка конфигураций',
@@ -1307,6 +1327,12 @@ export const resources = {
           openConfigurator: 'Open configurator',
           open: 'Open configuration',
           edit: 'Edit',
+          copy: 'Copy',
+          createCopy: 'Create copy',
+          export: 'Download JSON',
+          exporting: 'Preparing JSON…',
+          delete: 'Delete',
+          menuNamed: 'Actions for configuration {{name}}',
           backToList: 'Back to list',
           cancelEditing: 'Cancel editing',
         },
@@ -1334,7 +1360,21 @@ export const resources = {
         },
         notifications: {
           created: 'Configuration saved',
+          copied: 'Configuration copy created',
           updated: 'Configuration updated',
+          exported: 'JSON export downloaded',
+          deleted: 'Configuration deleted',
+        },
+        copy: {
+          title: 'Copy configuration',
+          suffix: ' — copy',
+          archivedReason: 'Remove or replace archived components in the editor first.',
+        },
+        delete: {
+          title: 'Delete configuration?',
+          description: 'The “{{name}}” configuration will be deleted.',
+          warning:
+            'This action cannot be undone. Catalog components and other configurations will remain unchanged.',
         },
         states: {
           loading: 'Loading configurations',

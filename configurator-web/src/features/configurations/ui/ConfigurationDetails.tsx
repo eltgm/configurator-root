@@ -3,15 +3,27 @@ import { IconArchive, IconArrowLeft, IconEdit } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
+import { ConfigurationActions } from '@/features/configurations/ui/ConfigurationActions';
 import type { Configuration } from '@/shared/api';
 import { PageHeader } from '@/shared/ui';
 
 interface ConfigurationDetailsProps {
   configuration: Configuration;
   domainName: string;
+  isExporting: boolean;
+  onCopy: () => void;
+  onExport: () => void;
+  onDelete: () => void;
 }
 
-export function ConfigurationDetails({ configuration, domainName }: ConfigurationDetailsProps) {
+export function ConfigurationDetails({
+  configuration,
+  domainName,
+  isExporting,
+  onCopy,
+  onExport,
+  onDelete,
+}: ConfigurationDetailsProps) {
   const { t, i18n } = useTranslation();
   const createdAt = new Intl.DateTimeFormat(i18n.resolvedLanguage, {
     dateStyle: 'long',
@@ -24,23 +36,33 @@ export function ConfigurationDetails({ configuration, domainName }: Configuratio
         title={configuration.name}
         description={t('configurations.detail.subtitle', { domain: domainName })}
         actions={
-          <Group gap="sm">
-            <Button
-              component={Link}
-              to="/configurations"
-              variant="default"
-              leftSection={<IconArrowLeft size={16} aria-hidden="true" />}
-            >
-              {t('configurations.actions.backToList')}
-            </Button>
-            <Button
-              component={Link}
-              to={`/configurations/${configuration.id}/edit`}
-              leftSection={<IconEdit size={16} aria-hidden="true" />}
-            >
-              {t('configurations.actions.edit')}
-            </Button>
-          </Group>
+          <Stack gap="xs" align="flex-end">
+            <Group gap="sm">
+              <Button
+                component={Link}
+                to="/configurations"
+                variant="default"
+                leftSection={<IconArrowLeft size={16} aria-hidden="true" />}
+              >
+                {t('configurations.actions.backToList')}
+              </Button>
+              <Button
+                component={Link}
+                to={`/configurations/${configuration.id}/edit`}
+                leftSection={<IconEdit size={16} aria-hidden="true" />}
+              >
+                {t('configurations.actions.edit')}
+              </Button>
+            </Group>
+            <ConfigurationActions
+              configuration={configuration}
+              variant="buttons"
+              isExporting={isExporting}
+              onCopy={onCopy}
+              onExport={onExport}
+              onDelete={onDelete}
+            />
+          </Stack>
         }
       />
 

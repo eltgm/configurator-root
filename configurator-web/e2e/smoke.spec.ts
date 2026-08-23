@@ -1,4 +1,5 @@
 import { expect, test, type Route } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 import type {
   CompatibilityRuleSet,
@@ -168,6 +169,7 @@ test.beforeEach(async ({ page }) => {
       archived: boolean;
     }>;
   }> = [];
+  let nextConfigurationId = 901;
   let componentImages = [
     { id: 9001, url: '/component-images/9001/content', orderIndex: 0 },
     { id: 9002, url: '/component-images/9002/content', orderIndex: 1 },
@@ -278,7 +280,7 @@ test.beforeEach(async ({ page }) => {
         componentIds: number[];
       };
       const created = {
-        id: 901,
+        id: nextConfigurationId++,
         domainId: 101,
         name: body.name,
         ...(body.description ? { description: body.description } : {}),
@@ -318,9 +320,29 @@ test.beforeEach(async ({ page }) => {
       },
     });
   });
+  await page.route(frontendApiBaseUrl + '/configurations/*/export/json', async (route) => {
+    const pathSegments = new URL(route.request().url()).pathname.split('/');
+    const configurationsSegment = pathSegments.indexOf('configurations');
+    const configurationId = Number(pathSegments[configurationsSegment + 1]);
+    const configuration = configurations.find((item) => item.id === configurationId);
+    if (!configuration) {
+      await route.fulfill({ status: 404, json: { message: 'Configuration not found' } });
+      return;
+    }
+    await route.fulfill({
+      json: {
+        schemaVersion: 1,
+        exportedAt: '2026-08-23T12:30:00Z',
+        configuration,
+      },
+    });
+  });
   await page.route(frontendApiBaseUrl + '/configurations/*', async (route) => {
     const request = route.request();
-    const configurationId = Number(new URL(request.url()).pathname.split('/').at(-1));
+    const pathname = new URL(request.url()).pathname;
+    const pathSegments = pathname.split('/');
+    const configurationsSegment = pathSegments.indexOf('configurations');
+    const configurationId = Number(pathSegments[configurationsSegment + 1]);
     const index = configurations.findIndex((configuration) => configuration.id === configurationId);
     if (index < 0) {
       await route.fulfill({
@@ -337,8 +359,23 @@ test.beforeEach(async ({ page }) => {
       });
       return;
     }
+    if (request.method() === 'GET' && pathname.endsWith('/export/json')) {
+      await route.fulfill({
+        json: {
+          schemaVersion: 1,
+          exportedAt: '2026-08-23T12:30:00Z',
+          configuration: configurations[index],
+        },
+      });
+      return;
+    }
     if (request.method() === 'GET') {
       await route.fulfill({ json: configurations[index] });
+      return;
+    }
+    if (request.method() === 'DELETE') {
+      configurations.splice(index, 1);
+      await route.fulfill({ status: 204, body: '' });
       return;
     }
     if (request.method() === 'PUT') {
@@ -715,8 +752,73 @@ test('saves the current assembly and shows it in the configurations list', async
   await expect(page).toHaveURL(/\/configurations\/901$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Домашний ПК 2026' })).toBeVisible();
   await expect(page.getByText('Core Ultra 9 285K')).toBeVisible();
-
   await page.setViewportSize({ width: 390, height: 844 });
+
+  await page.getByRole('button', { name: 'Копировать' }).click();
+  const copyDialog = page.getByRole('dialog', { name: 'Копирование конфигурации' });
+  await expect(copyDialog.getByRole('textbox', { name: /Название/ })).toHaveValue(
+    'Домашний ПК 2026 — копия',
+  );
+  await expect(copyDialog.getByText('Core Ultra 9 285K')).toBeVisible();
+  const copyRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname.endsWith('/domains/101/configurations'),
+  );
+  await copyDialog.getByRole('button', { name: 'Создать копию' }).click();
+  expect((await copyRequest).postDataJSON()).toEqual({
+    name: 'Домашний ПК 2026 — копия',
+    description: 'Тихая сборка',
+    componentIds: [104],
+  });
+  await expect(page).toHaveURL(/\/configurations\/902$/);
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Скачать JSON' }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe('configuration-902.json');
+  const downloadPath = await download.path();
+  expect(downloadPath).not.toBeNull();
+  const exported = JSON.parse(await readFile(downloadPath, 'utf8')) as {
+    schemaVersion: number;
+    configuration: { id: number; name: string };
+  };
+  expect(exported).toMatchObject({
+    schemaVersion: 1,
+    configuration: { id: 902, name: 'Домашний ПК 2026 — копия' },
+  });
+  const exportNotification = page.getByRole('alert').filter({ hasText: 'JSON-экспорт скачан' });
+  await exportNotification.getByRole('button').click();
+
+  await page.getByRole('button', { name: 'Удалить' }).click();
+  let deleteDialog = page.getByRole('dialog', { name: 'Удалить конфигурацию?' });
+  await deleteDialog.getByRole('button', { name: 'Отмена' }).click();
+  await expect(deleteDialog).toBeHidden();
+  await expect(page).toHaveURL(/\/configurations\/902$/);
+
+  await page.getByRole('button', { name: 'Удалить' }).click();
+  deleteDialog = page.getByRole('dialog', { name: 'Удалить конфигурацию?' });
+  const deleteRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'DELETE' &&
+      new URL(request.url()).pathname.endsWith('/configurations/902'),
+  );
+  await deleteDialog.getByRole('button', { name: 'Удалить' }).click();
+  await deleteRequest;
+  await expect(page).toHaveURL(/\/configurations$/);
+  await expect(page.getByRole('heading', { name: 'Домашний ПК 2026' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Домашний ПК 2026 — копия' })).toHaveCount(0);
+  const draftAfterOperations = await page.evaluate<string | null>(
+    "window.localStorage.getItem('configurator.assembly-draft.v1.101')",
+  );
+  expect(JSON.parse(draftAfterOperations ?? '{}') as unknown).toMatchObject({
+    version: 1,
+    items: [],
+  });
+
+  await page.goto('/components');
+  await expect(page.getByText('Core Ultra 9 285K')).toBeVisible();
+
   const mainBox = await page.getByRole('main').boundingBox();
   expect(mainBox).not.toBeNull();
   expect(mainBox!.x + mainBox!.width).toBeLessThanOrEqual(390);

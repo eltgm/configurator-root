@@ -22,12 +22,14 @@ import {
 } from '@/features/configurations/model/configuration-create';
 import { getFieldErrors, type Configuration } from '@/shared/api';
 import { showSuccessNotification } from '@/shared/notifications/notifications';
+import { ErrorState } from '@/shared/ui';
 
 export interface ConfigurationSummaryItem {
   id: number;
   name: string;
   typeName: string;
   brand?: string;
+  archived?: boolean;
 }
 
 interface CreateConfigurationModalProps {
@@ -35,6 +37,8 @@ interface CreateConfigurationModalProps {
   domainId: number;
   componentIds: ReadonlyArray<number>;
   components: ReadonlyArray<ConfigurationSummaryItem>;
+  mode?: 'create' | 'copy';
+  initialValues?: ConfigurationFormValues | undefined;
   onClose: () => void;
   onSaved: (configuration: Configuration) => void;
 }
@@ -44,11 +48,14 @@ export function CreateConfigurationModal({
   domainId,
   componentIds,
   components,
+  mode = 'create',
+  initialValues,
   onClose,
   onSaved,
 }: CreateConfigurationModalProps) {
   const { t } = useTranslation();
   const createConfiguration = useCreateConfigurationMutation();
+  const resetMutation = createConfiguration.reset;
   const schema = useMemo(
     () =>
       z.object({
@@ -68,9 +75,10 @@ export function CreateConfigurationModal({
 
   useEffect(() => {
     if (opened) {
-      form.reset({ name: '', description: '' });
+      form.reset(initialValues ?? { name: '', description: '' });
+      resetMutation();
     }
-  }, [form, opened]);
+  }, [form, initialValues, opened, resetMutation]);
 
   const close = () => {
     if (!createConfiguration.isPending) {
@@ -84,7 +92,13 @@ export function CreateConfigurationModal({
         domainId,
         body: toCreateConfigurationRequest(values, componentIds),
       });
-      showSuccessNotification(t('configurations.notifications.created'));
+      showSuccessNotification(
+        t(
+          mode === 'copy'
+            ? 'configurations.notifications.copied'
+            : 'configurations.notifications.created',
+        ),
+      );
       onSaved(configuration);
       onClose();
     } catch (error) {
@@ -102,7 +116,7 @@ export function CreateConfigurationModal({
     <Modal
       opened={opened}
       onClose={close}
-      title={t('configurations.form.title')}
+      title={t(mode === 'copy' ? 'configurations.copy.title' : 'configurations.form.title')}
       centered
       closeOnClickOutside={!createConfiguration.isPending}
       closeOnEscape={!createConfiguration.isPending}
@@ -131,6 +145,7 @@ export function CreateConfigurationModal({
             error={form.formState.errors.description?.message}
             {...form.register('description')}
           />
+          {createConfiguration.error ? <ErrorState error={createConfiguration.error} /> : null}
           <Stack gap="xs">
             <Group justify="space-between">
               <Text fw={600} size="sm">
@@ -148,6 +163,11 @@ export function CreateConfigurationModal({
                 <Text size="xs" c="dimmed">
                   {[component.typeName, component.brand].filter(Boolean).join(' · ')}
                 </Text>
+                {component.archived ? (
+                  <Badge mt={4} color="gray" size="sm">
+                    {t('configurations.components.archived')}
+                  </Badge>
+                ) : null}
               </Paper>
             ))}
           </Stack>
@@ -156,7 +176,11 @@ export function CreateConfigurationModal({
               {t('common.cancel')}
             </Button>
             <Button type="submit" loading={createConfiguration.isPending}>
-              {t('configurations.actions.save')}
+              {t(
+                mode === 'copy'
+                  ? 'configurations.actions.createCopy'
+                  : 'configurations.actions.save',
+              )}
             </Button>
           </Group>
         </Stack>
