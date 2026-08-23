@@ -6,10 +6,11 @@
   padding: 8px 12px;
   border-radius: var(--mantine-radius-sm);
   background: var(--mantine-color-body);
+  color: var(--mantine-color-text);
   transform: translateY(-150%);
 }
 
-.skip-link:focus {
+.skip-link:focus-visible {
   transform: translateY(0);
 }
 
@@ -36,7 +37,6 @@
 
 .main {
   min-width: 0;
-  overflow-x: clip;
 }
 
 .mobile-navigation {
@@ -73,4 +73,25 @@
 .mobile-navigation-item[data-active] {
   color: var(--mantine-primary-color-filled);
   background: var(--mantine-primary-color-light);
+}
+
+@media (width <= 36em) {
+  .domain-context {
+    max-width: min(10.5rem, 48vw);
+    padding-inline: 8px;
+  }
+
+  .domain-selector-text {
+    max-width: min(6rem, 24vw);
+  }
+
+  .domain-selector-text > :first-child {
+    display: none;
+  }
+}
+
+@media (width <= 22em) {
+  .mobile-navigation-item {
+    font-size: 0.625rem;
+  }
 }

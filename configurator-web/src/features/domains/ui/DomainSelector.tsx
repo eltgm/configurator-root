@@ -59,7 +59,7 @@ export function DomainSelector() {
         <Menu.Target>
           <UnstyledButton className={classes['domain-context']} aria-label={accessibleLabel}>
             <IconDatabase size={20} stroke={1.7} aria-hidden="true" />
-            <Box visibleFrom="sm" className={classes['domain-selector-text']}>
+            <Box className={classes['domain-selector-text']}>
               <Text size="xs" c="dimmed" lh={1.1}>
                 {t('domain.label')}
               </Text>

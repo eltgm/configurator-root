@@ -706,6 +706,8 @@ export const resources = {
             'Нажмите на компонент или линию. Компонент также можно выбрать через поиск.',
         },
         a11y: {
+          instructions:
+            'Узлы не перетаскиваются. Выберите компонент через поиск или на графе; используйте кнопки масштаба и панель подробностей для изучения связей.',
           node: 'Компонент {{name}}, тип {{type}}',
           edge: 'Ручная связь между {{source}} и {{target}}',
           controls: 'Управление графом',
@@ -1746,6 +1748,8 @@ export const resources = {
             'Select a component or line. You can also select a component through search.',
         },
         a11y: {
+          instructions:
+            'Nodes cannot be dragged. Select a component through search or on the graph; use the zoom controls and details panel to explore links.',
           node: 'Component {{name}}, type {{type}}',
           edge: 'Manual link between {{source}} and {{target}}',
           controls: 'Graph controls',

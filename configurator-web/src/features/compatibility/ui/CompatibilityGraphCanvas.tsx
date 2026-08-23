@@ -21,6 +21,7 @@ import {
   type Edge,
   type NodeTypes,
 } from '@xyflow/react';
+import { useReducedMotion } from '@mantine/hooks';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -53,6 +54,8 @@ interface CompatibilityGraphCanvasProps {
 
 function CompatibilityGraphCanvasInner({ index }: CompatibilityGraphCanvasProps) {
   const { t } = useTranslation();
+  const reduceMotion = useReducedMotion();
+  const motionDuration = reduceMotion ? 0 : 350;
   const { fitView, setCenter } = useReactFlow<CompatibilityFlowNode>();
   const legend = useMemo(() => buildCompatibilityTypeLegend(index), [index]);
   const layout = useMemo(
@@ -147,19 +150,19 @@ function CompatibilityGraphCanvasInner({ index }: CompatibilityGraphCanvasProps)
           void setCenter(
             node.position.x + COMPATIBILITY_NODE_WIDTH / 2,
             node.position.y + COMPATIBILITY_NODE_HEIGHT / 2,
-            { zoom: 1.15, duration: 350 },
+            { zoom: 1.15, duration: motionDuration },
           );
         }
       }
     },
-    [nodes, setCenter],
+    [motionDuration, nodes, setCenter],
   );
 
   const resetLayout = () => {
     setSelection({});
     setNodes(createNodes());
     window.requestAnimationFrame(() => {
-      void fitView({ padding: 0.18, duration: 350 });
+      void fitView({ padding: 0.18, duration: motionDuration });
     });
   };
 
@@ -196,7 +199,7 @@ function CompatibilityGraphCanvasInner({ index }: CompatibilityGraphCanvasProps)
                 variant="default"
                 size="lg"
                 aria-label={t('compatibilityGraph.actions.fit')}
-                onClick={() => void fitView({ padding: 0.18, duration: 350 })}
+                onClick={() => void fitView({ padding: 0.18, duration: motionDuration })}
               >
                 <IconFocusCentered size={18} />
               </ActionIcon>
@@ -206,6 +209,9 @@ function CompatibilityGraphCanvasInner({ index }: CompatibilityGraphCanvasProps)
             </Button>
           </Group>
         </Group>
+        <Text id="compatibility-graph-instructions" size="xs" c="dimmed" mt="sm">
+          {t('compatibilityGraph.a11y.instructions')}
+        </Text>
       </Paper>
 
       <div className={classes['explorer']}>
@@ -224,6 +230,7 @@ function CompatibilityGraphCanvasInner({ index }: CompatibilityGraphCanvasProps)
             onEdgeClick={(_event, edge) => setSelection({ edgeId: Number(edge.id) })}
             onPaneClick={() => setSelection({})}
             nodesConnectable={false}
+            nodesDraggable={false}
             edgesReconnectable={false}
             deleteKeyCode={null}
             multiSelectionKeyCode={null}
@@ -232,6 +239,7 @@ function CompatibilityGraphCanvasInner({ index }: CompatibilityGraphCanvasProps)
             fitViewOptions={{ padding: 0.18 }}
             minZoom={0.25}
             maxZoom={2}
+            aria-describedby="compatibility-graph-instructions"
             ariaLabelConfig={{
               'controls.ariaLabel': t('compatibilityGraph.a11y.controls'),
               'controls.zoomIn.ariaLabel': t('compatibilityGraph.a11y.zoomIn'),

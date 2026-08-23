@@ -1,4 +1,4 @@
-import { expect, test, type Route } from '@playwright/test';
+import { expect, test, type Page, type Route } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
 import type {
@@ -152,6 +152,23 @@ function configuratorResponse(baseComponentId: number) {
 }
 
 const frontendApiBaseUrl = 'http://127.0.0.1:5173/api';
+
+async function expectNoUnexpectedHorizontalOverflow(page: Page) {
+  const metrics = await page.evaluate<{ viewportWidth: number; contentWidth: number }>(
+    '({ viewportWidth: document.documentElement.clientWidth, contentWidth: document.documentElement.scrollWidth })',
+  );
+  expect(metrics.contentWidth).toBeLessThanOrEqual(metrics.viewportWidth + 1);
+}
+
+async function expectVisibleButtonTargetsAtLeast24Pixels(page: Page) {
+  const buttons = page.locator('main button:visible');
+  for (let index = 0; index < (await buttons.count()); index += 1) {
+    const bounds = await buttons.nth(index).boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds?.width ?? 0).toBeGreaterThanOrEqual(24);
+    expect(bounds?.height ?? 0).toBeGreaterThanOrEqual(24);
+  }
+}
 
 test.beforeEach(async ({ page }) => {
   let configurations: Array<{
@@ -1204,22 +1221,7 @@ test('explores the manual compatibility graph on desktop and mobile', async ({ p
     '/components/101',
   );
 
-  const beforeDrag = await processor.boundingBox();
-  expect(beforeDrag).not.toBeNull();
-  if (beforeDrag) {
-    await page.mouse.move(
-      beforeDrag.x + beforeDrag.width / 2,
-      beforeDrag.y + beforeDrag.height / 2,
-    );
-    await page.mouse.down();
-    await page.mouse.move(beforeDrag.x + beforeDrag.width / 2 + 70, beforeDrag.y + 45, {
-      steps: 5,
-    });
-    await page.mouse.up();
-    const afterDrag = await processor.boundingBox();
-    expect(afterDrag).not.toBeNull();
-    expect(Math.abs((afterDrag?.x ?? beforeDrag.x) - beforeDrag.x)).toBeGreaterThan(30);
-  }
+  await expect(processor).not.toHaveClass(/draggable/);
 
   await page.getByRole('button', { name: 'Сбросить раскладку' }).click();
   await expect(page.getByRole('heading', { name: 'Выберите элемент графа' })).toBeVisible();
@@ -1239,4 +1241,68 @@ test('explores the manual compatibility graph on desktop and mobile', async ({ p
   await expect(page.locator('.react-flow__minimap')).toBeHidden();
   await page.getByRole('link', { name: 'Управлять связями' }).click();
   await expect(page).toHaveURL(/\/settings\/compatibility\/manual$/);
+});
+
+test('supports 320 CSS pixel reflow and keyboard shell navigation', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  const routes = [
+    ['/configurator', 'Конфигуратор'],
+    ['/components', 'Компоненты'],
+    ['/configurations', 'Конфигурации'],
+    ['/settings/types', 'Типы и атрибуты'],
+    ['/settings/compatibility/manual', 'Ручная совместимость'],
+    ['/settings/compatibility/rules', 'Автоматические правила'],
+    ['/settings/compatibility/graph', 'Граф совместимости'],
+    ['/settings/domain', 'Предметные области'],
+  ] as const;
+
+  for (const [route, heading] of routes) {
+    await page.goto(route);
+    await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+    await expectNoUnexpectedHorizontalOverflow(page);
+    await expectVisibleButtonTargetsAtLeast24Pixels(page);
+  }
+
+  await page.goto('/configurator');
+  const skipLink = page.getByRole('link', { name: 'Перейти к содержимому' });
+  await expect(page.locator('a[href], button, input, select, textarea').first()).toHaveText(
+    'Перейти к содержимому',
+  );
+  await skipLink.focus();
+  await expect(skipLink).toBeFocused();
+  await expect(skipLink).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#main-content')).toBeFocused();
+
+  const mobileNavigation = page.getByRole('navigation', { name: 'Мобильная навигация' });
+  const mobileLinks = mobileNavigation.getByRole('link');
+  for (let index = 0; index < (await mobileLinks.count()); index += 1) {
+    const bounds = await mobileLinks.nth(index).boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds?.width ?? 0).toBeGreaterThanOrEqual(44);
+    expect(bounds?.height ?? 0).toBeGreaterThanOrEqual(44);
+  }
+
+  await mobileNavigation.getByRole('link', { name: 'Компоненты' }).click();
+  await expect(page.getByTestId('route-announcement')).toContainText('Компоненты');
+  const createComponentLink = page.getByRole('link', { name: 'Новый компонент' });
+  await createComponentLink.focus();
+  await expect(createComponentLink).toBeFocused();
+  const focusedBounds = await createComponentLink.boundingBox();
+  expect(focusedBounds).not.toBeNull();
+  expect(focusedBounds?.y ?? 0).toBeGreaterThanOrEqual(64);
+  expect((focusedBounds?.y ?? 0) + (focusedBounds?.height ?? 0)).toBeLessThanOrEqual(500);
+  await expectNoUnexpectedHorizontalOverflow(page);
+
+  await page.getByRole('button', { name: 'Настройки интерфейса' }).click();
+  await page.getByRole('menuitem', { name: 'Тёмная' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-mantine-color-scheme', 'dark');
+  await page.getByRole('button', { name: 'Настройки интерфейса' }).click();
+  await page.getByRole('menuitem', { name: 'English' }).click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(page.getByRole('heading', { level: 1, name: 'Components' })).toBeVisible();
+  await expectNoUnexpectedHorizontalOverflow(page);
+
+  await page.setViewportSize({ width: 568, height: 320 });
+  await expectNoUnexpectedHorizontalOverflow(page);
 });

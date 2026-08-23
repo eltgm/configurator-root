@@ -30,15 +30,11 @@
   width: 14.5rem;
   min-height: 5.5rem;
   border-width: 2px;
-  cursor: grab;
+  cursor: pointer;
   transition:
     opacity 150ms ease,
     border-color 150ms ease,
     box-shadow 150ms ease;
-}
-
-.node:active {
-  cursor: grabbing;
 }
 
 .node-highlighted {
