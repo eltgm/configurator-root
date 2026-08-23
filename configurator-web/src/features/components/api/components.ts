@@ -141,7 +141,11 @@ export async function fetchComponents(
   );
 }
 
-export function useComponentsQuery(domainId: number | null, filters: ComponentCatalogFilters) {
+export function useComponentsQuery(
+  domainId: number | null,
+  filters: ComponentCatalogFilters,
+  enabled = true,
+) {
   const normalizedFilters = normalizeComponentCatalogFilters(filters);
   return useQuery({
     queryKey: componentKeys.catalog(domainId, normalizedFilters),
@@ -149,7 +153,7 @@ export function useComponentsQuery(domainId: number | null, filters: ComponentCa
       domainId === null
         ? Promise.resolve({ items: [], page: 0, size: normalizedFilters.size, totalItems: 0 })
         : fetchComponents(domainId, normalizedFilters),
-    enabled: domainId !== null,
+    enabled: enabled && domainId !== null,
     placeholderData: keepPreviousData,
   });
 }

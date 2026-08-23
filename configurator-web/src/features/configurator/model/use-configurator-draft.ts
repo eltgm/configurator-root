@@ -13,6 +13,11 @@ import {
 } from '@/features/configurator/model/configurator-draft';
 import type { Component } from '@/shared/api';
 
+export interface ConfiguratorDraftSelection {
+  id: number;
+  componentTypeId: number;
+}
+
 export interface ConfiguratorDraftSlot {
   item: ConfiguratorDraftItem;
   component: Component | null;
@@ -42,7 +47,7 @@ export function useConfiguratorDraft(domainId: number) {
     }
   };
 
-  const add = (component: Component): ConfiguratorDraftAddResult => {
+  const add = (component: ConfiguratorDraftSelection): ConfiguratorDraftAddResult => {
     const result = addConfiguratorDraftItem(items, {
       componentId: component.id,
       componentTypeId: component.componentTypeId,
@@ -53,7 +58,7 @@ export function useConfiguratorDraft(domainId: number) {
     return result;
   };
 
-  const replace = (component: Component) => {
+  const replace = (component: ConfiguratorDraftSelection) => {
     commit(
       replaceConfiguratorDraftItem(items, {
         componentId: component.id,

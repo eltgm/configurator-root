@@ -83,11 +83,17 @@ export const resources = {
           title: 'Конфигуратор',
           description: 'Соберите конфигурацию для предметной области «{{domain}}».',
           scopeNotice:
-            'На этом этапе черновик сохраняется только в браузере и ещё не проверяется на совместимость. Прямой поиск появится в 9.21, транзитивный режим — в 9.22, сохранение на сервере — в 9.23.',
+            'Черновик сохраняется в браузере и проверяется только по прямой совместимости. Транзитивный режим появится в 9.22, сохранение на сервере — в 9.23.',
         },
         browser: {
           title: 'Доступные компоненты',
           description: 'Найдите компонент и добавьте его в текущую сборку.',
+          compatibleDescription:
+            'Показаны компоненты, напрямую совместимые со всей текущей сборкой (базовых компонентов: {{count}}).',
+          replacementTitle: 'Выбор замены',
+          replacementDescription:
+            'Выберите компонент того же типа вместо «{{name}}». Он проверяется против остальных компонентов сборки.',
+          cancelReplacement: 'Отменить замену',
           search: 'Поиск компонентов',
           searchPlaceholder: 'Название компонента',
           type: 'Фильтр по типу',
@@ -102,10 +108,18 @@ export const resources = {
           total_other: '{{count}} компонента',
           emptyTitle: 'Компонентов пока нет',
           emptyDescription: 'Добавьте активные компоненты в каталог выбранной области.',
+          compatibleEmptyTitle: 'Совместимых вариантов нет',
+          compatibleEmptyDescription:
+            'Ни один активный компонент не совместим напрямую со всеми выбранными компонентами.',
+          blockedTitle: 'Подбор временно недоступен',
+          blockedDescription:
+            'Сначала устраните конфликт или недоступную позицию в текущей сборке.',
           filteredEmptyTitle: 'Ничего не найдено',
           filteredEmptyDescription: 'Измените запрос или сбросьте фильтр типа.',
           selected: 'Добавлено',
           add: 'Добавить',
+          selectReplacement: 'Выбрать',
+          direct: 'Прямая совместимость',
           replace: 'Заменить',
           replaces: 'Тип уже выбран',
           page: 'Страница {{page}}',
@@ -121,11 +135,31 @@ export const resources = {
           emptyDescription:
             'Добавляйте компоненты из каталога. В сборке может быть один компонент каждого типа.',
           archived: 'В архиве',
+          conflict: 'Конфликт',
           unknownType: 'Неизвестный тип #{{id}}',
           unavailable: 'Компонент #{{id}} не удалось загрузить. Он сохранён в черновике.',
           retry: 'Повторить',
           remove: 'Убрать',
           removeNamed: 'Убрать {{name}} из сборки',
+          replaceNamed: 'Заменить {{name}}',
+        },
+        validation: {
+          pending: 'Проверяем совместимость',
+          pendingDescription: 'Сервер проверяет каждую пару компонентов текущей сборки.',
+          valid: 'Сборка совместима напрямую',
+          validDescription:
+            'Все выбранные компоненты попарно совместимы по ручным связям или автоматическим правилам.',
+          conflict: 'В сборке есть конфликт',
+          conflictDescription_one: 'Обнаружена {{count}} несовместимая пара.',
+          conflictDescription_few: 'Обнаружено {{count}} несовместимые пары.',
+          conflictDescription_many: 'Обнаружено {{count}} несовместимых пар.',
+          conflictDescription_other: 'Обнаружено {{count}} несовместимой пары.',
+          blocked: 'Проверка недоступна',
+          blockedDescription:
+            'Один из компонентов загружается, находится в архиве или больше недоступен.',
+          error: 'Не удалось проверить сборку',
+          errorDescription: 'Черновик сохранён. Повторите запрос перед продолжением подбора.',
+          retry: 'Повторить',
         },
         replace: {
           title: 'Заменить компонент этого типа?',
@@ -942,11 +976,17 @@ export const resources = {
           title: 'Configurator',
           description: 'Build a configuration for the “{{domain}}” domain.',
           scopeNotice:
-            'At this stage, the draft is saved only in this browser and is not yet validated for compatibility. Direct search arrives in 9.21, transitive mode in 9.22, and server saving in 9.23.',
+            'The draft is saved in this browser and validated for direct compatibility only. Transitive mode arrives in 9.22 and server saving in 9.23.',
         },
         browser: {
           title: 'Available components',
           description: 'Find a component and add it to the current assembly.',
+          compatibleDescription:
+            'Showing components directly compatible with the whole current assembly ({{count}} base components).',
+          replacementTitle: 'Choose a replacement',
+          replacementDescription:
+            'Choose a component of the same type to replace “{{name}}”. It is checked against the rest of the assembly.',
+          cancelReplacement: 'Cancel replacement',
           search: 'Search components',
           searchPlaceholder: 'Component name',
           type: 'Filter by type',
@@ -959,10 +999,18 @@ export const resources = {
           total_other: '{{count}} components',
           emptyTitle: 'There are no components yet',
           emptyDescription: 'Add active components to the selected domain catalog.',
+          compatibleEmptyTitle: 'No compatible options',
+          compatibleEmptyDescription:
+            'No active component is directly compatible with every selected component.',
+          blockedTitle: 'Selection is temporarily unavailable',
+          blockedDescription:
+            'Resolve the conflict or unavailable item in the current assembly first.',
           filteredEmptyTitle: 'Nothing found',
           filteredEmptyDescription: 'Change the search or reset the type filter.',
           selected: 'Added',
           add: 'Add',
+          selectReplacement: 'Select',
+          direct: 'Direct compatibility',
           replace: 'Replace',
           replaces: 'Type selected',
           page: 'Page {{page}}',
@@ -976,11 +1024,28 @@ export const resources = {
           emptyDescription:
             'Add components from the catalog. The assembly can contain one component of each type.',
           archived: 'Archived',
+          conflict: 'Conflict',
           unknownType: 'Unknown type #{{id}}',
           unavailable: 'Component #{{id}} could not be loaded. It remains in the draft.',
           retry: 'Try again',
           remove: 'Remove',
           removeNamed: 'Remove {{name}} from the assembly',
+          replaceNamed: 'Replace {{name}}',
+        },
+        validation: {
+          pending: 'Checking compatibility',
+          pendingDescription: 'The server is checking every pair in the current assembly.',
+          valid: 'The assembly is directly compatible',
+          validDescription:
+            'Every selected component pair matches through a manual link or automatic rule.',
+          conflict: 'The assembly has a conflict',
+          conflictDescription_one: '{{count}} incompatible pair found.',
+          conflictDescription_other: '{{count}} incompatible pairs found.',
+          blocked: 'Validation unavailable',
+          blockedDescription: 'A component is still loading, archived, or no longer available.',
+          error: 'Could not validate the assembly',
+          errorDescription: 'The draft is safe. Retry before continuing component selection.',
+          retry: 'Try again',
         },
         replace: {
           title: 'Replace the component of this type?',
