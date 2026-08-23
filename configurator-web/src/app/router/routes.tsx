@@ -1,6 +1,5 @@
 import {
   IconAssembly,
-  IconCirclesRelation,
   IconFileDescription,
   IconGitBranch,
   IconListDetails,
@@ -15,6 +14,7 @@ import { ComponentDetailsPage } from '@/pages/ComponentDetailsPage';
 import { ComponentFormPage } from '@/pages/ComponentFormPage';
 import { ComponentTypesPage } from '@/pages/ComponentTypesPage';
 import { DomainSettingsPage } from '@/pages/DomainSettingsPage';
+import { ManualCompatibilityPage } from '@/pages/ManualCompatibilityPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { RouteErrorPage } from '@/pages/RouteErrorPage';
 import { RoutePlaceholder } from '@/pages/RoutePlaceholder';
@@ -95,11 +95,7 @@ export const appRoutes: RouteObject[] = [
         path: 'settings/compatibility/manual',
         element: (
           <RequireDomain>
-            <RoutePlaceholder
-              icon={IconCirclesRelation}
-              titleKey="pages.manualCompatibility.title"
-              descriptionKey="pages.manualCompatibility.description"
-            />
+            <ManualCompatibilityPage />
           </RequireDomain>
         ),
       },
