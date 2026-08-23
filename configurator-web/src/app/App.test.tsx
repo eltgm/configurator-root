@@ -82,7 +82,7 @@ describe('application shell', () => {
 
   it('persists the selected color scheme', async () => {
     const user = userEvent.setup();
-    renderRoute('/configurator');
+    renderRoute('/missing-page');
 
     await user.click(screen.getByRole('button', { name: 'Настройки интерфейса' }));
     await user.click(await screen.findByRole('menuitem', { name: 'Тёмная' }));
