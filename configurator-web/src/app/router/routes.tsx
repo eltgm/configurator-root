@@ -1,4 +1,4 @@
-import { IconAssembly, IconFileDescription, IconSettings } from '@tabler/icons-react';
+import { IconFileDescription, IconSettings } from '@tabler/icons-react';
 import { Navigate, type RouteObject } from 'react-router-dom';
 
 import { AppLayout } from '@/app/layout/AppLayout';
@@ -10,6 +10,7 @@ import { ComponentTypesPage } from '@/pages/ComponentTypesPage';
 import { CompatibilityGraphPage } from '@/pages/CompatibilityGraphPage';
 import { CompatibilityRuleFormPage } from '@/pages/CompatibilityRuleFormPage';
 import { CompatibilityRulesPage } from '@/pages/CompatibilityRulesPage';
+import { ConfiguratorPage } from '@/pages/ConfiguratorPage';
 import { DomainSettingsPage } from '@/pages/DomainSettingsPage';
 import { ManualCompatibilityPage } from '@/pages/ManualCompatibilityPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -27,11 +28,7 @@ export const appRoutes: RouteObject[] = [
         path: 'configurator',
         element: (
           <RequireDomain>
-            <RoutePlaceholder
-              icon={IconAssembly}
-              titleKey="pages.configurator.title"
-              descriptionKey="pages.configurator.description"
-            />
+            <ConfiguratorPage />
           </RequireDomain>
         ),
       },

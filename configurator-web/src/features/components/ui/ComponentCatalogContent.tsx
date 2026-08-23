@@ -16,8 +16,11 @@ import { IconArchive, IconPhotoOff, IconRestore } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
-import { toComponentImageUrl } from '@/features/components/model/catalog-preferences';
-import type { Component, ComponentImage, ComponentType } from '@/shared/api';
+import {
+  getPrimaryComponentImage,
+  toComponentImageUrl,
+} from '@/features/components/model/catalog-preferences';
+import type { Component, ComponentType } from '@/shared/api';
 
 import classes from './component-catalog-content.module.css';
 
@@ -31,14 +34,6 @@ interface ComponentCatalogContentProps {
   onRestore: (component: Component) => void;
 }
 
-function getPrimaryImage(images: ReadonlyArray<ComponentImage> | undefined) {
-  return images?.toSorted(
-    (left, right) =>
-      (left.orderIndex ?? Number.MAX_SAFE_INTEGER) -
-        (right.orderIndex ?? Number.MAX_SAFE_INTEGER) || left.id - right.id,
-  )[0];
-}
-
 function ComponentPreview({
   component,
   compact = false,
@@ -46,7 +41,7 @@ function ComponentPreview({
   component: Component;
   compact?: boolean;
 }) {
-  const image = getPrimaryImage(component.images);
+  const image = getPrimaryComponentImage(component.images);
   return (
     <Box className={compact ? classes['preview-compact'] : classes.preview}>
       {image ? (

@@ -1,4 +1,5 @@
 import { componentCatalogViewStorageKey } from '@/shared/config/preferences';
+import type { ComponentImage } from '@/shared/api';
 
 export type ComponentCatalogView = 'cards' | 'table';
 
@@ -20,4 +21,12 @@ export function toComponentImageUrl(relativeUrl: string): string {
   return normalizedUrl === '/api' || normalizedUrl.startsWith('/api/')
     ? normalizedUrl
     : `/api${normalizedUrl}`;
+}
+
+export function getPrimaryComponentImage(images: ReadonlyArray<ComponentImage> | undefined) {
+  return images?.toSorted(
+    (left, right) =>
+      (left.orderIndex ?? Number.MAX_SAFE_INTEGER) -
+        (right.orderIndex ?? Number.MAX_SAFE_INTEGER) || left.id - right.id,
+  )[0];
 }

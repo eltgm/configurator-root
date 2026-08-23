@@ -1,4 +1,11 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  queryOptions,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 
 import {
   apiData,
@@ -54,14 +61,27 @@ export const componentKeys = {
     [...componentKeys.byDomain(domainId), normalizeComponentCatalogFilters(filters)] as const,
 };
 
-export function useComponentQuery(domainId: number | null, id: number | null) {
-  return useQuery({
+export function componentDetailQueryOptions(domainId: number | null, id: number | null) {
+  return queryOptions({
     queryKey: componentKeys.detail(domainId, id),
     queryFn: () =>
       id === null
         ? Promise.resolve(null)
         : apiData(getComponentsById({ client, path: { id }, throwOnError: true })),
     enabled: domainId !== null && id !== null,
+  });
+}
+
+export function useComponentQuery(domainId: number | null, id: number | null) {
+  return useQuery(componentDetailQueryOptions(domainId, id));
+}
+
+export function useComponentDetailsQueries(
+  domainId: number | null,
+  componentIds: ReadonlyArray<number>,
+) {
+  return useQueries({
+    queries: componentIds.map((id) => componentDetailQueryOptions(domainId, id)),
   });
 }
 

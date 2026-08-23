@@ -14,10 +14,16 @@ const domainPage = {
       description: 'Тестовая предметная область',
       createdAt: '2026-08-09T12:00:00Z',
     },
+    {
+      id: 202,
+      name: 'Рабочая станция',
+      description: 'Вторая тестовая предметная область',
+      createdAt: '2026-08-10T12:00:00Z',
+    },
   ],
   page: 0,
   size: 100,
-  totalItems: 1,
+  totalItems: 2,
 };
 
 const componentTypes = [
@@ -83,10 +89,28 @@ const componentPage = {
         },
       ],
     },
+    {
+      id: 104,
+      componentTypeId: 11,
+      name: 'Core Ultra 9 285K',
+      brand: 'Intel',
+      archived: false,
+      createdAt: '2026-08-10T12:00:00Z',
+      attributes: [],
+    },
+    {
+      id: 102,
+      componentTypeId: 12,
+      name: 'B650 Tomahawk',
+      brand: 'MSI',
+      archived: false,
+      createdAt: '2026-08-11T12:00:00Z',
+      attributes: [],
+    },
   ],
   page: 0,
   size: 12,
-  totalItems: 1,
+  totalItems: 3,
 };
 
 const frontendApiBaseUrl = 'http://127.0.0.1:5173/api';
@@ -261,7 +285,11 @@ test.beforeEach(async ({ page }) => {
     await route.fulfill({ status: 204 });
   });
   await page.route(frontendApiBaseUrl + '/components/*', async (route) => {
-    await route.fulfill({ json: componentPage.items[0] });
+    const componentId = Number(new URL(route.request().url()).pathname.split('/').at(-1));
+    const component = componentPage.items.find((candidate) => candidate.id === componentId);
+    await route.fulfill(
+      component ? { json: component } : { status: 404, json: { message: 'Component not found' } },
+    );
   });
   await page.route(frontendApiBaseUrl + '/components', async (route) => {
     if (route.request().method() !== 'POST') {
@@ -319,6 +347,62 @@ test('opens the configurator frontend with the selected domain', async ({ page }
     page.getByRole('heading', { level: 1, name: 'Конфигуратор', exact: true }),
   ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Предметная область: Сборка ПК' })).toBeVisible();
+
+  const browser = page.getByRole('region', { name: 'Доступные компоненты' });
+  const assembly = page.getByRole('region', { name: 'Текущая сборка' });
+  await browser.getByRole('button', { name: 'Добавить' }).first().click();
+  await expect(assembly.getByText('Ryzen 7 7800X3D')).toBeVisible();
+
+  await browser.getByRole('button', { name: 'Заменить' }).click();
+  const replaceDialog = page.getByRole('dialog', { name: 'Заменить компонент этого типа?' });
+  await expect(replaceDialog.getByText(/Core Ultra 9 285K/)).toBeVisible();
+  await replaceDialog.getByRole('button', { name: 'Заменить' }).click();
+  await expect(assembly.getByText('Core Ultra 9 285K')).toBeVisible();
+  await expect(assembly.getByText('Ryzen 7 7800X3D')).toHaveCount(0);
+
+  await browser.getByRole('button', { name: 'Добавить' }).click();
+  await expect(assembly.getByText('B650 Tomahawk')).toBeVisible();
+  await assembly.getByRole('button', { name: 'Убрать Core Ultra 9 285K из сборки' }).click();
+  await expect(assembly.getByText('Core Ultra 9 285K')).toHaveCount(0);
+
+  await page.reload();
+  await expect(page.getByText(/Локальный черновик восстановлен/)).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'Текущая сборка' }).getByText('B650 Tomahawk'),
+  ).toBeVisible();
+
+  const restoredAssembly = page.getByRole('region', { name: 'Текущая сборка' });
+  await restoredAssembly.getByRole('button', { name: 'Очистить' }).click();
+  await page
+    .getByRole('dialog', { name: 'Очистить текущую сборку?' })
+    .getByRole('button', { name: 'Очистить' })
+    .click();
+  await expect(restoredAssembly.getByRole('heading', { name: 'Сборка пока пуста' })).toBeVisible();
+
+  await page
+    .getByRole('region', { name: 'Доступные компоненты' })
+    .getByRole('button', { name: 'Добавить' })
+    .first()
+    .click();
+  await expect(restoredAssembly.getByText('Ryzen 7 7800X3D')).toBeVisible();
+  await page.getByRole('button', { name: 'Предметная область: Сборка ПК' }).click();
+  await page.getByRole('menuitem', { name: 'Рабочая станция' }).click();
+  await expect(
+    page.getByRole('region', { name: 'Текущая сборка' }).getByRole('heading', {
+      name: 'Сборка пока пуста',
+    }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Предметная область: Рабочая станция' }).click();
+  await page.getByRole('menuitem', { name: 'Сборка ПК' }).click();
+  await expect(
+    page.getByRole('region', { name: 'Текущая сборка' }).getByText('Ryzen 7 7800X3D'),
+  ).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(restoredAssembly).toBeVisible();
+  const workspaceBox = await page.getByRole('main').boundingBox();
+  expect(workspaceBox).not.toBeNull();
+  expect(workspaceBox!.x + workspaceBox!.width).toBeLessThanOrEqual(390);
 });
 
 test('keeps domain management usable on a phone viewport', async ({ page }) => {
