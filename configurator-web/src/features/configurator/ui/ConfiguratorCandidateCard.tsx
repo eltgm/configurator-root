@@ -1,5 +1,5 @@
 import { Badge, Button, Group, Image, Paper, Stack, Text, ThemeIcon } from '@mantine/core';
-import { IconCircleCheck, IconPhotoOff, IconPlus } from '@tabler/icons-react';
+import { IconCircleCheck, IconInfoCircle, IconPhotoOff, IconPlus } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
@@ -7,7 +7,10 @@ import {
   getPrimaryComponentImage,
   toComponentImageUrl,
 } from '@/features/components/model/catalog-preferences';
-import type { ConfiguratorComponentSelection } from '@/features/configurator/model/configurator-compatibility';
+import type {
+  ConfiguratorCandidate,
+  ConfiguratorComponentSelection,
+} from '@/features/configurator/model/configurator-compatibility';
 import type { Component } from '@/shared/api';
 
 import classes from './configurator-workspace.module.css';
@@ -15,6 +18,9 @@ import classes from './configurator-workspace.module.css';
 export interface ConfiguratorBrowserCardComponent extends ConfiguratorComponentSelection {
   componentTypeName?: string;
   images?: Component['images'];
+  relation?: ConfiguratorCandidate['relation'];
+  compatibilityByBase?: ConfiguratorCandidate['compatibilityByBase'];
+  explanations?: ConfiguratorCandidate['explanations'];
 }
 
 interface ConfiguratorCandidateCardProps {
@@ -23,6 +29,7 @@ interface ConfiguratorCandidateCardProps {
   catalogMode: boolean;
   replacementMode: boolean;
   onSelect: (component: ConfiguratorComponentSelection) => void;
+  onExplain?: (component: ConfiguratorCandidate) => void;
 }
 
 export function ConfiguratorCandidateCard({
@@ -31,6 +38,7 @@ export function ConfiguratorCandidateCard({
   catalogMode,
   replacementMode,
   onSelect,
+  onExplain,
 }: ConfiguratorCandidateCardProps) {
   const { t } = useTranslation();
   const image = getPrimaryComponentImage(component.images);
@@ -58,23 +66,49 @@ export function ConfiguratorCandidateCard({
                 .join(' · ')}
             </Text>
           </Stack>
-          <Group justify="space-between" align="center" mt="auto">
+          <Group justify="space-between" align="center" mt="auto" wrap="wrap">
             {!catalogMode ? (
-              <Badge color="green" variant="light">
-                {t('configurator.browser.direct')}
-              </Badge>
+              <Group gap={5}>
+                <Badge
+                  color={component.relation === 'transitive' ? 'violet' : 'green'}
+                  variant="light"
+                >
+                  {component.relation === 'transitive'
+                    ? t('configurator.browser.transitive')
+                    : t('configurator.browser.direct')}
+                </Badge>
+                {[...new Set(component.explanations?.map((item) => item.source) ?? [])].map(
+                  (source) => (
+                    <Badge key={source} size="xs" variant="outline">
+                      {t(`configurator.explanations.sources.${source}`)}
+                    </Badge>
+                  ),
+                )}
+              </Group>
             ) : (
               <span />
             )}
-            <Button
-              size="xs"
-              leftSection={<IconPlus size={14} />}
-              onClick={() => onSelect(component)}
-            >
-              {replacementMode
-                ? t('configurator.browser.selectReplacement')
-                : t('configurator.browser.add')}
-            </Button>
+            <Group gap="xs">
+              {!catalogMode && component.compatibilityByBase && onExplain ? (
+                <Button
+                  size="xs"
+                  variant="subtle"
+                  leftSection={<IconInfoCircle size={14} />}
+                  onClick={() => onExplain(component as ConfiguratorCandidate)}
+                >
+                  {t('configurator.explanations.whyCompatible')}
+                </Button>
+              ) : null}
+              <Button
+                size="xs"
+                leftSection={<IconPlus size={14} />}
+                onClick={() => onSelect(component)}
+              >
+                {replacementMode
+                  ? t('configurator.browser.selectReplacement')
+                  : t('configurator.browser.add')}
+              </Button>
+            </Group>
           </Group>
         </Stack>
       </Group>

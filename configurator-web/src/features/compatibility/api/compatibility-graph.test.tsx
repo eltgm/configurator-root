@@ -49,6 +49,15 @@ describe('compatibility graph API', () => {
     expect(result.result.current.data).toBeUndefined();
   });
 
+  it('keeps a selected domain graph idle while lazy loading is disabled', () => {
+    const result = renderHook(() => useCompatibilityGraphQuery(7, false), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.result.current.fetchStatus).toBe('idle');
+    expect(result.result.current.data).toBeUndefined();
+  });
+
   it('exposes a graph through the shared query hook', async () => {
     server.use(
       http.get(`${testApiBaseUrl}/domains/7/compatibility/graph`, () => HttpResponse.json(graph)),

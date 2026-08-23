@@ -1,4 +1,14 @@
-import { Alert, Button, Group, Modal, Stack, Text, VisuallyHidden } from '@mantine/core';
+import {
+  Alert,
+  Button,
+  Group,
+  Modal,
+  Paper,
+  Stack,
+  Switch,
+  Text,
+  VisuallyHidden,
+} from '@mantine/core';
 import { IconAlertTriangle, IconInfoCircle } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +38,7 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
     useState<ConfiguratorComponentSelection>();
   const [clearRequested, setClearRequested] = useState(false);
   const [message, setMessage] = useState('');
+  const [includeTransitive, setIncludeTransitive] = useState(false);
   const componentIds = draft.items.map((item) => item.componentId);
   const hydratedDraftReady =
     draft.slots.length === draft.items.length &&
@@ -37,6 +48,7 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
   const batchQuery = useBatchCompatibilityQuery(
     domainId,
     componentIds,
+    includeTransitive,
     hydratedDraftReady && componentIds.length > 1,
   );
   const validation = batchQuery.data
@@ -54,9 +66,18 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
             : batchQuery.error
               ? ('error' as const)
               : validation?.compatible
-                ? ('valid' as const)
+                ? validation.relation === 'transitive'
+                  ? ('transitive' as const)
+                  : ('valid' as const)
                 : ('conflict' as const);
   const baseComponentIds = replacementBaseComponentIds(componentIds, replacementTarget?.id ?? null);
+  const baseComponentNames = new Map(
+    draft.slots.map((slot) => [
+      slot.item.componentId,
+      slot.component?.name ??
+        t('configurator.explanations.path.unknownComponent', { id: slot.item.componentId }),
+    ]),
+  );
   const replacementBasesReady = replacementTarget
     ? draft.slots
         .filter((slot) => slot.item.componentId !== replacementTarget.id)
@@ -129,13 +150,33 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
         </Alert>
       ) : null}
       <VisuallyHidden aria-live="polite">{message}</VisuallyHidden>
+      <Paper p="md" withBorder>
+        <Switch
+          checked={includeTransitive}
+          label={t('configurator.transitiveMode.label')}
+          description={t('configurator.transitiveMode.description')}
+          onChange={(event) => {
+            const enabled = event.currentTarget.checked;
+            setIncludeTransitive(enabled);
+            setMessage(
+              t(
+                enabled
+                  ? 'configurator.transitiveMode.enabledAnnouncement'
+                  : 'configurator.transitiveMode.disabledAnnouncement',
+              ),
+            );
+          }}
+        />
+      </Paper>
       <div className={classes.workspace}>
         <CurrentAssembly
+          domainId={domainId}
           slots={draft.slots}
           componentTypes={componentTypes}
           compatibilityState={compatibilityState}
           conflictComponentIds={validation?.conflictComponentIds ?? new Set()}
           conflictCount={validation?.conflictPairs.length ?? 0}
+          pairResults={validation?.pairs ?? []}
           onRetryCompatibility={() => void batchQuery.refetch()}
           onReplace={(slot) => {
             if (slot.component) {
@@ -154,13 +195,15 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
           onClear={() => setClearRequested(true)}
         />
         <AvailableComponentBrowser
-          key={`${domainId}:${replacementTarget?.id ?? 'default'}:${componentIds.join(',')}`}
+          key={`${domainId}:${includeTransitive}:${replacementTarget?.id ?? 'default'}:${componentIds.join(',')}`}
           domainId={domainId}
           componentTypes={componentTypes}
           componentTypesLoading={componentTypesQuery.isPending}
           componentTypesUnavailable={Boolean(componentTypesQuery.error)}
           selectedItems={draft.items}
           baseComponentIds={baseComponentIds}
+          baseComponentNames={baseComponentNames}
+          includeTransitive={includeTransitive}
           compatibilityBlocked={compatibilityBlocked}
           {...(replacementTarget ? { replacementTarget } : {})}
           onCancelReplacement={() => {

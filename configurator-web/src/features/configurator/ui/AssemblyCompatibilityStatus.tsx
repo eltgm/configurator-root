@@ -1,4 +1,4 @@
-import { Alert, Button, Group, Loader, Text } from '@mantine/core';
+import { Alert, Button, Group, Loader, Stack, Text } from '@mantine/core';
 import {
   IconAlertTriangle,
   IconCircleCheck,
@@ -8,18 +8,20 @@ import {
 import { useTranslation } from 'react-i18next';
 
 export type AssemblyCompatibilityState =
-  'empty' | 'pending' | 'valid' | 'conflict' | 'blocked' | 'error';
+  'empty' | 'pending' | 'valid' | 'transitive' | 'conflict' | 'blocked' | 'error';
 
 interface AssemblyCompatibilityStatusProps {
   state: AssemblyCompatibilityState;
   conflictCount: number;
   onRetry?: () => void;
+  onShowDetails?: () => void;
 }
 
 export function AssemblyCompatibilityStatus({
   state,
   conflictCount,
   onRetry,
+  onShowDetails,
 }: AssemblyCompatibilityStatusProps) {
   const { t } = useTranslation();
 
@@ -40,7 +42,38 @@ export function AssemblyCompatibilityStatus({
         icon={<IconCircleCheck aria-hidden="true" />}
         title={t('configurator.validation.valid')}
       >
-        {t('configurator.validation.validDescription')}
+        <Stack gap="sm">
+          <Text size="sm">{t('configurator.validation.validDescription')}</Text>
+          {onShowDetails ? (
+            <Button size="xs" variant="light" w="fit-content" onClick={onShowDetails}>
+              {t('configurator.validation.showDetails')}
+            </Button>
+          ) : null}
+        </Stack>
+      </Alert>
+    );
+  }
+  if (state === 'transitive') {
+    return (
+      <Alert
+        color="violet"
+        icon={<IconInfoCircle aria-hidden="true" />}
+        title={t('configurator.validation.transitive')}
+      >
+        <Stack gap="sm">
+          <Text size="sm">{t('configurator.validation.transitiveDescription')}</Text>
+          {onShowDetails ? (
+            <Button
+              size="xs"
+              variant="light"
+              color="violet"
+              w="fit-content"
+              onClick={onShowDetails}
+            >
+              {t('configurator.validation.showDetails')}
+            </Button>
+          ) : null}
+        </Stack>
       </Alert>
     );
   }
@@ -51,7 +84,16 @@ export function AssemblyCompatibilityStatus({
         icon={<IconAlertTriangle aria-hidden="true" />}
         title={t('configurator.validation.conflict')}
       >
-        {t('configurator.validation.conflictDescription', { count: conflictCount })}
+        <Stack gap="sm">
+          <Text size="sm">
+            {t('configurator.validation.conflictDescription', { count: conflictCount })}
+          </Text>
+          {onShowDetails ? (
+            <Button size="xs" variant="light" color="red" w="fit-content" onClick={onShowDetails}>
+              {t('configurator.validation.showDetails')}
+            </Button>
+          ) : null}
+        </Stack>
       </Alert>
     );
   }

@@ -83,13 +83,22 @@ export const resources = {
           title: 'Конфигуратор',
           description: 'Соберите конфигурацию для предметной области «{{domain}}».',
           scopeNotice:
-            'Черновик сохраняется в браузере и проверяется только по прямой совместимости. Транзитивный режим появится в 9.22, сохранение на сервере — в 9.23.',
+            'Черновик сохраняется в браузере. Транзитивный режим помогает исследовать варианты, но для сохранения все компоненты должны быть совместимы напрямую.',
+        },
+        transitiveMode: {
+          label: 'Учитывать транзитивную совместимость',
+          description:
+            'Показывать компоненты, связанные через цепочку. Такой черновик нельзя сохранить, пока каждая пара не станет совместима напрямую.',
+          enabledAnnouncement: 'Транзитивная совместимость включена',
+          disabledAnnouncement: 'Включена строгая проверка прямой совместимости',
         },
         browser: {
           title: 'Доступные компоненты',
           description: 'Найдите компонент и добавьте его в текущую сборку.',
           compatibleDescription:
             'Показаны компоненты, напрямую совместимые со всей текущей сборкой (базовых компонентов: {{count}}).',
+          transitiveDescription:
+            'Показаны компоненты, совместимые со всей сборкой напрямую или через цепочку (базовых компонентов: {{count}}).',
           replacementTitle: 'Выбор замены',
           replacementDescription:
             'Выберите компонент того же типа вместо «{{name}}». Он проверяется против остальных компонентов сборки.',
@@ -120,6 +129,7 @@ export const resources = {
           add: 'Добавить',
           selectReplacement: 'Выбрать',
           direct: 'Прямая совместимость',
+          transitive: 'Транзитивная совместимость',
           replace: 'Заменить',
           replaces: 'Тип уже выбран',
           page: 'Страница {{page}}',
@@ -149,6 +159,10 @@ export const resources = {
           valid: 'Сборка совместима напрямую',
           validDescription:
             'Все выбранные компоненты попарно совместимы по ручным связям или автоматическим правилам.',
+          transitive: 'Сборка совместима только с учётом цепочек',
+          transitiveDescription:
+            'Подбор можно продолжить, но эту сборку нельзя сохранить, пока каждая пара не станет совместима напрямую.',
+          showDetails: 'Показать проверку',
           conflict: 'В сборке есть конфликт',
           conflictDescription_one: 'Обнаружена {{count}} несовместимая пара.',
           conflictDescription_few: 'Обнаружено {{count}} несовместимые пары.',
@@ -160,6 +174,44 @@ export const resources = {
           error: 'Не удалось проверить сборку',
           errorDescription: 'Черновик сохранён. Повторите запрос перед продолжением подбора.',
           retry: 'Повторить',
+        },
+        explanations: {
+          description:
+            'Причины рассчитаны сервером по ручным связям, включённым автоматическим правилам и кратчайшим путям.',
+          whyCompatible: 'Почему совместим',
+          candidateTitle: 'Почему совместим «{{name}}»',
+          assemblyTitle: 'Проверка текущей сборки',
+          baseTitle: 'С компонентом «{{name}}»',
+          pairTitle: '«{{left}}» ↔ «{{right}}»',
+          noEvidence: 'Сервер не вернул подтверждающую причину для этой пары.',
+          relations: {
+            direct: 'Напрямую',
+            transitive: 'Через цепочку',
+            incompatible: 'Несовместимы',
+          },
+          sources: {
+            MANUAL: 'Ручная связь',
+            AUTOMATIC: 'Автоматическое правило',
+            TRANSITIVE: 'Кратчайший путь',
+          },
+          manual: {
+            noComment: 'Комментарий к ручной связи не добавлен.',
+            linkId: 'Ручная связь #{{id}}',
+          },
+          automatic: {
+            unknownRule: 'Автоматическое правило #{{id}}',
+            noConditions: 'Условия правила не были возвращены.',
+            condition:
+              '{{leftAttribute}}: {{leftValue}} · {{operator}} · {{rightAttribute}}: {{rightValue}}',
+          },
+          path: {
+            label: 'Кратчайший путь совместимости',
+            loading: 'Загружаем названия компонентов пути',
+            error:
+              'Не удалось загрузить названия всех компонентов. Путь показан по идентификаторам.',
+            retry: 'Повторить загрузку',
+            unknownComponent: 'Компонент #{{id}}',
+          },
         },
         replace: {
           title: 'Заменить компонент этого типа?',
@@ -976,13 +1028,22 @@ export const resources = {
           title: 'Configurator',
           description: 'Build a configuration for the “{{domain}}” domain.',
           scopeNotice:
-            'The draft is saved in this browser and validated for direct compatibility only. Transitive mode arrives in 9.22 and server saving in 9.23.',
+            'The draft is saved in this browser. Transitive mode helps explore options, but every component pair must be directly compatible before saving.',
+        },
+        transitiveMode: {
+          label: 'Include transitive compatibility',
+          description:
+            'Show components connected through a chain. The draft cannot be saved until every pair is directly compatible.',
+          enabledAnnouncement: 'Transitive compatibility enabled',
+          disabledAnnouncement: 'Strict direct compatibility validation enabled',
         },
         browser: {
           title: 'Available components',
           description: 'Find a component and add it to the current assembly.',
           compatibleDescription:
             'Showing components directly compatible with the whole current assembly ({{count}} base components).',
+          transitiveDescription:
+            'Showing components compatible with the whole assembly directly or through a chain ({{count}} base components).',
           replacementTitle: 'Choose a replacement',
           replacementDescription:
             'Choose a component of the same type to replace “{{name}}”. It is checked against the rest of the assembly.',
@@ -1011,6 +1072,7 @@ export const resources = {
           add: 'Add',
           selectReplacement: 'Select',
           direct: 'Direct compatibility',
+          transitive: 'Transitive compatibility',
           replace: 'Replace',
           replaces: 'Type selected',
           page: 'Page {{page}}',
@@ -1038,6 +1100,10 @@ export const resources = {
           valid: 'The assembly is directly compatible',
           validDescription:
             'Every selected component pair matches through a manual link or automatic rule.',
+          transitive: 'The assembly is compatible only through chains',
+          transitiveDescription:
+            'You can continue selecting components, but this assembly cannot be saved until every pair is directly compatible.',
+          showDetails: 'Show validation details',
           conflict: 'The assembly has a conflict',
           conflictDescription_one: '{{count}} incompatible pair found.',
           conflictDescription_other: '{{count}} incompatible pairs found.',
@@ -1046,6 +1112,43 @@ export const resources = {
           error: 'Could not validate the assembly',
           errorDescription: 'The draft is safe. Retry before continuing component selection.',
           retry: 'Try again',
+        },
+        explanations: {
+          description:
+            'The reasons are calculated by the server from manual links, enabled automatic rules, and shortest paths.',
+          whyCompatible: 'Why compatible',
+          candidateTitle: 'Why “{{name}}” is compatible',
+          assemblyTitle: 'Current assembly validation',
+          baseTitle: 'With “{{name}}”',
+          pairTitle: '“{{left}}” ↔ “{{right}}”',
+          noEvidence: 'The server did not return supporting evidence for this pair.',
+          relations: {
+            direct: 'Direct',
+            transitive: 'Through a chain',
+            incompatible: 'Incompatible',
+          },
+          sources: {
+            MANUAL: 'Manual link',
+            AUTOMATIC: 'Automatic rule',
+            TRANSITIVE: 'Shortest path',
+          },
+          manual: {
+            noComment: 'No comment was added to the manual link.',
+            linkId: 'Manual link #{{id}}',
+          },
+          automatic: {
+            unknownRule: 'Automatic rule #{{id}}',
+            noConditions: 'The rule conditions were not returned.',
+            condition:
+              '{{leftAttribute}}: {{leftValue}} · {{operator}} · {{rightAttribute}}: {{rightValue}}',
+          },
+          path: {
+            label: 'Shortest compatibility path',
+            loading: 'Loading component names for the path',
+            error: 'Some component names could not be loaded. The path is shown using identifiers.',
+            retry: 'Retry loading',
+            unknownComponent: 'Component #{{id}}',
+          },
         },
         replace: {
           title: 'Replace the component of this type?',
