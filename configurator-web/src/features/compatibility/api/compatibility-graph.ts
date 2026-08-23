@@ -21,14 +21,14 @@ export async function fetchCompatibilityGraph(domainId: number): Promise<GraphRe
   );
 }
 
-export function useCompatibilityGraphQuery(domainId: number | null) {
+export function useCompatibilityGraphQuery(domainId: number | null, enabled = true) {
   return useQuery({
     queryKey: compatibilityKeys.graph(domainId),
     queryFn: () =>
       domainId === null
         ? Promise.resolve<GraphResponse>({ nodes: [], edges: [] })
         : fetchCompatibilityGraph(domainId),
-    enabled: domainId !== null,
+    enabled: enabled && domainId !== null,
     refetchOnMount: 'always',
   });
 }

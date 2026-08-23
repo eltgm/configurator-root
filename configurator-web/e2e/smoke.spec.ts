@@ -515,6 +515,115 @@ test('opens the configurator frontend with the selected domain', async ({ page }
   expect(workspaceBox!.x + workspaceBox!.width).toBeLessThanOrEqual(390);
 });
 
+test('explains a transitive candidate and returns the draft to strict validation', async ({
+  page,
+}) => {
+  await page.addInitScript({
+    content: `
+      window.localStorage.setItem('configurator.selected-domain-id', '101');
+      window.localStorage.setItem(
+        'configurator.assembly-draft.v1.101',
+        '{"version":1,"updatedAt":"2026-08-23T12:00:00.000Z","items":[{"componentId":101,"componentTypeId":11}]}'
+      );
+    `,
+  });
+  await page.route(frontendApiBaseUrl + '/domains/*/configurator/compatible*', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.fallback();
+      return;
+    }
+    const url = new URL(route.request().url());
+    const includeTransitive = url.searchParams.get('includeTransitive') === 'true';
+    await route.fulfill({
+      json: {
+        baseComponentId: 101,
+        compatibleByType: includeTransitive
+          ? [
+              {
+                componentTypeId: 12,
+                componentTypeName: 'Материнская плата',
+                components: [
+                  {
+                    id: 102,
+                    name: 'B650 Tomahawk',
+                    brand: 'MSI',
+                    componentTypeId: 12,
+                    explanations: [{ source: 'TRANSITIVE', pathComponentIds: [101, 103, 102] }],
+                  },
+                ],
+              },
+            ]
+          : [],
+      },
+    });
+  });
+  await page.route(
+    frontendApiBaseUrl + '/domains/*/configurator/compatible/search',
+    async (route) => {
+      const body = route.request().postDataJSON() as {
+        componentIds: number[];
+        includeTransitive: boolean;
+      };
+      await route.fulfill({
+        json: {
+          results: body.componentIds.map((baseComponentId) => ({
+            baseComponentId,
+            compatibleByType: body.includeTransitive
+              ? [
+                  {
+                    componentTypeId: baseComponentId === 101 ? 12 : 11,
+                    componentTypeName: baseComponentId === 101 ? 'Материнская плата' : 'Процессор',
+                    components: [
+                      {
+                        id: baseComponentId === 101 ? 102 : 101,
+                        name: baseComponentId === 101 ? 'B650 Tomahawk' : 'Ryzen 7 7800X3D',
+                        componentTypeId: baseComponentId === 101 ? 12 : 11,
+                        explanations: [
+                          {
+                            source: 'TRANSITIVE',
+                            pathComponentIds:
+                              baseComponentId === 101 ? [101, 103, 102] : [102, 103, 101],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ]
+              : [],
+          })),
+        },
+      });
+    },
+  );
+
+  await page.goto('/configurator');
+
+  const mode = page.getByRole('switch', { name: /Учитывать транзитивную совместимость/ });
+  await expect(mode).not.toBeChecked();
+  await mode.check();
+  const browser = page.getByRole('region', { name: 'Доступные компоненты' });
+  await expect(browser.getByText('B650 Tomahawk')).toBeVisible();
+  await expect(browser.getByText('Транзитивная совместимость')).toBeVisible();
+
+  await browser.getByRole('button', { name: 'Почему совместим' }).click();
+  const explanation = page.getByRole('dialog', { name: 'Почему совместим «B650 Tomahawk»' });
+  await expect(explanation.getByText('Radeon RX 7900 XTX')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(explanation).toBeHidden();
+
+  await browser.getByRole('button', { name: 'Добавить' }).click();
+  const assembly = page.getByRole('region', { name: 'Текущая сборка' });
+  await expect(assembly.getByText('Сборка совместима только с учётом цепочек')).toBeVisible();
+  await expect(assembly.getByText(/нельзя сохранить/)).toBeVisible();
+  await assembly.getByRole('button', { name: 'Показать проверку' }).click();
+  await expect(page.getByRole('dialog', { name: 'Проверка текущей сборки' })).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await mode.uncheck();
+  await expect(assembly.getByText('В сборке есть конфликт')).toBeVisible();
+  await expect(browser.getByText('Подбор временно недоступен')).toBeVisible();
+});
+
 test('keeps a conflicting draft and repairs it with a slot-aware replacement', async ({ page }) => {
   await page.addInitScript({
     content: `

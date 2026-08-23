@@ -59,12 +59,21 @@ describe('configurator compatibility model', () => {
     expect(candidatesFromDirectResponse(direct)[0]).toMatchObject({
       id: 2,
       componentTypeName: 'Motherboard',
+      relation: 'direct',
+      compatibilityByBase: [{ baseComponentId: 1, relation: 'direct' }],
       explanations: [{ source: 'AUTOMATIC', ruleSetId: 7 }],
     });
-    expect(candidatesFromIntersectionResponse(intersection)[0]?.explanations).toEqual([
-      { source: 'AUTOMATIC', ruleSetId: 7 },
-      { source: 'MANUAL', linkId: 8 },
-    ]);
+    expect(candidatesFromIntersectionResponse(intersection)[0]).toMatchObject({
+      relation: 'direct',
+      compatibilityByBase: [
+        { baseComponentId: 1, relation: 'direct' },
+        { baseComponentId: 3, relation: 'direct' },
+      ],
+      explanations: [
+        { source: 'AUTOMATIC', ruleSetId: 7 },
+        { source: 'MANUAL', linkId: 8 },
+      ],
+    });
   });
 
   it('filters candidates by name, brand, type and selected slots', () => {
@@ -76,6 +85,8 @@ describe('configurator compatibility model', () => {
         brand: 'NVIDIA',
         componentTypeId: 30,
         componentTypeName: 'GPU',
+        relation: 'direct' as const,
+        compatibilityByBase: [],
         explanations: [],
       },
     ];
@@ -129,11 +140,92 @@ describe('configurator compatibility model', () => {
 
     const result = validateConfiguratorAssembly([1, 2, 3], response);
     expect(result.compatible).toBe(false);
+    expect(result.relation).toBe('incompatible');
+    expect(result.pairs[0]).toMatchObject({ relation: 'direct' });
     expect(result.conflictPairs).toEqual([
       { leftComponentId: 1, rightComponentId: 3 },
       { leftComponentId: 2, rightComponentId: 3 },
     ]);
     expect([...result.conflictComponentIds]).toEqual([1, 3, 2]);
+  });
+
+  it('classifies mixed direct and transitive evidence for candidates and assemblies', () => {
+    const intersection: ConfiguratorIntersectionResponse = {
+      componentIds: [1, 3],
+      compatibleByType: [
+        {
+          componentTypeId: 20,
+          componentTypeName: 'Motherboard',
+          components: [
+            {
+              id: 2,
+              name: 'B650 Tomahawk',
+              componentTypeId: 20,
+              compatibilityByBase: [
+                { baseComponentId: 1, explanations: [{ source: 'MANUAL', linkId: 7 }] },
+                {
+                  baseComponentId: 3,
+                  explanations: [{ source: 'TRANSITIVE', pathComponentIds: [3, 4, 2] }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(candidatesFromIntersectionResponse(intersection)[0]).toMatchObject({
+      relation: 'transitive',
+      compatibilityByBase: [
+        { baseComponentId: 1, relation: 'direct' },
+        { baseComponentId: 3, relation: 'transitive' },
+      ],
+    });
+
+    const response: ConfiguratorBatchSearchResponse = {
+      results: [
+        {
+          baseComponentId: 1,
+          compatibleByType: [
+            {
+              componentTypeId: 20,
+              componentTypeName: 'Motherboard',
+              components: [
+                {
+                  id: 2,
+                  name: 'B650',
+                  componentTypeId: 20,
+                  explanations: [{ source: 'TRANSITIVE', pathComponentIds: [1, 3, 2] }],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          baseComponentId: 2,
+          compatibleByType: [
+            {
+              componentTypeId: 10,
+              componentTypeName: 'CPU',
+              components: [
+                {
+                  id: 1,
+                  name: 'CPU',
+                  componentTypeId: 10,
+                  explanations: [{ source: 'TRANSITIVE', pathComponentIds: [2, 3, 1] }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const validation = validateConfiguratorAssembly([1, 2], response);
+    expect(validation).toMatchObject({
+      compatible: true,
+      directlyCompatible: false,
+      relation: 'transitive',
+      pairs: [{ leftComponentId: 1, rightComponentId: 2, relation: 'transitive' }],
+    });
   });
 
   it('treats zero or one component as compatible and missing reciprocal evidence as a conflict', () => {

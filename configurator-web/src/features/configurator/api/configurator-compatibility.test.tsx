@@ -40,7 +40,7 @@ function createWrapper() {
 }
 
 describe('configurator compatibility API', () => {
-  it('sends direct-only single, batch and intersection requests', async () => {
+  it('sends the selected mode for single, batch and intersection requests', async () => {
     const requests: Array<{ path: string; payload: unknown }> = [];
     server.use(
       http.get(`${testApiBaseUrl}/domains/:domainId/configurator/compatible`, ({ request }) => {
@@ -67,9 +67,16 @@ describe('configurator compatibility API', () => {
       ),
     );
 
-    await expect(fetchDirectCompatibility(7, 1)).resolves.toEqual(directResponse);
-    await expect(fetchBatchCompatibility(7, [1, 2])).resolves.toEqual(batchResponse);
-    await expect(fetchCompatibilityIntersection(7, [1, 2])).resolves.toEqual(intersectionResponse);
+    await expect(fetchDirectCompatibility(7, 1, false)).resolves.toEqual(directResponse);
+    await expect(fetchBatchCompatibility(7, [1, 2], false)).resolves.toEqual(batchResponse);
+    await expect(fetchCompatibilityIntersection(7, [1, 2], false)).resolves.toEqual(
+      intersectionResponse,
+    );
+    await expect(fetchDirectCompatibility(7, 1, true)).resolves.toEqual(directResponse);
+    await expect(fetchBatchCompatibility(7, [1, 2], true)).resolves.toEqual(batchResponse);
+    await expect(fetchCompatibilityIntersection(7, [1, 2], true)).resolves.toEqual(
+      intersectionResponse,
+    );
     expect(requests).toEqual([
       {
         path: '/api/domains/7/configurator/compatible',
@@ -83,29 +90,44 @@ describe('configurator compatibility API', () => {
         path: '/api/domains/7/configurator/compatible/intersection',
         payload: { componentIds: [1, 2], includeTransitive: false },
       },
+      {
+        path: '/api/domains/7/configurator/compatible',
+        payload: { componentId: '1', includeTransitive: 'true' },
+      },
+      {
+        path: '/api/domains/7/configurator/compatible/search',
+        payload: { componentIds: [1, 2], includeTransitive: true },
+      },
+      {
+        path: '/api/domains/7/configurator/compatible/intersection',
+        payload: { componentIds: [1, 2], includeTransitive: true },
+      },
     ]);
   });
 
   it('keeps keys domain-, mode- and order-scoped', () => {
-    expect(configuratorCompatibilityKeys.batch(7, [1, 2])).not.toEqual(
-      configuratorCompatibilityKeys.batch(7, [2, 1]),
+    expect(configuratorCompatibilityKeys.batch(7, [1, 2], false)).not.toEqual(
+      configuratorCompatibilityKeys.batch(7, [2, 1], false),
     );
-    expect(configuratorCompatibilityKeys.batch(7, [1, 2])).not.toEqual(
-      configuratorCompatibilityKeys.intersection(7, [1, 2]),
+    expect(configuratorCompatibilityKeys.batch(7, [1, 2], false)).not.toEqual(
+      configuratorCompatibilityKeys.intersection(7, [1, 2], false),
     );
-    expect(configuratorCompatibilityKeys.direct(7, 1)).not.toEqual(
-      configuratorCompatibilityKeys.direct(8, 1),
+    expect(configuratorCompatibilityKeys.direct(7, 1, false)).not.toEqual(
+      configuratorCompatibilityKeys.direct(8, 1, false),
+    );
+    expect(configuratorCompatibilityKeys.direct(7, 1, false)).not.toEqual(
+      configuratorCompatibilityKeys.direct(7, 1, true),
     );
   });
 
   it('keeps hooks idle until their required input is available', () => {
-    const direct = renderHook(() => useDirectCompatibilityQuery(null, null), {
+    const direct = renderHook(() => useDirectCompatibilityQuery(null, null, false), {
       wrapper: createWrapper(),
     });
-    const batch = renderHook(() => useBatchCompatibilityQuery(7, []), {
+    const batch = renderHook(() => useBatchCompatibilityQuery(7, [], false), {
       wrapper: createWrapper(),
     });
-    const intersection = renderHook(() => useCompatibilityIntersectionQuery(7, [1]), {
+    const intersection = renderHook(() => useCompatibilityIntersectionQuery(7, [1], false), {
       wrapper: createWrapper(),
     });
 
@@ -134,10 +156,10 @@ describe('configurator compatibility API', () => {
         ),
       ),
     );
-    const direct = renderHook(() => useDirectCompatibilityQuery(7, 1), {
+    const direct = renderHook(() => useDirectCompatibilityQuery(7, 1, false), {
       wrapper: createWrapper(),
     });
-    const batch = renderHook(() => useBatchCompatibilityQuery(7, [1, 2]), {
+    const batch = renderHook(() => useBatchCompatibilityQuery(7, [1, 2], false), {
       wrapper: createWrapper(),
     });
 

@@ -116,6 +116,19 @@ function useHandlers() {
         ? HttpResponse.json(component)
         : HttpResponse.json({ message: 'Not found' }, { status: 404 });
     }),
+    http.get(`${testApiBaseUrl}/domains/:domainId/compatibility/graph`, () =>
+      HttpResponse.json({
+        nodes: components.map((component) => ({
+          id: component.id,
+          name: component.name,
+          brand: component.brand,
+          componentTypeId: component.componentTypeId,
+          componentTypeName:
+            componentTypes.find((type) => type.id === component.componentTypeId)?.name ?? 'Unknown',
+        })),
+        edges: [],
+      }),
+    ),
     http.get(`${testApiBaseUrl}/domains/:domainId/configurator/compatible`, ({ request }) => {
       const componentId = Number(new URL(request.url).searchParams.get('componentId'));
       return HttpResponse.json(toCompatibilityResponse(componentId));
@@ -370,5 +383,166 @@ describe('configurator workspace', () => {
     } finally {
       setItem.mockRestore();
     }
+  });
+
+  it('shows direct evidence, enables a transitive path and returns to strict conflict validation', async () => {
+    const user = userEvent.setup();
+    useHandlers();
+    server.use(
+      http.get(`${testApiBaseUrl}/domains/:domainId/configurator/compatible`, ({ request }) => {
+        const url = new URL(request.url);
+        const includeTransitive = url.searchParams.get('includeTransitive') === 'true';
+        return HttpResponse.json({
+          baseComponentId: ryzen.id,
+          compatibleByType: [
+            {
+              componentTypeId: radeon.componentTypeId,
+              componentTypeName: 'Видеокарта',
+              components: [
+                {
+                  id: radeon.id,
+                  name: radeon.name,
+                  brand: radeon.brand,
+                  componentTypeId: radeon.componentTypeId,
+                  explanations: [
+                    { source: 'MANUAL', linkId: 501, comment: 'Проверено производителем' },
+                    {
+                      source: 'AUTOMATIC',
+                      ruleSetId: 601,
+                      ruleSetName: 'Совпадающий интерфейс',
+                      conditions: [
+                        {
+                          leftAttributeDefinitionId: 11,
+                          leftAttributeName: 'Интерфейс',
+                          leftValue: 'PCIe 4.0',
+                          operator: 'EQUALS',
+                          rightAttributeDefinitionId: 12,
+                          rightAttributeName: 'Интерфейс',
+                          rightValue: 'PCIe 4.0',
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+            ...(includeTransitive
+              ? [
+                  {
+                    componentTypeId: motherboard.componentTypeId,
+                    componentTypeName: 'Материнская плата',
+                    components: [
+                      {
+                        id: motherboard.id,
+                        name: motherboard.name,
+                        brand: motherboard.brand,
+                        componentTypeId: motherboard.componentTypeId,
+                        explanations: [
+                          {
+                            source: 'TRANSITIVE',
+                            pathComponentIds: [ryzen.id, radeon.id, motherboard.id],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ]
+              : []),
+          ],
+        });
+      }),
+      http.post(
+        `${testApiBaseUrl}/domains/:domainId/configurator/compatible/search`,
+        async ({ request }) => {
+          const body = (await request.json()) as {
+            componentIds: number[];
+            includeTransitive: boolean;
+          };
+          return HttpResponse.json({
+            results: body.componentIds.map((baseComponentId) => ({
+              baseComponentId,
+              compatibleByType: body.includeTransitive
+                ? [
+                    {
+                      componentTypeId:
+                        baseComponentId === ryzen.id
+                          ? motherboard.componentTypeId
+                          : ryzen.componentTypeId,
+                      componentTypeName:
+                        baseComponentId === ryzen.id ? 'Материнская плата' : 'Процессор',
+                      components: [
+                        {
+                          id: baseComponentId === ryzen.id ? motherboard.id : ryzen.id,
+                          name: baseComponentId === ryzen.id ? motherboard.name : ryzen.name,
+                          componentTypeId:
+                            baseComponentId === ryzen.id
+                              ? motherboard.componentTypeId
+                              : ryzen.componentTypeId,
+                          explanations: [
+                            {
+                              source: 'TRANSITIVE',
+                              pathComponentIds:
+                                baseComponentId === ryzen.id
+                                  ? [ryzen.id, radeon.id, motherboard.id]
+                                  : [motherboard.id, radeon.id, ryzen.id],
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  ]
+                : [],
+            })),
+          });
+        },
+      ),
+    );
+    renderPage();
+
+    let browser = await screen.findByRole('region', { name: 'Доступные компоненты' });
+    await user.click((await within(browser).findAllByRole('button', { name: 'Добавить' }))[0]!);
+    browser = screen.getByRole('region', { name: 'Доступные компоненты' });
+
+    await user.click(await within(browser).findByRole('button', { name: 'Почему совместим' }));
+    let drawer = await screen.findByRole('dialog', { name: `Почему совместим «${radeon.name}»` });
+    expect(within(drawer).getByText('Проверено производителем')).toBeInTheDocument();
+    expect(within(drawer).getByText('Совпадающий интерфейс')).toBeInTheDocument();
+    expect(within(drawer).getByText(/Интерфейс: PCIe 4.0/)).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(drawer).not.toBeInTheDocument());
+
+    await user.click(screen.getByRole('switch', { name: /^Учитывать транзитивную совместимость/ }));
+    browser = screen.getByRole('region', { name: 'Доступные компоненты' });
+    expect(await within(browser).findByText(motherboard.name)).toBeInTheDocument();
+    expect(within(browser).getByText('Транзитивная совместимость')).toBeInTheDocument();
+    await user.click(within(browser).getAllByRole('button', { name: 'Почему совместим' }).at(-1)!);
+    drawer = await screen.findByRole('dialog', {
+      name: `Почему совместим «${motherboard.name}»`,
+    });
+    expect(await within(drawer).findByText(radeon.name)).toBeInTheDocument();
+    expect(within(drawer).getByText(motherboard.name)).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+
+    browser = screen.getByRole('region', { name: 'Доступные компоненты' });
+    await user.click(within(browser).getAllByRole('button', { name: 'Добавить' }).at(-1)!);
+    const assembly = screen.getByRole('region', { name: 'Текущая сборка' });
+    expect(
+      await within(assembly).findByText('Сборка совместима только с учётом цепочек'),
+    ).toBeInTheDocument();
+    expect(within(assembly).getByText(/нельзя сохранить/)).toBeInTheDocument();
+
+    await user.click(within(assembly).getByRole('button', { name: 'Показать проверку' }));
+    expect(
+      await screen.findByRole('dialog', { name: 'Проверка текущей сборки' }),
+    ).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+
+    await user.click(screen.getByRole('switch', { name: /^Учитывать транзитивную совместимость/ }));
+    expect(await within(assembly).findByText('В сборке есть конфликт')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: 'Доступные компоненты' })).getByText(
+        'Подбор временно недоступен',
+      ),
+    ).toBeInTheDocument();
   });
 });
