@@ -1,7 +1,6 @@
 import {
   IconAssembly,
   IconFileDescription,
-  IconGitBranch,
   IconListDetails,
   IconSettings,
 } from '@tabler/icons-react';
@@ -13,6 +12,7 @@ import { ComponentsPage } from '@/pages/ComponentsPage';
 import { ComponentDetailsPage } from '@/pages/ComponentDetailsPage';
 import { ComponentFormPage } from '@/pages/ComponentFormPage';
 import { ComponentTypesPage } from '@/pages/ComponentTypesPage';
+import { CompatibilityGraphPage } from '@/pages/CompatibilityGraphPage';
 import { DomainSettingsPage } from '@/pages/DomainSettingsPage';
 import { ManualCompatibilityPage } from '@/pages/ManualCompatibilityPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -115,11 +115,7 @@ export const appRoutes: RouteObject[] = [
         path: 'settings/compatibility/graph',
         element: (
           <RequireDomain>
-            <RoutePlaceholder
-              icon={IconGitBranch}
-              titleKey="pages.compatibilityGraph.title"
-              descriptionKey="pages.compatibilityGraph.description"
-            />
+            <CompatibilityGraphPage />
           </RequireDomain>
         ),
       },

@@ -5,10 +5,8 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
-import {
-  useCompatibilityGraphQuery,
-  useDeleteCompatibilityLinkMutation,
-} from '@/features/compatibility/api/manual-compatibility';
+import { useCompatibilityGraphQuery } from '@/features/compatibility/api/compatibility-graph';
+import { useDeleteCompatibilityLinkMutation } from '@/features/compatibility/api/manual-compatibility';
 import {
   filterManualCompatibilityLinks,
   hasAvailableCompatibilityPair,

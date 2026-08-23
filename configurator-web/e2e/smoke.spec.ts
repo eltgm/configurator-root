@@ -339,3 +339,56 @@ test('creates and permanently deletes a manual compatibility link on desktop and
   await expect(page.getByText('Ручная связь удалена')).toBeVisible();
   await expect(page.getByText('Один блок питания')).toHaveCount(0);
 });
+
+test('explores the manual compatibility graph on desktop and mobile', async ({ page }) => {
+  await page.goto('/settings/compatibility/graph');
+
+  await expect(page.getByRole('heading', { level: 1, name: 'Граф совместимости' })).toBeVisible();
+  await expect(page.getByText(/только явно созданные ручные связи/)).toBeVisible();
+  await expect(page.locator('.react-flow__node')).toHaveCount(3);
+  await expect(page.locator('.react-flow__edge')).toHaveCount(1);
+
+  const processor = page.getByLabel('Компонент Ryzen 7 7800X3D, тип Процессор');
+  await processor.click();
+  await expect(page.getByRole('heading', { level: 2, name: 'Ryzen 7 7800X3D' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Открыть карточку компонента' })).toHaveAttribute(
+    'href',
+    '/components/101',
+  );
+
+  const beforeDrag = await processor.boundingBox();
+  expect(beforeDrag).not.toBeNull();
+  if (beforeDrag) {
+    await page.mouse.move(
+      beforeDrag.x + beforeDrag.width / 2,
+      beforeDrag.y + beforeDrag.height / 2,
+    );
+    await page.mouse.down();
+    await page.mouse.move(beforeDrag.x + beforeDrag.width / 2 + 70, beforeDrag.y + 45, {
+      steps: 5,
+    });
+    await page.mouse.up();
+    const afterDrag = await processor.boundingBox();
+    expect(afterDrag).not.toBeNull();
+    expect(Math.abs((afterDrag?.x ?? beforeDrag.x) - beforeDrag.x)).toBeGreaterThan(30);
+  }
+
+  await page.getByRole('button', { name: 'Сбросить раскладку' }).click();
+  await expect(page.getByRole('heading', { name: 'Выберите элемент графа' })).toBeVisible();
+  await page.getByLabel('Ручная связь между Ryzen 7 7800X3D и B650 Tomahawk').click();
+  await expect(page.getByRole('heading', { name: 'Совместимые компоненты' })).toBeVisible();
+  await expect(page.getByText('Сокет AM5')).toBeVisible();
+
+  const search = page.getByRole('combobox', { name: 'Найти компонент' });
+  await search.fill('Radeon');
+  await page.getByRole('option', { name: /Radeon RX 7900 XTX/ }).click();
+  await expect(page.getByRole('heading', { name: 'Radeon RX 7900 XTX' })).toBeVisible();
+  await expect(page.getByText('У компонента нет ручных связей.')).toBeVisible();
+  await page.getByRole('button', { name: 'Показать граф целиком' }).first().click();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId('compatibility-graph-canvas')).toBeVisible();
+  await expect(page.locator('.react-flow__minimap')).toBeHidden();
+  await page.getByRole('link', { name: 'Управлять связями' }).click();
+  await expect(page).toHaveURL(/\/settings\/compatibility\/manual$/);
+});
