@@ -342,6 +342,81 @@ export const resources = {
           warning: 'Действие необратимо. При необходимости связь придётся создать заново.',
         },
       },
+      compatibilityGraph: {
+        page: {
+          title: 'Граф совместимости',
+          description: 'Структура ручных связей в предметной области «{{domain}}».',
+        },
+        actions: {
+          manage: 'Управлять связями',
+          openComponent: 'Открыть карточку компонента',
+          createComponent: 'Новый компонент',
+          fit: 'Показать граф целиком',
+          reset: 'Сбросить раскладку',
+        },
+        scope: {
+          title: 'Что показано на графе',
+          description:
+            'Линии обозначают только явно созданные ручные связи. Автоматическая и транзитивная совместимость вычисляются для выбранных компонентов и здесь не отображаются.',
+        },
+        summary: {
+          components_one: '{{count}} активный компонент',
+          components_few: '{{count}} активных компонента',
+          components_many: '{{count}} активных компонентов',
+          components_other: '{{count}} активного компонента',
+          links_one: '{{count}} ручная связь',
+          links_few: '{{count}} ручные связи',
+          links_many: '{{count}} ручных связей',
+          links_other: '{{count}} ручной связи',
+          isolated_one: '{{count}} без связей',
+          isolated_few: '{{count}} без связей',
+          isolated_many: '{{count}} без связей',
+          isolated_other: '{{count}} без связей',
+        },
+        states: {
+          loading: 'Загрузка графа совместимости',
+          refreshing: 'Обновление данных',
+          emptyTitle: 'Нет активных компонентов',
+          emptyDescription: 'Добавьте компоненты в каталог, чтобы исследовать их совместимость.',
+        },
+        search: {
+          label: 'Найти компонент',
+          placeholder: 'Название, тип или бренд',
+          nothingFound: 'Компоненты не найдены',
+        },
+        node: {
+          isolated: 'Нет ручных связей',
+        },
+        legend: {
+          title: 'Типы компонентов',
+        },
+        details: {
+          panel: 'Подробности выбранного элемента',
+          component: 'Компонент',
+          link: 'Ручная связь',
+          linkTitle: 'Совместимые компоненты',
+          compatibleWith: 'совместим с',
+          comment: 'Комментарий',
+          noComment: 'Комментарий не добавлен',
+          neighbors_one: '{{count}} непосредственная связь',
+          neighbors_few: '{{count}} непосредственные связи',
+          neighbors_many: '{{count}} непосредственных связей',
+          neighbors_other: '{{count}} непосредственной связи',
+          isolated: 'У компонента нет ручных связей.',
+          emptyTitle: 'Выберите элемент графа',
+          emptyDescription:
+            'Нажмите на компонент или линию. Компонент также можно выбрать через поиск.',
+        },
+        a11y: {
+          node: 'Компонент {{name}}, тип {{type}}',
+          edge: 'Ручная связь между {{source}} и {{target}}',
+          controls: 'Управление графом',
+          zoomIn: 'Приблизить граф',
+          zoomOut: 'Отдалить граф',
+          fit: 'Показать граф целиком',
+          minimap: 'Мини-карта графа совместимости',
+        },
+      },
       componentTypes: {
         page: {
           title: 'Типы и атрибуты',
@@ -882,6 +957,73 @@ export const resources = {
           title: 'Delete manual link?',
           description: 'The link between “{{first}}” and “{{second}}” will be deleted.',
           warning: 'This cannot be undone. The link must be recreated if it is needed later.',
+        },
+      },
+      compatibilityGraph: {
+        page: {
+          title: 'Compatibility graph',
+          description: 'Manual link structure in the “{{domain}}” domain.',
+        },
+        actions: {
+          manage: 'Manage links',
+          openComponent: 'Open component details',
+          createComponent: 'New component',
+          fit: 'Fit the whole graph',
+          reset: 'Reset layout',
+        },
+        scope: {
+          title: 'What this graph shows',
+          description:
+            'Lines represent explicitly created manual links only. Automatic and transitive compatibility are calculated for selected components and are not displayed here.',
+        },
+        summary: {
+          components_one: '{{count}} active component',
+          components_other: '{{count}} active components',
+          links_one: '{{count}} manual link',
+          links_other: '{{count}} manual links',
+          isolated_one: '{{count}} without links',
+          isolated_other: '{{count}} without links',
+        },
+        states: {
+          loading: 'Loading compatibility graph',
+          refreshing: 'Refreshing data',
+          emptyTitle: 'No active components',
+          emptyDescription: 'Add components to the catalog to explore their compatibility.',
+        },
+        search: {
+          label: 'Find a component',
+          placeholder: 'Name, type, or brand',
+          nothingFound: 'No components found',
+        },
+        node: {
+          isolated: 'No manual links',
+        },
+        legend: {
+          title: 'Component types',
+        },
+        details: {
+          panel: 'Selected item details',
+          component: 'Component',
+          link: 'Manual link',
+          linkTitle: 'Compatible components',
+          compatibleWith: 'is compatible with',
+          comment: 'Comment',
+          noComment: 'No comment',
+          neighbors_one: '{{count}} direct link',
+          neighbors_other: '{{count}} direct links',
+          isolated: 'This component has no manual links.',
+          emptyTitle: 'Select a graph item',
+          emptyDescription:
+            'Select a component or line. You can also select a component through search.',
+        },
+        a11y: {
+          node: 'Component {{name}}, type {{type}}',
+          edge: 'Manual link between {{source}} and {{target}}',
+          controls: 'Graph controls',
+          zoomIn: 'Zoom in',
+          zoomOut: 'Zoom out',
+          fit: 'Fit the whole graph',
+          minimap: 'Compatibility graph minimap',
         },
       },
       componentTypes: {

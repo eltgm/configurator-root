@@ -1,41 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { compatibilityKeys } from '@/features/compatibility/api/compatibility-graph';
 import {
   apiData,
   client,
   deleteDomainsByIdCompatibilityByLinkId,
-  getDomainsByIdCompatibilityGraph,
   postDomainsByIdCompatibility,
   type CompatibilityLink,
   type CreateCompatibilityLinkRequest,
   type GraphResponse,
 } from '@/shared/api';
-
-export const compatibilityKeys = {
-  graph: (domainId: number | null) => ['domains', domainId, 'compatibility', 'graph'] as const,
-};
-
-export async function fetchCompatibilityGraph(domainId: number): Promise<GraphResponse> {
-  return apiData(
-    getDomainsByIdCompatibilityGraph({
-      client,
-      path: { id: domainId },
-      throwOnError: true,
-    }),
-  );
-}
-
-export function useCompatibilityGraphQuery(domainId: number | null) {
-  return useQuery({
-    queryKey: compatibilityKeys.graph(domainId),
-    queryFn: () =>
-      domainId === null
-        ? Promise.resolve<GraphResponse>({ nodes: [], edges: [] })
-        : fetchCompatibilityGraph(domainId),
-    enabled: domainId !== null,
-    refetchOnMount: 'always',
-  });
-}
 
 interface CreateCompatibilityLinkVariables {
   domainId: number;

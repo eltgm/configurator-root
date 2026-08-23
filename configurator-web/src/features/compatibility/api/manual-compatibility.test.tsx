@@ -5,11 +5,10 @@ import type { PropsWithChildren } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import {
-  compatibilityKeys,
-  fetchCompatibilityGraph,
   useCreateCompatibilityLinkMutation,
   useDeleteCompatibilityLinkMutation,
 } from '@/features/compatibility/api/manual-compatibility';
+import { compatibilityKeys } from '@/features/compatibility/api/compatibility-graph';
 import type { CreateCompatibilityLinkRequest, GraphResponse } from '@/shared/api';
 import { server, testApiBaseUrl } from '@/test/server';
 
@@ -33,25 +32,6 @@ function createWrapper(queryClient: QueryClient) {
 }
 
 describe('manual compatibility API', () => {
-  it('loads the selected domain graph with a domain-scoped key', async () => {
-    let requestedDomainId: string | undefined;
-    server.use(
-      http.get(`${testApiBaseUrl}/domains/:domainId/compatibility/graph`, ({ params }) => {
-        requestedDomainId = String(params['domainId']);
-        return HttpResponse.json(graph);
-      }),
-    );
-
-    expect(await fetchCompatibilityGraph(domainId)).toEqual(graph);
-    expect(requestedDomainId).toBe(String(domainId));
-    expect(compatibilityKeys.graph(domainId)).toEqual([
-      'domains',
-      domainId,
-      'compatibility',
-      'graph',
-    ]);
-  });
-
   it('creates a link with the requested payload and adds the authoritative response to cache', async () => {
     let submittedBody: CreateCompatibilityLinkRequest | undefined;
     server.use(

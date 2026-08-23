@@ -1,0 +1,108 @@
+.explorer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(17rem, 21rem);
+  gap: var(--mantine-spacing-md);
+  align-items: start;
+}
+
+.canvas {
+  height: min(68vh, 47rem);
+  min-height: 34rem;
+  overflow: hidden;
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-8));
+}
+
+.details {
+  display: grid;
+  gap: var(--mantine-spacing-md);
+}
+
+.search {
+  flex: 1 1 22rem;
+  max-width: 38rem;
+}
+
+.minimap {
+  pointer-events: none;
+}
+
+.node {
+  width: 14.5rem;
+  min-height: 5.5rem;
+  border-width: 2px;
+  cursor: grab;
+  transition:
+    opacity 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.node:active {
+  cursor: grabbing;
+}
+
+.node-highlighted {
+  border-color: var(--mantine-primary-color-filled);
+  box-shadow: var(--mantine-shadow-md);
+}
+
+.node-dimmed {
+  opacity: 0.3;
+}
+
+.node-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  min-width: 0;
+}
+
+.node-handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.isolated-label {
+  color: light-dark(var(--mantine-color-orange-8), var(--mantine-color-orange-3));
+}
+
+.edge path {
+  stroke: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
+  transition:
+    opacity 150ms ease,
+    stroke 150ms ease;
+}
+
+.edge-highlighted path {
+  stroke: var(--mantine-primary-color-filled);
+}
+
+.edge-dimmed {
+  opacity: 0.2;
+}
+
+@media (width <= 62em) {
+  .explorer {
+    grid-template-columns: 1fr;
+  }
+
+  .canvas {
+    height: 32rem;
+    min-height: 28rem;
+  }
+}
+
+@media (width <= 48em) {
+  .canvas {
+    height: 27rem;
+    min-height: 24rem;
+  }
+
+  .minimap {
+    display: none;
+  }
+
+  .search {
+    max-width: none;
+  }
+}
