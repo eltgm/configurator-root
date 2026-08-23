@@ -85,6 +85,7 @@ const component: Component = {
 
 function useHandlers(overrides?: { component?: Component }) {
   let current = { ...(overrides?.component ?? component) };
+  let currentImages = [...(current.images ?? [])];
   server.use(
     http.get(`${testApiBaseUrl}/domains/:domainId/component-types`, () =>
       HttpResponse.json([componentType]),
@@ -92,7 +93,32 @@ function useHandlers(overrides?: { component?: Component }) {
     http.get(`${testApiBaseUrl}/component-types/:id/attributes`, () =>
       HttpResponse.json(attributes),
     ),
-    http.get(`${testApiBaseUrl}/components/:id`, () => HttpResponse.json(current)),
+    http.get(testApiBaseUrl + '/components/:id', () => HttpResponse.json(current)),
+    http.get(testApiBaseUrl + '/components/:id/images', () => HttpResponse.json(currentImages)),
+    http.post(testApiBaseUrl + '/components/:id/images', () => {
+      const createdImage = {
+        id: 9002,
+        url: '/component-images/9002/content',
+        orderIndex: currentImages.length,
+      };
+      currentImages = [...currentImages, createdImage];
+      current = { ...current, images: currentImages };
+      return HttpResponse.json(createdImage, { status: 201 });
+    }),
+    http.delete(testApiBaseUrl + '/component-images/:id', ({ params }) => {
+      currentImages = currentImages.filter((image) => image.id !== Number(params['id']));
+      current = { ...current, images: currentImages };
+      return new HttpResponse(null, { status: 204 });
+    }),
+    http.put(testApiBaseUrl + '/components/:id/images/order', async ({ request }) => {
+      const body = (await request.json()) as { imageIds: Array<number> };
+      currentImages = body.imageIds.map((id, orderIndex) => ({
+        ...currentImages.find((image) => image.id === id)!,
+        orderIndex,
+      }));
+      current = { ...current, images: currentImages };
+      return HttpResponse.json(currentImages);
+    }),
     http.post(`${testApiBaseUrl}/components`, async ({ request }) => {
       const body = (await request.json()) as Record<string, unknown>;
       current = { ...component, ...body, id: 777 };
@@ -204,9 +230,11 @@ describe('component details and form', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Игровой процессор')).toBeInTheDocument();
     expect(screen.getByText('AM5')).toBeInTheDocument();
-    expect(container.querySelector('img')).toHaveAttribute(
-      'src',
-      '/api/component-images/9001/content',
+    await waitFor(() =>
+      expect(container.querySelector('img')).toHaveAttribute(
+        'src',
+        '/api/component-images/9001/content',
+      ),
     );
 
     await user.click(screen.getByRole('link', { name: 'Редактировать' }));
@@ -242,6 +270,123 @@ describe('component details and form', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/components'));
   });
 
+  it('uploads, previews and permanently deletes component images', async () => {
+    const user = userEvent.setup();
+    let uploadContentType: string | null = null;
+    let deletedImageId: string | null = null;
+    useHandlers();
+    server.use(
+      http.post(testApiBaseUrl + '/components/:id/images', ({ request }) => {
+        uploadContentType = request.headers.get('content-type');
+        return HttpResponse.json(
+          { id: 9002, url: '/component-images/9002/content', orderIndex: 1 },
+          { status: 201 },
+        );
+      }),
+      http.delete(testApiBaseUrl + '/component-images/:id', ({ params }) => {
+        deletedImageId = String(params['id']);
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const { container } = renderRoute('/components/501');
+
+    const file = new File(['png-content'], 'component.png', { type: 'image/png' });
+    await screen.findByLabelText('Новое изображение');
+    await user.upload(container.querySelector('input[type="file"]')!, file);
+    await user.click(screen.getByRole('button', { name: 'Загрузить' }));
+
+    expect(await screen.findByText('Изображение загружено')).toBeInTheDocument();
+    expect(uploadContentType).toMatch(/^multipart\/form-data; boundary=/);
+    await user.click(screen.getByRole('button', { name: 'Открыть изображение 2' }));
+    expect(await screen.findByRole('dialog', { name: 'Просмотр изображения' })).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+
+    await user.click(screen.getByRole('button', { name: 'Удалить изображение 1' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Удалить изображение?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Удалить' }));
+
+    expect(await screen.findByText('Изображение удалено')).toBeInTheDocument();
+    expect(deletedImageId).toBe('9001');
+  });
+
+  it('keeps image order local until the complete order is saved', async () => {
+    const user = userEvent.setup();
+    let submittedOrder: unknown;
+    useHandlers({
+      component: {
+        ...component,
+        images: [
+          { id: 9001, url: '/component-images/9001/content', orderIndex: 0 },
+          { id: 9002, url: '/component-images/9002/content', orderIndex: 1 },
+        ],
+      },
+    });
+    server.use(
+      http.put(testApiBaseUrl + '/components/:id/images/order', async ({ request }) => {
+        submittedOrder = await request.json();
+        return HttpResponse.json([
+          { id: 9002, url: '/component-images/9002/content', orderIndex: 0 },
+          { id: 9001, url: '/component-images/9001/content', orderIndex: 1 },
+        ]);
+      }),
+    );
+    renderRoute('/components/501');
+
+    await user.click(await screen.findByRole('button', { name: 'Изменить порядок' }));
+    expect(screen.getByRole('button', { name: 'Загрузить' })).toBeDisabled();
+    await user.click(screen.getAllByRole('button', { name: 'Переместить позже' })[0]!);
+    expect(submittedOrder).toBeUndefined();
+    await user.click(screen.getByRole('button', { name: 'Отменить изменения' }));
+    expect(submittedOrder).toBeUndefined();
+
+    await user.click(screen.getByRole('button', { name: 'Изменить порядок' }));
+    await user.click(screen.getAllByRole('button', { name: 'Переместить позже' })[0]!);
+    await user.click(screen.getByRole('button', { name: 'Сохранить порядок' }));
+
+    expect(await screen.findByText('Порядок изображений сохранён')).toBeInTheDocument();
+    expect(submittedOrder).toEqual({ imageIds: [9002, 9001] });
+  });
+
+  it('rejects unsupported files before upload', async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    useHandlers();
+    const { container } = renderRoute('/components/501');
+
+    await screen.findByLabelText('Новое изображение');
+    await user.upload(
+      container.querySelector('input[type="file"]')!,
+      new File(['gif'], 'component.gif', { type: 'image/gif' }),
+    );
+
+    expect(await screen.findByText('Поддерживаются только JPEG, PNG и WebP')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Загрузить' })).toBeDisabled();
+  });
+
+  it('isolates a retryable gallery failure from the rest of component details', async () => {
+    const error: ErrorResponse = {
+      timestamp: '2026-08-23T12:00:00Z',
+      status: 503,
+      error: 'Service Unavailable',
+      code: 'EXTERNAL_STORAGE_UNAVAILABLE',
+      message: 'Image storage is temporarily unavailable',
+      path: '/components/501/images',
+      details: [],
+    };
+    useHandlers();
+    server.use(
+      http.get(testApiBaseUrl + '/components/:id/images', () =>
+        HttpResponse.json(error, { status: 503 }),
+      ),
+    );
+    renderRoute('/components/501');
+
+    expect(await screen.findByText('Игровой процессор')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Хранилище изображений недоступно', {}, { timeout: 3_000 }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Повторить' })).toBeInTheDocument();
+  });
+
   it('keeps archived details read-only and restores the component', async () => {
     const user = userEvent.setup();
     useHandlers({ component: { ...component, archived: true } });
@@ -249,6 +394,9 @@ describe('component details and form', () => {
 
     expect(await screen.findByText('В архиве')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Редактировать' })).not.toBeInTheDocument();
+    expect(screen.getByText('Архивная галерея доступна только для просмотра.')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Новое изображение')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Удалить изображение 1' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Восстановить' }));
 
     expect(await screen.findByText('Компонент восстановлен')).toBeInTheDocument();

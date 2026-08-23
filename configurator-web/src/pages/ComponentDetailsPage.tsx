@@ -3,22 +3,14 @@ import {
   Button,
   Divider,
   Group,
-  Image,
   Modal,
   Paper,
   SimpleGrid,
   Stack,
   Text,
-  ThemeIcon,
   Title,
 } from '@mantine/core';
-import {
-  IconArchive,
-  IconArrowLeft,
-  IconEdit,
-  IconPhotoOff,
-  IconRestore,
-} from '@tabler/icons-react';
+import { IconArchive, IconArrowLeft, IconEdit, IconRestore } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
@@ -29,7 +21,7 @@ import {
   useComponentQuery,
   useRestoreComponentMutation,
 } from '@/features/components/api/components';
-import { toComponentImageUrl } from '@/features/components/model/catalog-preferences';
+import { ComponentImageGallery } from '@/features/components/ui/ComponentImageGallery';
 import { useDomainContext } from '@/features/domains/model/domain-context';
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle';
 import { showSuccessNotification } from '@/shared/notifications/notifications';
@@ -88,11 +80,6 @@ export function ComponentDetailsPage() {
       />
     );
   }
-  const images = [...(component.images ?? [])].sort(
-    (left, right) =>
-      (left.orderIndex ?? Number.MAX_SAFE_INTEGER) -
-        (right.orderIndex ?? Number.MAX_SAFE_INTEGER) || left.id - right.id,
-  );
   const date = new Intl.DateTimeFormat(i18n.resolvedLanguage, { dateStyle: 'long' }).format(
     new Date(component.createdAt),
   );
@@ -235,44 +222,13 @@ export function ComponentDetailsPage() {
           </Paper>
         </Stack>
 
-        <Paper p="lg" withBorder>
-          <Stack gap="md">
-            <Stack gap={2}>
-              <Title order={2} size="h3">
-                {t('components.detail.sections.images')}
-              </Title>
-              <Text size="sm" c="dimmed">
-                {t('components.detail.imagesHint')}
-              </Text>
-            </Stack>
-            <Divider />
-            {images.length ? (
-              <SimpleGrid cols={{ base: 1, xs: 2 }}>
-                {images.map((image, index) => (
-                  <Image
-                    key={image.id}
-                    src={toComponentImageUrl(image.url)}
-                    alt={t('components.detail.imageAlt', {
-                      name: component.name,
-                      number: index + 1,
-                    })}
-                    radius="md"
-                    className={classes.image}
-                  />
-                ))}
-              </SimpleGrid>
-            ) : (
-              <Stack align="center" py="xl">
-                <ThemeIcon size={56} radius="xl" variant="light">
-                  <IconPhotoOff size={28} />
-                </ThemeIcon>
-                <Text c="dimmed" ta="center">
-                  {t('components.detail.noImages')}
-                </Text>
-              </Stack>
-            )}
-          </Stack>
-        </Paper>
+        <ComponentImageGallery
+          key={component.id + '-' + component.archived}
+          domainId={selectedDomainId}
+          componentId={component.id}
+          componentName={component.name}
+          archived={component.archived}
+        />
       </div>
 
       <Modal
