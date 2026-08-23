@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import type { GraphResponse } from '../src/shared/api/generated/types.gen';
+
 const domainPage = {
   items: [
     {
@@ -69,6 +71,32 @@ test.beforeEach(async ({ page }) => {
     { id: 9001, url: '/component-images/9001/content', orderIndex: 0 },
     { id: 9002, url: '/component-images/9002/content', orderIndex: 1 },
   ];
+  const compatibilityGraph: GraphResponse = {
+    nodes: [
+      {
+        id: 101,
+        name: 'Ryzen 7 7800X3D',
+        componentTypeId: 11,
+        componentTypeName: 'Процессор',
+        brand: 'AMD',
+      },
+      {
+        id: 102,
+        name: 'B650 Tomahawk',
+        componentTypeId: 12,
+        componentTypeName: 'Материнская плата',
+        brand: 'MSI',
+      },
+      {
+        id: 103,
+        name: 'Radeon RX 7900 XTX',
+        componentTypeId: 13,
+        componentTypeName: 'Видеокарта',
+        brand: 'AMD',
+      },
+    ],
+    edges: [{ id: 301, source: 101, target: 102, comment: 'Сокет AM5' }],
+  };
   await page.route(frontendApiBaseUrl + '/domains*', async (route) => {
     await route.fulfill({ json: domainPage });
   });
@@ -80,6 +108,43 @@ test.beforeEach(async ({ page }) => {
   });
   await page.route(frontendApiBaseUrl + '/domains/*/components*', async (route) => {
     await route.fulfill({ json: componentPage });
+  });
+  await page.route(frontendApiBaseUrl + '/domains/*/compatibility/graph', async (route) => {
+    await route.fulfill({ json: compatibilityGraph });
+  });
+  await page.route(frontendApiBaseUrl + '/domains/*/compatibility', async (route) => {
+    const body = route.request().postDataJSON() as {
+      componentAId: number;
+      componentBId: number;
+      comment?: string;
+    };
+    const created = {
+      id: 302,
+      domainId: 101,
+      componentAId: Math.min(body.componentAId, body.componentBId),
+      componentBId: Math.max(body.componentAId, body.componentBId),
+      ...(body.comment ? { comment: body.comment } : {}),
+    };
+    compatibilityGraph.edges.push({
+      id: created.id,
+      source: created.componentAId,
+      target: created.componentBId,
+      ...(created.comment ? { comment: created.comment } : {}),
+    });
+    await route.fulfill({ status: 201, json: created });
+  });
+  await page.route(frontendApiBaseUrl + '/domains/*/compatibility/*', async (route) => {
+    if (route.request().method() !== 'DELETE') {
+      await route.fallback();
+      return;
+    }
+    const path = new URL(route.request().url()).pathname;
+    const linkId = Number(path.split('/').at(-1));
+    const index = compatibilityGraph.edges.findIndex((edge) => edge.id === linkId);
+    if (index >= 0) {
+      compatibilityGraph.edges.splice(index, 1);
+    }
+    await route.fulfill({ status: 204 });
   });
   await page.route(frontendApiBaseUrl + '/components/*', async (route) => {
     await route.fulfill({ json: componentPage.items[0] });
@@ -237,4 +302,40 @@ test('manages the component image gallery on desktop and mobile', async ({ page 
   const filePickerBox = await filePicker.boundingBox();
   expect(filePickerBox).not.toBeNull();
   expect(filePickerBox!.x + filePickerBox!.width).toBeLessThanOrEqual(390);
+});
+
+test('creates and permanently deletes a manual compatibility link on desktop and mobile', async ({
+  page,
+}) => {
+  await page.goto('/settings/compatibility/manual');
+
+  await expect(page.getByRole('heading', { level: 1, name: 'Ручная совместимость' })).toBeVisible();
+  const desktopTable = page.getByTestId('desktop-manual-compatibility-table');
+  await expect(desktopTable.getByText('Сокет AM5')).toBeVisible();
+  await page.getByRole('button', { name: 'Добавить связь' }).click();
+  const createDialog = page.getByRole('dialog', { name: 'Новая ручная связь' });
+  await createDialog.getByRole('combobox', { name: 'Компонент' }).click();
+  await page.getByRole('option', { name: /Ryzen 7 7800X3D/ }).click();
+  await createDialog.getByRole('combobox', { name: 'Совместим с' }).click();
+  await page.getByRole('option', { name: /Radeon RX 7900 XTX/ }).click();
+  await createDialog.getByRole('textbox', { name: 'Комментарий' }).fill('Один блок питания');
+  await createDialog.getByRole('button', { name: 'Добавить связь' }).click();
+
+  await expect(page.getByText('Ручная связь создана')).toBeVisible();
+  await expect(desktopTable.getByText('Один блок питания')).toBeVisible();
+  await expect(desktopTable).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId('desktop-manual-compatibility-table')).toBeHidden();
+  await expect(page.getByTestId('mobile-manual-compatibility-list')).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Удалить связь Ryzen 7 7800X3D и Radeon RX 7900 XTX' })
+    .click();
+  await page
+    .getByRole('dialog', { name: 'Удалить ручную связь?' })
+    .getByRole('button', { name: 'Удалить' })
+    .click();
+
+  await expect(page.getByText('Ручная связь удалена')).toBeVisible();
+  await expect(page.getByText('Один блок питания')).toHaveCount(0);
 });

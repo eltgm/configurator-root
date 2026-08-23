@@ -1,0 +1,9 @@
+.create-action {
+  max-width: 100%;
+}
+
+@media (width <= 48em) {
+  .create-action {
+    width: 100%;
+  }
+}
