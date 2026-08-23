@@ -158,11 +158,15 @@ npm ci
 npm run api:check
 npm run check
 npm run test:coverage
+npm run test:e2e
+npm run test:accessibility
+npm run test:visual
 ```
 
 `npm run check` объединяет format check, ESLint, Stylelint, unit tests, TypeScript typecheck и production build. E2E
-запускаются отдельно после однократного `npx playwright install`; browser binaries не скачиваются автоматически при
-`npm ci`.
+и accessibility запускаются отдельно после однократного `npx playwright install`; browser binaries не скачиваются
+автоматически при `npm ci`. Visual regression выполняется только в pinned Docker image; baselines обновляются через
+`npm run test:visual:update` и требуют review. Полный workflow описан в `docs/testing/FRONTEND_TESTING.md`.
 
 ### Definition of Done
 

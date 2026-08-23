@@ -769,6 +769,40 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
   320/360/tablet/desktop в Chromium, Firefox и WebKit; axe automation и visual regression реализуются отдельно в 9.27;
 - OpenAPI, backend, Flyway, jOOQ, БД и generated API client в 9.26 не меняются.
 
+#### 9.27 — E2E, accessibility и visual regression tests
+
+- единая typed Playwright fixture подменяет только HTTP boundary, выдаёт детерминированные данные и создаёт новое
+  состояние для каждого test; функциональные, accessibility и visual suites переиспользуют fixture без копирования
+  route handlers;
+- функциональные E2E разделены по предметным journeys: shell/domains, components, compatibility, configurator и
+  configurations; монолитный smoke-файл удаляется, произвольные `waitForTimeout` не используются;
+- критические пользовательские пути выполняются в Chromium, Firefox и WebKit и сохраняют mobile reflow-проверку от
+  320 CSS px; browser binaries устанавливаются отдельной явной командой, а не во время `npm ci`;
+- accessibility suite использует pinned `@axe-core/playwright` и отдельные Chromium desktop/mobile projects;
+  проверяются теги `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa`;
+- axe сканирует settled top-level routes и representative interaction states: меню, ошибки формы, destructive modal,
+  graph details, светлую и тёмную темы; violations блокируют сборку, полный JSON violations/incomplete прикладывается к
+  Playwright result;
+- blanket exclusions, глобальное отключение axe rules и committed allowlist не допускаются; подтверждённый дефект
+  исправляется в UI, а невозможный для автоматизации критерий остаётся в manual WCAG checklist;
+- automated axe не считается полной WCAG-сертификацией: VoiceOver, zoom 200%, text spacing, смысл альтернативного
+  текста, focus order и другие manual-only проверки сохраняются в матрице аудита;
+- visual regression использует строгий Playwright `toHaveScreenshot` без широких pixel tolerances и committed PNG
+  baselines для representative desktop/mobile, light/dark и overlay states;
+- создание, обновление и сравнение visual baselines выполняются в pinned Linux image
+  `mcr.microsoft.com/playwright:v1.62.1-noble`, совпадающем с exact версией `@playwright/test`; Docker wrapper не
+  заменяет host `node_modules` Linux-зависимостями;
+- screenshots используют фиксированные viewport, locale `ru-RU`, timezone `Europe/Moscow`, mock dates/data и theme;
+  animations/caret отключаются, fonts и loading state ожидаются явно, broad masks для скрытия нестабильности запрещены;
+- frontend CI разделён на static/unit quality и browser quality: API drift, format/lint/styles, unit tests, typecheck,
+  production build, coverage, functional E2E, axe и visual baselines являются blocking gates;
+- минимальные coverage thresholds: 90% lines/statements, 85% functions и 80% branches, generated API исключается;
+- browser reports, traces, screenshots и visual diffs загружаются только при failure на 7 дней; CI использует один
+  worker и pinned action SHAs, Dependabot отслеживает npm в `/configurator-web`;
+- безопасный процесс обновления baselines и граница automated/manual проверок документируются в
+  `docs/testing/FRONTEND_TESTING.md` и `docs/accessibility/WCAG_2_2_AA_AUDIT.md`;
+- OpenAPI, backend, Flyway, jOOQ, БД и generated API client в 9.27 не меняются.
+
 ## Демонстрационная предметная область
 
 Пункт 9.7 добавляет атомарное создание примера «Сборка ПК» через `POST /domains/demo`. Пример содержит типы, определения

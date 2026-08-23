@@ -60,6 +60,7 @@ export function CompatibilityExplanationDrawer({
       position="right"
       size="lg"
       title={title}
+      closeButtonProps={{ 'aria-label': t('common.close') }}
       overlayProps={{ backgroundOpacity: 0.45, blur: 2 }}
     >
       <Stack gap="lg">

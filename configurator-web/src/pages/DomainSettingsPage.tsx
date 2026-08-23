@@ -175,12 +175,13 @@ export function DomainSettingsPage() {
         }}
         title={t('domains.delete.title')}
         centered
+        closeButtonProps={{ 'aria-label': t('common.close') }}
         closeOnClickOutside={!deleteDomain.isPending}
         closeOnEscape={!deleteDomain.isPending}
       >
         <Stack gap="md">
           <Text>{t('domains.delete.description', { name: deletingDomain?.name ?? '' })}</Text>
-          <Text size="sm" c="red">
+          <Text size="sm" c="red.9">
             {t('domains.delete.warning')}
           </Text>
           <Group justify="flex-end">
@@ -192,7 +193,7 @@ export function DomainSettingsPage() {
               {t('common.cancel')}
             </Button>
             <Button
-              color="red"
+              color="red.9"
               loading={deleteDomain.isPending}
               onClick={() => void confirmDelete()}
             >

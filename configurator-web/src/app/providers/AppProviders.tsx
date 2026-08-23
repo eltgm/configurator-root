@@ -10,6 +10,7 @@ import { queryClient } from '@/shared/query/query-client';
 
 const theme = createTheme({
   primaryColor: 'indigo',
+  primaryShade: { light: 8, dark: 8 },
   defaultRadius: 'md',
   fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, sans-serif',
   headings: {

@@ -55,7 +55,13 @@ export function DomainSelector() {
 
   return (
     <>
-      <Menu position="bottom-end" width={300} withinPortal>
+      <Menu
+        position="bottom-end"
+        width={300}
+        withinPortal
+        trapFocus={false}
+        withInitialFocusPlaceholder={false}
+      >
         <Menu.Target>
           <UnstyledButton className={classes['domain-context']} aria-label={accessibleLabel}>
             <IconDatabase size={20} stroke={1.7} aria-hidden="true" />

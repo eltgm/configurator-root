@@ -19,6 +19,7 @@ import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 
 import { useAttributesQuery } from '@/features/attributes/api/attributes';
+import { useRegisterDomainChangeGuard } from '@/features/domains/model/use-domain-change-guard';
 import {
   useCreateComponentMutation,
   useUpdateComponentMutation,
@@ -184,6 +185,7 @@ export function ComponentForm({ domainId, componentTypes, component }: Component
   const updateComponent = useUpdateComponentMutation();
   const isPending = createComponent.isPending || updateComponent.isPending;
   const { blocker, allowNavigation } = useUnsavedChangesGuard(form.formState.isDirty);
+  useRegisterDomainChangeGuard(form.formState.isDirty, allowNavigation);
 
   const validateAttributes = (values: ComponentFormValues) => {
     let valid = true;
