@@ -1,0 +1,9 @@
+.container {
+  max-width: 70rem;
+  margin-inline: auto;
+}
+
+.back-icon {
+  margin-right: var(--mantine-spacing-xs);
+  vertical-align: -0.2em;
+}

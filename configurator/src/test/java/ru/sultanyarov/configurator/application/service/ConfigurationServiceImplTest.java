@@ -19,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ru.sultanyarov.configurator.application.port.out.ConfigurationRepository;
 import ru.sultanyarov.configurator.application.port.out.ConfiguratorRepository;
 import ru.sultanyarov.configurator.application.port.out.CurrentUserProvider;
+import ru.sultanyarov.configurator.domain.exception.BusinessException;
 import ru.sultanyarov.configurator.domain.exception.ConfigurationConflictException;
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
@@ -76,6 +77,117 @@ class ConfigurationServiceImplTest {
         .extracting("componentTypeName")
         .containsExactly("Board", "Switch");
     verify(compatibilityValidator).validatePairwiseDirectCompatibility(1L, components);
+  }
+
+  @Test
+  void shouldFullyUpdateConfigurationAndPreserveImmutableMetadata() {
+    LocalDateTime createdAt = LocalDateTime.now().minusDays(1);
+    Configuration existing =
+        Configuration.builder()
+            .id(7L)
+            .domainId(1L)
+            .name("Initial")
+            .description("Initial description")
+            .createdByUserId(42L)
+            .createdAt(createdAt)
+            .components(List.of())
+            .build();
+    List<Component> components = List.of(component(1L, 10L, false), component(2L, 20L, false));
+    Configuration persisted = persistedConfiguration(7L);
+    when(currentUserProvider.getCurrentUserId()).thenReturn(42L);
+    when(configurationRepository.findByIdAndUserId(7L, 42L)).thenReturn(Optional.of(existing));
+    when(domainService.getById(1L)).thenReturn(domain());
+    when(configuratorRepository.getActiveComponents(1L)).thenReturn(components);
+    when(configurationRepository.update(any(), any(), any(Configuration.class)))
+        .thenReturn(Optional.of(persisted));
+
+    Configuration result =
+        service.update(7L, new ConfigurationDraft("  Updated  ", "   ", List.of(1L, 2L)));
+
+    assertThat(result).isSameAs(persisted);
+    ArgumentCaptor<Configuration> captor = ArgumentCaptor.forClass(Configuration.class);
+    verify(configurationRepository)
+        .update(
+            org.mockito.ArgumentMatchers.eq(7L),
+            org.mockito.ArgumentMatchers.eq(42L),
+            captor.capture());
+    Configuration update = captor.getValue();
+    assertThat(update.id()).isEqualTo(7L);
+    assertThat(update.domainId()).isEqualTo(1L);
+    assertThat(update.name()).isEqualTo("Updated");
+    assertThat(update.description()).isNull();
+    assertThat(update.createdByUserId()).isEqualTo(42L);
+    assertThat(update.createdAt()).isEqualTo(createdAt);
+    assertThat(update.components()).extracting("id").containsExactly(1L, 2L);
+    verify(compatibilityValidator).validatePairwiseDirectCompatibility(1L, components);
+  }
+
+  @Test
+  void shouldHideForeignConfigurationBeforeUpdateValidation() {
+    when(currentUserProvider.getCurrentUserId()).thenReturn(42L);
+    when(configurationRepository.findByIdAndUserId(7L, 42L)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () -> service.update(7L, new ConfigurationDraft("Updated", null, List.of(1L))))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessageContaining("7");
+
+    verify(domainService, never()).getById(any());
+    verify(configurationRepository, never()).update(any(), any(), any());
+  }
+
+  @Test
+  void shouldStrictlyRejectArchivedComponentDuringUpdate() {
+    Configuration existing = persistedConfiguration(7L);
+    when(currentUserProvider.getCurrentUserId()).thenReturn(-1L);
+    when(configurationRepository.findByIdAndUserId(7L, -1L)).thenReturn(Optional.of(existing));
+    when(domainService.getById(1L)).thenReturn(domain());
+    when(configuratorRepository.getActiveComponents(1L)).thenReturn(List.of());
+    when(componentService.getById(1L)).thenReturn(component(1L, 10L, true));
+
+    assertThatThrownBy(
+            () -> service.update(7L, new ConfigurationDraft("Updated", null, List.of(1L))))
+        .isInstanceOf(ConfigurationConflictException.class)
+        .hasMessageContaining("Archived");
+
+    verify(configurationRepository, never()).update(any(), any(), any());
+  }
+
+  @Test
+  void shouldReportRepositoryFailureDuringUpdate() {
+    Configuration existing = persistedConfiguration(7L);
+    Component component = component(1L, 10L, false);
+    when(currentUserProvider.getCurrentUserId()).thenReturn(-1L);
+    when(configurationRepository.findByIdAndUserId(7L, -1L)).thenReturn(Optional.of(existing));
+    when(domainService.getById(1L)).thenReturn(domain());
+    when(configuratorRepository.getActiveComponents(1L)).thenReturn(List.of(component));
+    when(configurationRepository.update(any(), any(), any(Configuration.class)))
+        .thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () -> service.update(7L, new ConfigurationDraft("Updated", null, List.of(1L))))
+        .isInstanceOf(BusinessException.class)
+        .hasMessageContaining("Failed to update configuration");
+  }
+
+  @Test
+  void shouldDeleteConfigurationForCurrentUser() {
+    when(currentUserProvider.getCurrentUserId()).thenReturn(42L);
+    when(configurationRepository.deleteByIdAndUserId(7L, 42L)).thenReturn(true);
+
+    service.delete(7L);
+
+    verify(configurationRepository).deleteByIdAndUserId(7L, 42L);
+  }
+
+  @Test
+  void shouldReturnNotFoundWhenConfigurationCannotBeDeleted() {
+    when(currentUserProvider.getCurrentUserId()).thenReturn(42L);
+    when(configurationRepository.deleteByIdAndUserId(7L, 42L)).thenReturn(false);
+
+    assertThatThrownBy(() -> service.delete(7L))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessageContaining("7");
   }
 
   @Test

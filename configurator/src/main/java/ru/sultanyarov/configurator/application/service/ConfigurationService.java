@@ -8,6 +8,10 @@ import ru.sultanyarov.configurator.domain.model.Page;
 public interface ConfigurationService {
   Configuration create(Long domainId, ConfigurationDraft draft);
 
+  Configuration update(Long id, ConfigurationDraft draft);
+
+  void delete(Long id);
+
   Page<Configuration> getPage(Long domainId, Integer page, Integer size);
 
   Configuration getById(Long id);

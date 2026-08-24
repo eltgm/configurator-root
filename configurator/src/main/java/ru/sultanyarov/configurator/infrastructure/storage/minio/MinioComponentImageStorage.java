@@ -1,118 +1,116 @@
 package ru.sultanyarov.configurator.infrastructure.storage.minio;
 
 import io.minio.BucketExistsArgs;
+import io.minio.GetObjectArgs;
+import io.minio.GetObjectResponse;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
+import java.io.ByteArrayInputStream;
+import java.util.Set;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import ru.sultanyarov.configurator.application.port.out.ComponentImageStorage;
 import ru.sultanyarov.configurator.domain.exception.ExternalStorageException;
 import ru.sultanyarov.configurator.domain.exception.UnsupportedImageFormatException;
+import ru.sultanyarov.configurator.domain.model.ComponentImageContent;
 import ru.sultanyarov.configurator.domain.model.ComponentImageUpload;
 import ru.sultanyarov.configurator.domain.model.StoredImage;
-
-import java.io.ByteArrayInputStream;
-import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
 public class MinioComponentImageStorage implements ComponentImageStorage {
-    private final MinioClient minioClient;
-    private final ComponentImageStorageProperties properties;
+  private static final Set<String> SUPPORTED_CONTENT_TYPES =
+      Set.of("image/jpeg", "image/png", "image/webp");
 
-    private volatile boolean bucketReady;
+  private final MinioClient minioClient;
+  private final ComponentImageStorageProperties properties;
 
-    @Override
-    public StoredImage store(Long componentId, ComponentImageUpload image) {
-        String objectKey = "components/%d/%s.%s".formatted(
-                componentId,
-                UUID.randomUUID(),
-                extensionFor(image.contentType())
-        );
-        byte[] content = image.content();
+  private volatile boolean bucketReady;
 
+  @Override
+  public StoredImage store(Long componentId, ComponentImageUpload image) {
+    String objectKey =
+        "components/%d/%s.%s"
+            .formatted(componentId, UUID.randomUUID(), extensionFor(image.contentType()));
+    byte[] content = image.content();
+
+    try {
+      ensureBucket();
+      minioClient.putObject(
+          PutObjectArgs.builder().bucket(properties.bucket()).object(objectKey).stream(
+                  new ByteArrayInputStream(content), (long) content.length, -1L)
+              .contentType(image.contentType())
+              .build());
+      return new StoredImage(objectKey);
+    } catch (Exception exception) {
+      throw new ExternalStorageException(
+          exception, "Failed to upload component image to external storage");
+    }
+  }
+
+  @Override
+  public ComponentImageContent read(String objectKey) {
+    try (GetObjectResponse response =
+        minioClient.getObject(
+            GetObjectArgs.builder().bucket(properties.bucket()).object(objectKey).build())) {
+      String contentType = response.headers().get("Content-Type");
+      if (!SUPPORTED_CONTENT_TYPES.contains(contentType)) {
+        throw new IllegalStateException(
+            "Object storage returned unsupported content type for component image");
+      }
+      return new ComponentImageContent(response.readAllBytes(), contentType);
+    } catch (Exception exception) {
+      throw new ExternalStorageException(
+          exception, "Failed to read component image from external storage");
+    }
+  }
+
+  @Override
+  public void delete(String objectKey) {
+    try {
+      minioClient.removeObject(
+          RemoveObjectArgs.builder().bucket(properties.bucket()).object(objectKey).build());
+    } catch (Exception exception) {
+      throw new ExternalStorageException(
+          exception, "Failed to remove component image from external storage");
+    }
+  }
+
+  private void ensureBucket() throws Exception {
+    if (bucketReady) {
+      return;
+    }
+
+    synchronized (this) {
+      if (bucketReady) {
+        return;
+      }
+      BucketExistsArgs bucketExistsArgs =
+          BucketExistsArgs.builder().bucket(properties.bucket()).build();
+      if (!minioClient.bucketExists(bucketExistsArgs)) {
         try {
-            ensureBucket();
-            minioClient.putObject(
-                    PutObjectArgs.builder()
-                            .bucket(properties.bucket())
-                            .object(objectKey)
-                            .stream(new ByteArrayInputStream(content), (long) content.length, -1L)
-                            .contentType(image.contentType())
-                            .build()
-            );
-            return new StoredImage(objectKey, publicUrl(objectKey));
+          minioClient.makeBucket(MakeBucketArgs.builder().bucket(properties.bucket()).build());
         } catch (Exception exception) {
-            throw new ExternalStorageException(
-                    exception,
-                    "Failed to upload component image to external storage"
-            );
+          if (!minioClient.bucketExists(bucketExistsArgs)) {
+            throw exception;
+          }
         }
+      }
+      bucketReady = true;
     }
+  }
 
-    @Override
-    public void delete(String objectKey) {
-        try {
-            minioClient.removeObject(
-                    RemoveObjectArgs.builder()
-                            .bucket(properties.bucket())
-                            .object(objectKey)
-                            .build()
-            );
-        } catch (Exception exception) {
-            throw new ExternalStorageException(
-                    exception,
-                    "Failed to remove component image from external storage"
-            );
-        }
-    }
-
-    private void ensureBucket() throws Exception {
-        if (bucketReady) {
-            return;
-        }
-
-        synchronized (this) {
-            if (bucketReady) {
-                return;
-            }
-            BucketExistsArgs bucketExistsArgs = BucketExistsArgs.builder()
-                    .bucket(properties.bucket())
-                    .build();
-            if (!minioClient.bucketExists(bucketExistsArgs)) {
-                try {
-                    minioClient.makeBucket(
-                            MakeBucketArgs.builder()
-                                    .bucket(properties.bucket())
-                                    .build()
-                    );
-                } catch (Exception exception) {
-                    if (!minioClient.bucketExists(bucketExistsArgs)) {
-                        throw exception;
-                    }
-                }
-            }
-            bucketReady = true;
-        }
-    }
-
-    private String publicUrl(String objectKey) {
-        String baseUrl = properties.publicUrl().endsWith("/")
-                ? properties.publicUrl().substring(0, properties.publicUrl().length() - 1)
-                : properties.publicUrl();
-        return "%s/%s/%s".formatted(baseUrl, properties.bucket(), objectKey);
-    }
-
-    private String extensionFor(String contentType) {
-        return switch (contentType) {
-            case "image/jpeg" -> "jpg";
-            case "image/png" -> "png";
-            case "image/webp" -> "webp";
-            default -> throw new UnsupportedImageFormatException(
-                    "Only JPEG, PNG, and WebP images are supported"
-            );
-        };
-    }
+  private String extensionFor(String contentType) {
+    return switch (contentType) {
+      case "image/jpeg" -> "jpg";
+      case "image/png" -> "png";
+      case "image/webp" -> "webp";
+      default ->
+          throw new UnsupportedImageFormatException(
+              "Only JPEG, PNG, and WebP images are supported");
+    };
+  }
 }

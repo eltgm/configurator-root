@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ develop, master ]
+    branches: [develop, master]
   pull_request:
-    branches: [ develop, master ]
+    branches: [develop, master]
   workflow_dispatch:
 
 permissions:
@@ -15,6 +15,108 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  delivery-macos-contract:
+    name: macOS delivery scripts contract
+    runs-on: macos-14
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify macOS Bash lifecycle scripts
+        run: delivery/tests/macos-scripts-test.sh
+
+  delivery-windows-contract:
+    name: Windows delivery scripts contract
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify Windows PowerShell 5.1 lifecycle scripts
+        shell: powershell
+        run: .\delivery\tests\WindowsScripts.Tests.ps1
+
+  frontend-quality:
+    name: Frontend static and unit quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: configurator-web
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: configurator-web/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run frontend checks
+        run: npm run check
+
+      - name: Enforce frontend coverage
+        run: npm run test:coverage
+
+      - name: Upload frontend reports on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: frontend-quality-reports
+          path: |
+            configurator-web/coverage/
+            configurator-web/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  frontend-browser:
+    name: Frontend browser quality
+    needs: frontend-quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Firefox rejects root with GitHub's /github/home mount because it belongs to uid 1001.
+      HOME: /root
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
+      options: --ipc=host
+    defaults:
+      run:
+        working-directory: configurator-web
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run functional E2E matrix
+        run: npm run test:e2e
+
+      - name: Run accessibility gate
+        run: npm run test:accessibility
+
+      - name: Run visual regression gate
+        run: npm run test:visual:container
+
+      - name: Upload browser reports on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: frontend-browser-reports
+          path: |
+            configurator-web/playwright-report/
+            configurator-web/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
   build:
     name: Build and local contracts
     runs-on: ubuntu-latest
@@ -24,12 +126,12 @@ jobs:
       TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: /var/run/docker.sock
     steps:
       - name: Checkout repository
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - name: Set up Java 21
-        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: "21"
@@ -40,9 +142,31 @@ jobs:
       - name: Build and verify
         run: ./gradlew --no-daemon clean build -PspotlessRatchetFrom=origin/develop
 
+      - name: Verify delivery package contracts
+        run: |
+          delivery/tests/package-contract.sh
+          delivery/tests/macos-scripts-test.sh
+          delivery/tests/archive-contract.sh
+          delivery/tests/release-assets-contract.sh
+          delivery/tests/release-workflow-contract.sh
+
+      - name: Assemble reviewable delivery archives
+        run: scripts/release/build-delivery-packages.sh 0.0.0-ci.1
+
+      - name: Upload delivery archives
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: delivery-package-contract-assets
+          path: |
+            delivery-output/configurator-windows-v0.0.0-ci.1.zip
+            delivery-output/configurator-macos-v0.0.0-ci.1.tar.gz
+            delivery-output/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 3
+
       - name: Upload verification reports on failure
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: verification-reports
           path: |
@@ -58,10 +182,10 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repository
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Java 21
-        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: "21"
@@ -69,22 +193,51 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@4c125117fe7c5aed11272ec4213f602f012f89f2 # v5
 
+      - name: Set up Node.js 24
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: configurator-web/package-lock.json
+
+      - name: Install frontend delivery dependencies
+        working-directory: configurator-web
+        run: npm ci
+
+      - name: Install delivery browser
+        working-directory: configurator-web
+        run: npx playwright install --with-deps chromium
+
       - name: Build runtime JAR
         run: ./gradlew --no-daemon :configurator:bootJar
 
       - name: Start external environment
-        run: docker compose up -d --build
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 
       - name: Wait for API
-        run: curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors http://localhost:8080/v3/api-docs >/dev/null
+        run: curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors http://127.0.0.1:8080/api/v3/api-docs >/dev/null
 
       - name: Run external integration contracts
         run: ./gradlew --no-daemon :configurator-integration-tests:externalIntegrationTest
 
+      - name: Run production gateway browser smoke
+        working-directory: configurator-web
+        run: npm run test:delivery
+
+      - name: Tag backend image for delivery contract
+        run: docker tag "$(docker compose -f docker-compose.yml -f docker-compose.dev.yml images -q app)" configurator-app:delivery-contract
+
       - name: Print service logs on failure
         if: failure()
-        run: docker compose logs --no-color
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml logs --no-color
 
       - name: Stop external environment
         if: always()
-        run: docker compose down --volumes
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml down --volumes
+
+      - name: Run packaged lifecycle contract
+        if: success()
+        env:
+          CONFIGURATOR_TEST_APP_IMAGE: configurator-app:delivery-contract
+          CONFIGURATOR_TEST_GATEWAY_IMAGE: configurator-web:local
+        run: delivery/tests/docker-lifecycle-contract.sh

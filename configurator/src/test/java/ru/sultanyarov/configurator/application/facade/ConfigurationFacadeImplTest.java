@@ -6,7 +6,6 @@ import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -14,7 +13,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfigurationPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateConfigurationRequest;
-import ru.sultanyarov.configurator.api.inbounds.rest.dto.ModelConfiguration;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.SavedConfiguration;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateConfigurationRequest;
 import ru.sultanyarov.configurator.application.mapper.ConfigurationMapper;
 import ru.sultanyarov.configurator.application.service.ConfigurationService;
 import ru.sultanyarov.configurator.domain.model.Configuration;
@@ -29,15 +29,38 @@ class ConfigurationFacadeImplTest {
 
   @Test
   void shouldCreateAndMapConfiguration() {
-    CreateConfigurationRequest request = new CreateConfigurationRequest("Build", Set.of(1L));
+    CreateConfigurationRequest request = new CreateConfigurationRequest("Build", List.of(1L));
     ConfigurationDraft draft = new ConfigurationDraft("Build", null, List.of(1L));
     Configuration configuration = configuration(7L);
-    ModelConfiguration response = response(7L);
+    SavedConfiguration response = response(7L);
     when(configurationMapper.toDomain(request)).thenReturn(draft);
     when(configurationService.create(1L, draft)).thenReturn(configuration);
     when(configurationMapper.toDto(configuration)).thenReturn(response);
 
     assertThat(facade.create(1L, request)).isSameAs(response);
+  }
+
+  @Test
+  void shouldUpdateAndMapConfiguration() {
+    UpdateConfigurationRequest request = new UpdateConfigurationRequest("Updated", List.of(2L));
+    ConfigurationDraft draft = new ConfigurationDraft("Updated", null, List.of(2L));
+    Configuration configuration = configuration(7L);
+    SavedConfiguration response = response(7L);
+    when(configurationMapper.toDomain(request)).thenReturn(draft);
+    when(configurationService.update(7L, draft)).thenReturn(configuration);
+    when(configurationMapper.toDto(configuration)).thenReturn(response);
+
+    assertThat(facade.update(7L, request)).isSameAs(response);
+    verify(configurationMapper).toDomain(request);
+    verify(configurationService).update(7L, draft);
+    verify(configurationMapper).toDto(configuration);
+  }
+
+  @Test
+  void shouldDeleteConfiguration() {
+    facade.delete(7L);
+
+    verify(configurationService).delete(7L);
   }
 
   @Test
@@ -80,7 +103,7 @@ class ConfigurationFacadeImplTest {
         .build();
   }
 
-  private static ModelConfiguration response(Long id) {
-    return new ModelConfiguration(id, 1L, "Build", LocalDateTime.now(), List.of());
+  private static SavedConfiguration response(Long id) {
+    return new SavedConfiguration(id, 1L, "Build", LocalDateTime.now(), List.of());
   }
 }

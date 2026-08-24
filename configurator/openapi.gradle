@@ -1,7 +1,3 @@
-dependencies {
-    implementation "org.openapitools:jackson-databind-nullable:0.2.6"
-}
-
 openApiGenerate {
     validateSpec = true
     generatorName = 'spring'
@@ -15,6 +11,7 @@ openApiGenerate {
             skipDefaultInterface: "true",
             interfaceOnly       : "true",
             oas3                : "true",
+            openApiNullable     : "false",
             useSpringController : "true",
             useSpringfox        : "false",
             useTags             : "true",

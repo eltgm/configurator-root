@@ -2,6 +2,7 @@ package ru.sultanyarov.configurator.application.service;
 
 import static java.util.stream.Collectors.toMap;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import ru.sultanyarov.configurator.domain.model.AttributeDefinition;
 import ru.sultanyarov.configurator.domain.model.AttributeValue;
 import ru.sultanyarov.configurator.domain.model.Component;
 import ru.sultanyarov.configurator.domain.model.ComponentImage;
+import ru.sultanyarov.configurator.domain.model.ComponentImageContent;
 import ru.sultanyarov.configurator.domain.model.ComponentImageUpload;
 import ru.sultanyarov.configurator.domain.model.ComponentType;
 import ru.sultanyarov.configurator.domain.model.Domain;
@@ -145,6 +147,22 @@ public class ComponentServiceImpl implements ComponentService {
   }
 
   @Override
+  @Transactional
+  public Component restoreById(Long id) {
+    log.debug("restore component with id {}", id);
+    Component component = getById(id);
+    if (!Boolean.TRUE.equals(component.getArchived())) {
+      return component;
+    }
+
+    if (!componentRepository.restoreComponentById(id)) {
+      throw new BusinessException("Failed to restore component with id {}", id);
+    }
+    component.setArchived(false);
+    return component;
+  }
+
+  @Override
   public ComponentImage uploadImage(Long id, ComponentImageUpload image, Integer orderIndex) {
     log.debug("upload image for component with id {}", id);
     Component component = getById(id);
@@ -163,7 +181,7 @@ public class ComponentServiceImpl implements ComponentService {
           .createImage(
               ComponentImage.builder()
                   .componentId(id)
-                  .url(storedImage.url())
+                  .objectKey(storedImage.objectKey())
                   .orderIndex(resolvedOrderIndex)
                   .build())
           .orElseThrow(
@@ -181,6 +199,74 @@ public class ComponentServiceImpl implements ComponentService {
     log.debug("get images for component with id {}", id);
     Component component = getById(id);
     return component.getImages() == null ? List.of() : List.copyOf(component.getImages());
+  }
+
+  @Override
+  public ComponentImageContent getImageContent(Long id) {
+    log.debug("get content for component image with id {}", id);
+    ComponentImage image =
+        componentRepository
+            .getImageById(id)
+            .orElseThrow(() -> new NotFoundException("Component image with id {} not found", id));
+    return componentImageStorage.read(image.objectKey());
+  }
+
+  @Override
+  @Transactional
+  public void deleteImage(Long id) {
+    log.debug("delete component image with id {}", id);
+    ComponentImage image =
+        componentRepository
+            .getImageById(id)
+            .orElseThrow(() -> new NotFoundException("Component image with id {} not found", id));
+    Component component = getById(image.componentId());
+    if (Boolean.TRUE.equals(component.getArchived())) {
+      throw new ComponentArchivedException(
+          "Cannot delete image from archived component with id {}", component.getId());
+    }
+
+    componentImageStorage.delete(image.objectKey());
+    if (!componentRepository.deleteImageById(id)) {
+      throw new BusinessException("Failed to delete component image metadata with id {}", id);
+    }
+  }
+
+  @Override
+  @Transactional
+  public List<ComponentImage> reorderImages(Long id, List<Long> orderedImageIds) {
+    log.debug("replace image order for component with id {}", id);
+    Component component = getById(id);
+    if (Boolean.TRUE.equals(component.getArchived())) {
+      throw new ComponentArchivedException(
+          "Cannot reorder images for archived component with id {}", id);
+    }
+
+    List<ComponentImage> existingImages =
+        component.getImages() == null ? List.of() : component.getImages();
+    componentImageValidator.validateOrder(existingImages, orderedImageIds);
+    if (orderedImageIds.isEmpty()) {
+      return List.of();
+    }
+
+    int updatedRows = componentRepository.updateImageOrder(id, orderedImageIds);
+    if (updatedRows != orderedImageIds.size()) {
+      throw new BusinessException("Failed to replace image order for component with id {}", id);
+    }
+
+    Map<Long, ComponentImage> imagesById =
+        existingImages.stream().collect(toMap(ComponentImage::id, image -> image));
+    List<ComponentImage> reorderedImages = new ArrayList<>(orderedImageIds.size());
+    for (int orderIndex = 0; orderIndex < orderedImageIds.size(); orderIndex++) {
+      ComponentImage image = imagesById.get(orderedImageIds.get(orderIndex));
+      reorderedImages.add(
+          ComponentImage.builder()
+              .id(image.id())
+              .componentId(image.componentId())
+              .objectKey(image.objectKey())
+              .orderIndex(orderIndex)
+              .build());
+    }
+    return List.copyOf(reorderedImages);
   }
 
   private void compensateStoredImage(StoredImage storedImage, RuntimeException originalException) {
@@ -206,7 +292,12 @@ public class ComponentServiceImpl implements ComponentService {
 
   @Override
   public Page<Component> getByPageByDomainId(
-      Long domainId, Long componentTypeId, String name, Integer page, Integer size) {
+      Long domainId,
+      Long componentTypeId,
+      String name,
+      Boolean archived,
+      Integer page,
+      Integer size) {
     log.debug("get component by domain id {}, component type id {}", domainId, componentTypeId);
     Domain domain = domainService.getById(domainId);
     validateComponentType(componentTypeId, domain);
@@ -214,8 +305,8 @@ public class ComponentServiceImpl implements ComponentService {
     int resolvedSize = size == null ? DEFAULT_PAGE_SIZE : size;
     validatePagination(resolvedPage, resolvedSize);
 
-    return componentRepository.findPageByDomainIdComponentTypeIdName(
-        domainId, componentTypeId, name, resolvedPage, resolvedSize);
+    return componentRepository.findPageByDomainIdComponentTypeIdNameArchived(
+        domainId, componentTypeId, name, archived, resolvedPage, resolvedSize);
   }
 
   private static void validatePagination(int page, int size) {

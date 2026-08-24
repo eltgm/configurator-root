@@ -9,6 +9,8 @@
 
 - `configurator` — Spring Boot runtime;
 - `configurator-integration-tests` — единые local/external integration contracts;
+- `configurator-web` — независимый React/Vite frontend;
+- `delivery` — image-only Windows/macOS пользовательские пакеты и lifecycle contracts;
 - `specs/configurator-api.yaml` — source of truth REST API.
 
 Реализованные области: домены, типы компонентов, атрибуты, компоненты, изображения в MinIO, ручная и автоматическая
@@ -18,8 +20,9 @@
 
 OpenAPI содержит `POST /auth/register`, `POST /auth/login` и Bearer JWT scheme, но runtime-аутентификация и авторизация
 не реализованы. `TemporaryCurrentUserProvider` возвращает системного пользователя `-1`; соответствующая запись создаётся
-миграцией `V5`. Не описывать текущую версию как production-ready и не считать OpenAPI security declaration фактической
-защитой endpoint'ов.
+миграцией `V5`. `v1.0.0` считается production-ready только в trusted-local Windows/macOS поставке с loopback gateway;
+OpenAPI security declaration не считать фактической защитой endpoint'ов и не расширять этот статус на LAN/public/server
+deployment.
 
 ## 2. Стек
 
@@ -32,6 +35,14 @@ OpenAPI содержит `POST /auth/register`, `POST /auth/login` и Bearer JWT
 - JUnit 5, Spock, ArchUnit, Testcontainers, MockMvc, RestAssured;
 - Spotless/Google Java Format;
 - JaCoCo с minimum line coverage `0.90` после исключения generated/domain boilerplate.
+
+Frontend:
+
+- Node.js 24 LTS, npm 11;
+- React 19.2, TypeScript 6.0 strict, Vite 8.2;
+- React Router 7.18, Mantine 9.5, TanStack Query 5, React Hook Form 7, Zod 4, i18next/react-i18next;
+- ESLint flat config, Prettier, Stylelint;
+- Vitest, Testing Library, MSW, Playwright.
 
 ## 3. Архитектурный инвариант
 
@@ -81,6 +92,27 @@ Generated packages:
 - `ru.sultanyarov.configurator.api.inbounds.rest`;
 - `ru.sultanyarov.configurator.api.inbounds.rest.dto`.
 
+Frontend API client генерируется из `specs/configurator-api.yaml` командой `npm run api:generate` в
+`configurator-web/src/shared/api/generated`; ручные дубликаты transport DTO и правки generated client запрещены.
+Прикладной frontend импортирует SDK и типы только через `configurator-web/src/shared/api`. Изменение OpenAPI всегда
+сначала вносится в спецификацию, затем отражается и в backend, и во frontend client; `npm run api:check` проверяет
+отсутствие drift.
+
+Глобальные frontend providers находятся в `configurator-web/src/app/providers`, route objects — в `src/app/router`,
+AppShell и единая desktop/mobile navigation model — в `src/app/layout`. Предметные страницы не создают собственные
+Router/Mantine/i18next providers. Пользовательские строки shell и общих страниц должны находиться в translation
+resources, а прикладная тема — использовать Mantine tokens вместо hardcoded light-only цветов.
+
+Server state хранится через общий TanStack Query provider; предметные страницы не дублируют API-данные в глобальных
+context/store. Ошибки generated client нормализуются через `src/shared/api`, а loading/empty/error состояния собираются
+из `src/shared/ui`. Мутации автоматически не повторяются; success-уведомление вызывается предметным сценарием явно.
+
+Предметная frontend-логика группируется в `src/features/<feature>/{api,model,ui}`. Список областей хранится только в
+TanStack Query, а `DomainProvider` предоставляет выбранный ID и производную текущую область. Последний корректный ID
+сохраняется в `localStorage`, но не добавляется в URL. Query keys всех последующих domain-dependent features обязаны
+включать `domainId`, чтобы данные разных областей не смешивались. Бизнес-формы используют React Hook Form + Zod и
+привязывают нормализованные backend field details к соответствующим полям.
+
 ### База данных
 
 1. Добавить новую versioned migration в `configurator/src/main/resources/db/migration`.
@@ -110,15 +142,38 @@ Spring Boot работает in-process, PostgreSQL поднимается Testc
 
 ```bash
 ./gradlew :configurator:bootJar
-docker compose up -d --build
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ./gradlew :configurator-integration-tests:externalIntegrationTest
 ```
 
-External transport использует RestAssured, а setup — PostgreSQL SQL fixtures. Параметры: `test.baseUrl`, `test.dbUrl`,
-`test.dbUser`, `test.dbPassword`.
+External transport использует RestAssured через gateway (`test.baseUrl` по умолчанию
+`http://127.0.0.1:8080/api`), а setup — PostgreSQL SQL fixtures через loopback development port. Gateway delivery
+использует `test.gatewayUrl`; остальные параметры: `test.dbUrl`, `test.dbUser`, `test.dbPassword`.
 
 Local и external сценарии должны оставаться единым контрактом. Нельзя дублировать одинаковый кейс с разной логикой.
 Общие deterministic fixtures находятся в `configurator-integration-tests/src/test/resources/sql`.
+
+### Frontend
+
+```bash
+cd configurator-web
+npm ci
+npm run api:check
+npm run check
+npm run test:coverage
+npm run test:e2e
+npm run test:accessibility
+npm run test:visual
+npm run test:delivery
+```
+
+`npm run check` объединяет format check, ESLint, Stylelint, unit tests, TypeScript typecheck и production build. E2E
+и accessibility запускаются отдельно после однократного `npx playwright install`; browser binaries не скачиваются
+автоматически при `npm ci`. Visual regression выполняется только в pinned Docker image; baselines обновляются через
+`npm run test:visual:update` и требуют review. Полный workflow описан в `docs/testing/FRONTEND_TESTING.md`.
+
+`npm run test:delivery` выполняется после запуска полного Compose, не использует HTTP mocks и проверяет production
+gateway, SPA deep links и реальный `/api` boundary.
 
 ### Definition of Done
 
@@ -132,13 +187,36 @@ Local и external сценарии должны оставаться едины�
 Если внешний контур недоступен, явно указать непроверенный статус. Не выдавать тесты за выполненные без фактического
 запуска.
 
+Для изменения только frontend toolchain/UI обязательны `npm ci` и `npm run check`; backend и external integration
+проверяются дополнительно, если меняются OpenAPI, backend, Docker delivery или общий runtime-контракт.
+
+Для изменений `delivery/**`, Compose/gateway runtime или package builder обязательны:
+
+```bash
+delivery/tests/package-contract.sh
+delivery/tests/macos-scripts-test.sh
+delivery/tests/archive-contract.sh
+delivery/tests/release-assets-contract.sh
+delivery/tests/release-workflow-contract.sh
+delivery/tests/docker-lifecycle-contract.sh
+```
+
+Windows dispatcher остаётся совместимым с Windows PowerShell 5.1/CRLF/UTF-8 BOM; macOS dispatcher — со штатным Bash
+3.2/LF. Backup format v1, stable Compose project, stable channel и строгая остановка app/gateway после failed Update
+или Restore — публичные delivery contracts. Release contract дополнительно фиксирует public GHCR app/web images,
+`linux/amd64` + `linux/arm64`, exact/sha/stable tags без `latest`, `IMAGE_DIGESTS`, unified `SHA256SUMS`, BuildKit
+SBOM/provenance, GitHub OIDC attestations и draft-only publication. Tag/release workflow из feature branch не запускать.
+
 ## 6. Локальное окружение
 
-`docker-compose.yml` поднимает:
+`docker-compose.yml` поднимает production-like topology и публикует только gateway — `127.0.0.1:8080`. Backend,
+PostgreSQL 17 и MinIO остаются во внутренней Docker network.
 
-- PostgreSQL 17 — `localhost:5432`;
-- MinIO — `localhost:9000`, console `localhost:9001`;
-- приложение — `localhost:8080`.
+`docker-compose.dev.yml` добавляет loopback-only developer ports:
+
+- backend — `127.0.0.1:8081`;
+- PostgreSQL — `127.0.0.1:5432`;
+- MinIO — `127.0.0.1:9000`, console `127.0.0.1:9001`.
 
 Локальные credentials из Compose нельзя использовать в production. Host-specific Docker socket paths не коммитить;
 задавать их локально через environment/IDE или локально изменённый `testcontainers.properties`.
@@ -147,7 +225,13 @@ Local и external сценарии должны оставаться едины�
 
 - `DB_URL`, `DB_USER`, `DB_PASSWORD`;
 - `IMAGE_STORAGE_ENDPOINT`, `IMAGE_STORAGE_ACCESS_KEY`, `IMAGE_STORAGE_SECRET_KEY`;
-- `IMAGE_STORAGE_BUCKET`, `IMAGE_STORAGE_PUBLIC_URL`.
+- `IMAGE_STORAGE_BUCKET`.
+
+Frontend dev server запускается из `configurator-web` командой `npm run dev` на `http://127.0.0.1:5173`. Запросы
+`/api/*` проксируются на `http://127.0.0.1:8080/*` с удалением префикса `/api`.
+
+При запуске backend из IDE поднимать только `postgres` и `minio` с development override; gateway не запускать, чтобы
+не конфликтовать с backend на 8080. Host wildcards, credentials и Docker socket paths не коммитить.
 
 ## 7. Git и релизы
 
@@ -173,10 +257,14 @@ CON<версия>-<номер> <English description in past tense>
 ### Версии и release automation
 
 - Semantic Versioning, tag `vX.Y.Z`;
-- до реализации authentication/authorization — только `0.x`;
+- `v1.0.0` и последующие стабильные версии относятся только к trusted-local Windows/macOS product contract;
 - default Gradle version может быть `-SNAPSHOT`, release workflow передаёт `-PreleaseVersion=X.Y.Z`;
 - тег ставится только на commit, достижимый из `master`;
-- `.github/workflows/release.yml` создаёт draft release; публикация draft — явное действие владельца;
+- tag должен быть annotated, а соответствующая версия — присутствовать в `CHANGELOG.md`;
+- `.github/workflows/release.yml` публикует public multi-platform app/gateway images, проверяет anonymous pull,
+  аттестует images/assets и создаёт или обновляет draft release;
+- exact `X.Y.Z` и commit image tags immutable по policy, `stable` mutable, `latest` запрещён;
+- GHCR visibility и clean-machine Windows/macOS smoke проверяет владелец; публикация draft — явное действие владельца;
 - release notes и `CHANGELOG.md` должны соответствовать фактически проверенному функционалу.
 
 ## 8. GitHub repository hygiene

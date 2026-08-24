@@ -16,7 +16,7 @@ import spock.lang.Specification
 abstract class BaseExternalIntegrationSpec extends Specification implements ApiTestSupport {
 
     @Shared
-    String baseUrl = System.getProperty("test.baseUrl", "http://localhost:8080")
+    String baseUrl = ExternalTestEnvironment.apiBaseUrl()
 
     @Shared
     String dbUrl = System.getProperty("test.dbUrl", "jdbc:postgresql://localhost:5432/configurator")

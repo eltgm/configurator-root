@@ -1,8 +1,8 @@
-openapi: 3.1.0
+openapi: 3.0.3
 info:
   title: Configurator Backend API
   version: 1.0.0
-  description: API спецификация для MVP приложения Configurator
+  description: API спецификация локального приложения Configurator
 
 servers:
   - url: http://localhost:8080
@@ -29,16 +29,58 @@ components:
           type: integer
         error:
           type: string
+        code:
+          $ref: '#/components/schemas/ApiErrorCode'
         message:
           type: string
         path:
           type: string
+        details:
+          type: array
+          description: Structured error details; empty when the error has no additional details
+          items:
+            $ref: '#/components/schemas/ApiErrorDetail'
       required:
         - timestamp
         - status
         - error
+        - code
         - message
         - path
+        - details
+
+    ApiErrorCode:
+      type: string
+      description: Stable machine-readable error category
+      enum:
+        - BUSINESS_ERROR
+        - INTERNAL_ERROR
+        - NOT_FOUND
+        - ENTITY_ALREADY_EXISTS
+        - ENTITY_HAS_RELATED_ENTITIES
+        - COMPONENT_ARCHIVED
+        - CONFIGURATION_CONFLICT
+        - VALIDATION_ERROR
+        - IMAGE_TOO_LARGE
+        - UNSUPPORTED_IMAGE_FORMAT
+        - EXTERNAL_STORAGE_UNAVAILABLE
+
+    ApiErrorDetail:
+      type: object
+      properties:
+        field:
+          type: string
+          nullable: true
+          description: Request field or parameter path; absent for object-level errors
+        code:
+          type: string
+          description: Stable detail or validation constraint code in UPPER_SNAKE_CASE
+        message:
+          type: string
+          description: Human-readable detail without rejected values or internal diagnostics
+      required:
+        - code
+        - message
 
     ### Pagination ###
     DomainPage:
@@ -83,7 +125,7 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/Configuration'
+            $ref: '#/components/schemas/SavedConfiguration'
         page:
           type: integer
           minimum: 0
@@ -340,12 +382,28 @@ components:
           format: int64
         url:
           type: string
+          description: Relative backend URL for retrieving the image content
+          example: /component-images/42/content
         orderIndex:
           type: integer
           nullable: true
       required:
         - id
         - url
+
+    ReorderComponentImagesRequest:
+      type: object
+      description: Full ordered set of image identifiers currently attached to the component
+      properties:
+        imageIds:
+          type: array
+          description: Image identifiers in the desired display order; an empty array is valid for an empty gallery
+          items:
+            type: integer
+            format: int64
+            minimum: 1
+      required:
+        - imageIds
 
     ### COMPONENT ###
     Component:
@@ -983,7 +1041,7 @@ components:
         - componentTypeName
         - archived
 
-    Configuration:
+    SavedConfiguration:
       type: object
       description: |
         Saved user configuration. Components contain their current catalog state and are ordered
@@ -1034,11 +1092,43 @@ components:
           type: array
           minItems: 1
           maxItems: 50
-          uniqueItems: true
           description: |
             Unique active components from the path domain. At most one component of each type is
             allowed. Every pair must be directly compatible through a manual link or an enabled
             automatic attribute rule. Transitive reachability does not validate a configuration.
+          items:
+            type: integer
+            format: int64
+            minimum: 1
+      required:
+        - name
+        - componentIds
+
+    UpdateConfigurationRequest:
+      type: object
+      description: |
+        Complete replacement of the mutable configuration data. Domain, owner and creation time
+        are preserved by the backend and cannot be changed by this request.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Name is trimmed by the backend and must remain non-blank
+        description:
+          type: string
+          nullable: true
+          maxLength: 4000
+          description: Blank description is normalized to null
+        componentIds:
+          type: array
+          minItems: 1
+          maxItems: 50
+          description: |
+            Complete replacement set of unique active components from the configuration domain.
+            At most one component of each type is allowed. Every pair must be directly compatible
+            through a manual link or an enabled automatic attribute rule. An archived component is
+            rejected even when it already belongs to the saved configuration.
           items:
             type: integer
             format: int64
@@ -1059,7 +1149,7 @@ components:
           type: string
           format: date-time
         configuration:
-          $ref: '#/components/schemas/Configuration'
+          $ref: '#/components/schemas/SavedConfiguration'
       required:
         - schemaVersion
         - exportedAt
@@ -1075,6 +1165,7 @@ paths:
     post:
       tags: [ Auth ]
       summary: Register user
+      operationId: postAuthRegister
       security: [ ]   # публичный эндпоинт
       requestBody:
         required: true
@@ -1106,6 +1197,7 @@ paths:
     post:
       tags: [ Auth ]
       summary: Login user
+      operationId: postAuthLogin
       security: [ ]
       requestBody:
         required: true
@@ -1141,6 +1233,7 @@ paths:
     get:
       tags: [ Domains ]
       summary: List domains (paged)
+      operationId: getDomains
       parameters:
         - name: page
           in: query
@@ -1166,6 +1259,7 @@ paths:
     post:
       tags: [ Domains ]
       summary: Create domain
+      operationId: postDomains
       requestBody:
         required: true
         content:
@@ -1192,10 +1286,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /domains/demo:
+    post:
+      tags: [ Domains ]
+      summary: Create the complete demo PC domain
+      operationId: postDomainsDemo
+      description: |
+        Atomically creates the deterministic demo catalog, compatibility data and saved
+        configuration. Repeated creation returns a domain-name conflict.
+      responses:
+        '201':
+          description: Demo domain created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Domain'
+        '409':
+          description: Demo domain already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /domains/{id}:
     get:
       tags: [ Domains ]
       summary: Get domain
+      operationId: getDomainsById
       parameters:
         - name: id
           in: path
@@ -1220,6 +1337,7 @@ paths:
     put:
       tags: [ Domains ]
       summary: Update domain
+      operationId: putDomainsById
       parameters:
         - name: id
           in: path
@@ -1256,6 +1374,7 @@ paths:
     delete:
       tags: [ Domains ]
       summary: Delete domain
+      operationId: deleteDomainsById
       parameters:
         - name: id
           in: path
@@ -1287,6 +1406,7 @@ paths:
     get:
       tags: [ Component Types ]
       summary: List component types of a domain
+      operationId: getDomainsByIdComponentTypes
       parameters:
         - name: id
           in: path
@@ -1313,6 +1433,7 @@ paths:
     post:
       tags: [ Component Types ]
       summary: Create component type in domain
+      operationId: postDomainsByIdComponentTypes
       parameters:
         - name: id
           in: path
@@ -1356,6 +1477,7 @@ paths:
     get:
       tags: [ Component Types ]
       summary: Get component type
+      operationId: getComponentTypesById
       parameters:
         - name: id
           in: path
@@ -1380,6 +1502,7 @@ paths:
     put:
       tags: [ Component Types ]
       summary: Update component type
+      operationId: putComponentTypesById
       parameters:
         - name: id
           in: path
@@ -1416,6 +1539,7 @@ paths:
     delete:
       tags: [ Component Types ]
       summary: Delete component type
+      operationId: deleteComponentTypesById
       parameters:
         - name: id
           in: path
@@ -1441,6 +1565,7 @@ paths:
     get:
       tags: [ Attributes ]
       summary: List attribute definitions of a component type
+      operationId: getComponentTypesByIdAttributes
       parameters:
         - name: id
           in: path
@@ -1467,6 +1592,7 @@ paths:
     post:
       tags: [ Attributes ]
       summary: Create attribute definition for a component type
+      operationId: postComponentTypesByIdAttributes
       parameters:
         - name: id
           in: path
@@ -1510,6 +1636,7 @@ paths:
     put:
       tags: [ Attributes ]
       summary: Update attribute definition
+      operationId: putAttributesById
       parameters:
         - name: id
           in: path
@@ -1551,6 +1678,7 @@ paths:
     get:
       tags: [ Components ]
       summary: List components of domain (paged)
+      operationId: getDomainsByDomainIdComponents
       parameters:
         - name: domainId
           in: path
@@ -1567,6 +1695,13 @@ paths:
           in: query
           schema:
             type: string
+        - name: archived
+          in: query
+          description: |
+            Optional archive filter. true returns only archived components, false returns only active
+            components, and an omitted parameter preserves the existing unfiltered result.
+          schema:
+            type: boolean
         - name: page
           in: query
           schema:
@@ -1598,6 +1733,7 @@ paths:
     post:
       tags: [ Components ]
       summary: Create component
+      operationId: postComponents
       requestBody:
         required: true
         content:
@@ -1634,6 +1770,7 @@ paths:
     get:
       tags: [ Components ]
       summary: Get component details
+      operationId: getComponentsById
       parameters:
         - name: id
           in: path
@@ -1658,6 +1795,7 @@ paths:
     put:
       tags: [ Components ]
       summary: Update component
+      operationId: putComponentsById
       description: Fully replaces editable component fields and attribute values. Component type cannot be changed.
       parameters:
         - name: id
@@ -1702,6 +1840,7 @@ paths:
     delete:
       tags: [ Components ]
       summary: Archive component
+      operationId: deleteComponentsById
       description: Archives a component without deleting its attributes, images, compatibility links, or configuration references.
       parameters:
         - name: id
@@ -1727,14 +1866,165 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /components/{id}/restore:
+    post:
+      tags: [ Components ]
+      summary: Restore archived component
+      operationId: postComponentsByIdRestore
+      description: |
+        Idempotently returns a component to the active catalog. An already active component is
+        returned unchanged. Attributes, images, compatibility links, and configuration references
+        are preserved.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '200':
+          description: Component is active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Component'
+        '400':
+          description: Invalid component identifier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Component not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   ###################################
   # COMPONENT IMAGES
   ###################################
+
+  /component-images/{id}:
+    delete:
+      tags: [ Component Images ]
+      summary: Delete component image
+      operationId: deleteComponentImagesById
+      description: |
+        Permanently deletes an image attached to an active component. The object is removed from
+        external storage before its metadata is deleted. If object storage is unavailable, metadata
+        remains unchanged so deletion can be retried. Images of archived components cannot be deleted.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '204':
+          description: Component image deleted
+        '400':
+          description: Invalid component image identifier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Component image not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Parent component is archived
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: External object storage is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /component-images/{id}/content:
+    get:
+      tags: [ Component Images ]
+      summary: Get component image content
+      operationId: getComponentImagesByIdContent
+      description: |
+        Returns the original JPEG, PNG, or WebP bytes through the backend so object storage can
+        remain private. Images attached to archived components remain available. The response is
+        never redirected to an object-storage URL.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '200':
+          description: Original image content
+          headers:
+            Cache-Control:
+              description: Private response that must be revalidated before reuse
+              schema:
+                type: string
+                example: private, no-cache
+            Content-Disposition:
+              description: Displays the image inline
+              schema:
+                type: string
+                example: inline
+            Content-Length:
+              description: Image size in bytes
+              schema:
+                type: integer
+                format: int64
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid component image identifier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Component image not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: External object storage is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /components/{id}/images:
     post:
       tags: [ Components ]
       summary: Upload image for component
+      operationId: postComponentsByIdImages
       description: |
         Uploads a JPEG, PNG, or WebP image up to 10 MiB to external object storage
         and attaches it to an active component. If orderIndex is omitted, the image
@@ -1813,6 +2103,7 @@ paths:
     get:
       tags: [ Components ]
       summary: Get images of component
+      operationId: getComponentsByIdImages
       description: |
         Returns all images of an existing component, including an archived component.
         An empty array is returned when the component has no images. Images are ordered
@@ -1847,6 +2138,57 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /components/{id}/images/order:
+    put:
+      tags: [ Components ]
+      summary: Replace component image order
+      operationId: putComponentsByIdImagesOrder
+      description: |
+        Atomically replaces the display order of all images attached to an active component.
+        The request must contain every current image identifier exactly once and no foreign image
+        identifiers. The first identifier receives orderIndex 0, the second 1, and so on.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReorderComponentImagesRequest'
+      responses:
+        '200':
+          description: Image order replaced
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ComponentImage'
+        '400':
+          description: Invalid identifier list or list does not exactly match current component images
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Component not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Component is archived
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   ###################################
   # COMPATIBILITY
   ###################################
@@ -1855,6 +2197,7 @@ paths:
     post:
       tags: [ Compatibility ]
       summary: Create compatibility link
+      operationId: postDomainsByIdCompatibility
       description: |
         Creates one undirected COMPATIBLE link between two active components of the
         specified domain. The component identifiers are normalized before persistence:
@@ -1904,6 +2247,7 @@ paths:
     get:
       tags: [ Compatibility ]
       summary: Get compatibility rule sets
+      operationId: getDomainsByIdCompatibilityRules
       description: Returns all automatic compatibility rule sets of the domain in identifier order.
       parameters:
         - name: id
@@ -1937,6 +2281,7 @@ paths:
     post:
       tags: [ Compatibility ]
       summary: Create compatibility rule set
+      operationId: postDomainsByIdCompatibilityRules
       description: |
         Creates an attribute-to-attribute automatic compatibility rule set. The component-type
         pair is stored in ascending identifier order. When the submitted pair is reversed,
@@ -1985,6 +2330,7 @@ paths:
     get:
       tags: [ Compatibility ]
       summary: Get compatibility rule set
+      operationId: getDomainsByIdCompatibilityRulesByRuleId
       description: Returns a rule set scoped to the specified domain.
       parameters:
         - name: id
@@ -2023,6 +2369,7 @@ paths:
     put:
       tags: [ Compatibility ]
       summary: Replace compatibility rule set
+      operationId: putDomainsByIdCompatibilityRulesByRuleId
       description: |
         Fully replaces rule-set metadata and conditions while preserving its identifier and
         creation timestamp. The rule set remains scoped to the specified domain.
@@ -2075,6 +2422,7 @@ paths:
     delete:
       tags: [ Compatibility ]
       summary: Delete compatibility rule set
+      operationId: deleteDomainsByIdCompatibilityRulesByRuleId
       description: Physically deletes a rule set and all its conditions within the specified domain.
       parameters:
         - name: id
@@ -2111,6 +2459,7 @@ paths:
     delete:
       tags: [ Compatibility ]
       summary: Delete compatibility link
+      operationId: deleteDomainsByIdCompatibilityByLinkId
       description: |
         Physically deletes a compatibility link scoped to the specified domain.
         A link that belongs to another domain is treated as not found.
@@ -2153,6 +2502,7 @@ paths:
     get:
       tags: [ Compatibility ]
       summary: Get compatibility graph of domain
+      operationId: getDomainsByIdCompatibilityGraph
       description: >
         Returns all non-archived components of the domain as nodes, including isolated components,
         and compatibility links whose endpoints are both present in the graph.
@@ -2193,6 +2543,7 @@ paths:
     get:
       tags: [ Configurator ]
       summary: Get compatible components for selected component
+      operationId: getDomainsByIdConfiguratorCompatible
       description: |
         Returns active domain components that are directly compatible with the selected active
         component through either a manual compatibility link or at least one enabled automatic
@@ -2247,6 +2598,7 @@ paths:
     post:
       tags: [ Configurator ]
       summary: Search compatibility independently for multiple selected components
+      operationId: postDomainsByIdConfiguratorCompatibleSearch
       description: |
         Calculates the same direct or transitive compatibility result as the single-component
         endpoint for every requested active base component. Results preserve componentIds order.
@@ -2290,6 +2642,7 @@ paths:
     post:
       tags: [ Configurator ]
       summary: Find components compatible with every selected component
+      operationId: postDomainsByIdConfiguratorCompatibleIntersection
       description: |
         Intersects the direct or transitive compatibility sets of all selected active base
         components. Selected base components are excluded from candidates. Each resulting
@@ -2338,6 +2691,7 @@ paths:
     get:
       tags: [ Configurations ]
       summary: List configurations of domain (paged)
+      operationId: getDomainsByIdConfigurations
       description: |
         Returns only configurations owned by the current user. Results are ordered by createdAt
         descending and then by id descending. An empty page is returned when no configurations exist.
@@ -2390,6 +2744,7 @@ paths:
     post:
       tags: [ Configurations ]
       summary: Create configuration
+      operationId: postDomainsByIdConfigurations
       description: |
         Atomically saves a non-empty, possibly incomplete build for the current user. Components
         must be active, belong to this domain, have distinct component types and be pairwise
@@ -2414,7 +2769,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Configuration'
+                $ref: '#/components/schemas/SavedConfiguration'
         '400':
           description: Invalid input, duplicate component ids or components from different domains
           content:
@@ -2444,6 +2799,7 @@ paths:
     get:
       tags: [ Configurations ]
       summary: Get configuration
+      operationId: getConfigurationsById
       description: |
         Returns a configuration owned by the current user. Archived components remain visible and
         are marked with archived=true. A missing or foreign-owned configuration is returned as 404.
@@ -2460,7 +2816,102 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Configuration'
+                $ref: '#/components/schemas/SavedConfiguration'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Configuration not found or not owned by the current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags: [ Configurations ]
+      summary: Fully update configuration
+      operationId: putConfigurationsById
+      description: |
+        Atomically replaces the name, description and complete component set of a configuration
+        owned by the current user. Domain, owner and creation time are preserved. The complete
+        resulting component set is validated using the same strict rules as configuration creation:
+        all components must be active, belong to the configuration domain, have distinct types and
+        be pairwise directly compatible. Transitive compatibility is not sufficient. A missing or
+        foreign-owned configuration is returned as 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateConfigurationRequest'
+      responses:
+        '200':
+          description: Updated configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedConfiguration'
+        '400':
+          description: Invalid input, duplicate component ids or components from different domains
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Configuration or component not found, or configuration is not owned by the user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Archived component, repeated component type or incompatible component set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags: [ Configurations ]
+      summary: Permanently delete configuration
+      operationId: deleteConfigurationsById
+      description: |
+        Permanently deletes a configuration owned by the current user. Component links are removed
+        together with the configuration, while catalog components and other configurations remain
+        unchanged. A missing, foreign-owned or already deleted configuration is returned as 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '204':
+          description: Configuration deleted
+        '400':
+          description: Invalid configuration identifier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Authentication required
           content:
@@ -2478,6 +2929,7 @@ paths:
     get:
       tags: [ Configurations ]
       summary: Export configuration as JSON
+      operationId: getConfigurationsByIdExportJson
       description: |
         Builds a versioned JSON document from the current catalog state. Archived components are
         exported with archived=true. The endpoint is available only to the configuration owner.

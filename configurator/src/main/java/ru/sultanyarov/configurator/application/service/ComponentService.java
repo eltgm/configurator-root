@@ -3,6 +3,7 @@ package ru.sultanyarov.configurator.application.service;
 import java.util.List;
 import ru.sultanyarov.configurator.domain.model.Component;
 import ru.sultanyarov.configurator.domain.model.ComponentImage;
+import ru.sultanyarov.configurator.domain.model.ComponentImageContent;
 import ru.sultanyarov.configurator.domain.model.ComponentImageUpload;
 import ru.sultanyarov.configurator.domain.model.Page;
 
@@ -49,6 +50,14 @@ public interface ComponentService {
   void archiveById(Long id);
 
   /**
+   * Idempotently restores a component to the active catalog.
+   *
+   * @param id the component identifier
+   * @return the active component with its related data
+   */
+  Component restoreById(Long id);
+
+  /**
    * Stores and attaches an image to an active component.
    *
    * @param id the component identifier
@@ -67,6 +76,32 @@ public interface ComponentService {
    *     not exist
    */
   List<ComponentImage> getImagesByComponentId(Long id);
+
+  /**
+   * Retrieves original image content by component image identifier.
+   *
+   * @param id the component image identifier
+   * @return original bytes and media type
+   * @throws ru.sultanyarov.configurator.domain.exception.NotFoundException if the image metadata
+   *     does not exist
+   */
+  ComponentImageContent getImageContent(Long id);
+
+  /**
+   * Permanently deletes an image from an active component and external storage.
+   *
+   * @param id the component image identifier
+   */
+  void deleteImage(Long id);
+
+  /**
+   * Replaces the complete image order for an active component.
+   *
+   * @param id the component identifier
+   * @param orderedImageIds complete image identifiers in target order
+   * @return images with contiguous target order indexes
+   */
+  List<ComponentImage> reorderImages(Long id, List<Long> orderedImageIds);
 
   /**
    * Retrieves a component by its unique identifier.
@@ -91,5 +126,10 @@ public interface ComponentService {
    *     does not belong to the specified domain
    */
   Page<Component> getByPageByDomainId(
-      Long domainId, Long componentTypeId, String name, Integer page, Integer size);
+      Long domainId,
+      Long componentTypeId,
+      String name,
+      Boolean archived,
+      Integer page,
+      Integer size);
 }

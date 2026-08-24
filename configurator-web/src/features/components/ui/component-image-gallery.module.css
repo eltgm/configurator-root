@@ -1,0 +1,39 @@
+.upload-controls {
+  flex-wrap: wrap;
+}
+
+.file-input {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+.image-card {
+  min-width: 0;
+}
+
+.preview-button {
+  display: block;
+  width: 100%;
+  border-radius: var(--mantine-radius-sm);
+}
+
+.preview-button:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 2px;
+}
+
+.image {
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.preview-image {
+  max-height: min(75vh, 50rem);
+  object-fit: contain;
+}
+
+@media (width <= 30em) {
+  .upload-controls > * {
+    width: 100%;
+  }
+}

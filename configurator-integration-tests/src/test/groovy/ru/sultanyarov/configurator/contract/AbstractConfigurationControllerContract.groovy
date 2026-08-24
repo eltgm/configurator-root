@@ -2,7 +2,7 @@ package ru.sultanyarov.configurator.contract
 
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfigurationExport
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfigurationPage
-import ru.sultanyarov.configurator.api.inbounds.rest.dto.ModelConfiguration
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.SavedConfiguration
 import spock.lang.Specification
 
 abstract class AbstractConfigurationControllerContract extends Specification implements ApiTestSupport {
@@ -16,7 +16,7 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
 
         then:
         result.status == 201
-        def body = objectMapper.readValue(result.body, ModelConfiguration)
+        def body = objectMapper.readValue(result.body, SavedConfiguration)
         body.id != null
         body.domainId == 1L
         body.name == "Manual build"
@@ -80,6 +80,153 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         expect:
         post("/domains/1/configurations", request("Empty", null, [])).status == 400
         post("/domains/1/configurations", request("   ", null, [1L])).status == 400
+        post("/domains/1/configurations", request("Duplicate", null, [1L, 1L])).status == 400
+    }
+
+    def "should fully update configuration and preserve immutable metadata"() {
+        given:
+        prepareData()
+        def original = createConfiguration("Initial", [1L, 3L])
+
+        when:
+        def result = put(
+                "/configurations/${original.id}",
+                request("  Updated build  ", "  Updated description  ", [1L, 2L])
+        )
+
+        then:
+        result.status == 200
+        def body = objectMapper.readValue(result.body, SavedConfiguration)
+        body.id == original.id
+        body.domainId == original.domainId
+        body.createdAt == original.createdAt
+        body.name == "Updated build"
+        body.description == "Updated description"
+        body.components*.id == [1L, 2L]
+
+        and: "the complete replacement is visible on a subsequent read"
+        def persisted = objectMapper.readValue(
+                get("/configurations/${original.id}").body,
+                SavedConfiguration
+        )
+        persisted.name == "Updated build"
+        persisted.components*.id == [1L, 2L]
+    }
+
+    def "should normalize blank description during configuration update"() {
+        given:
+        prepareData()
+        def original = createConfiguration("Initial", [1L, 3L])
+
+        when:
+        def result = put(
+                "/configurations/${original.id}",
+                request("Updated", "   ", [1L, 3L])
+        )
+
+        then:
+        result.status == 200
+        objectMapper.readValue(result.body, SavedConfiguration).description == null
+    }
+
+    def "should strictly reject archived component already present in configuration"() {
+        given:
+        prepareData()
+        def original = createConfiguration("Initial", [1L, 3L])
+        runSqlScripts("/sql/archive-configurator-component-3.sql")
+
+        when:
+        def result = put(
+                "/configurations/${original.id}",
+                request("Must not persist", null, [1L, 3L])
+        )
+
+        then:
+        result.status == 409
+
+        and: "validation failure leaves the original configuration unchanged"
+        def persisted = objectMapper.readValue(
+                get("/configurations/${original.id}").body,
+                SavedConfiguration
+        )
+        persisted.name == "Initial"
+        persisted.components*.id == [1L, 3L]
+        persisted.components.find { it.id == 3L }.archived
+    }
+
+    def "should reject invalid component sets without partially updating configuration"() {
+        given:
+        prepareData()
+        def original = createConfiguration("Initial", [1L, 3L])
+
+        expect:
+        put("/configurations/${original.id}", request("Foreign", null, [1L, 7L])).status == 400
+        put("/configurations/${original.id}", request("Missing", null, [1L, 999L])).status == 404
+        put("/configurations/${original.id}", request("Archived", null, [1L, 4L])).status == 409
+        put("/configurations/${original.id}", request("Same type", null, [2L, 3L])).status == 409
+        put("/configurations/${original.id}", request("Incompatible", null, [1L, 8L])).status == 409
+        put("/configurations/${original.id}", request("Empty", null, [])).status == 400
+        put("/configurations/${original.id}", request("   ", null, [1L])).status == 400
+        put("/configurations/${original.id}", request("Duplicate", null, [1L, 1L])).status == 400
+
+        and:
+        def persisted = objectMapper.readValue(
+                get("/configurations/${original.id}").body,
+                SavedConfiguration
+        )
+        persisted.name == "Initial"
+        persisted.components*.id == [1L, 3L]
+    }
+
+    def "should hide missing and foreign-owned configuration during update"() {
+        given:
+        prepareData()
+        runSqlScripts("/sql/insert-foreign-owned-configuration.sql")
+
+        expect:
+        put("/configurations/999", request("Missing", null, [1L])).status == 404
+        put("/configurations/900", request("Foreign", null, [1L])).status == 404
+        put("/configurations/0", request("Invalid", null, [1L])).status == 400
+    }
+
+    def "should permanently delete configuration without affecting catalog or other configurations"() {
+        given:
+        prepareData()
+        def deleted = createConfiguration("Deleted", [1L, 3L])
+        def retained = createConfiguration("Retained", [1L, 2L])
+
+        when:
+        def result = delete("/configurations/${deleted.id}")
+
+        then:
+        result.status == 204
+        result.body.isEmpty()
+
+        and:
+        get("/configurations/${deleted.id}").status == 404
+        get("/configurations/${deleted.id}/export/json").status == 404
+        get("/configurations/${retained.id}").status == 200
+        get("/components/1").status == 200
+        def page = objectMapper.readValue(
+                get("/domains/1/configurations").body,
+                ConfigurationPage
+        )
+        page.totalItems == 1
+        page.items*.id == [retained.id]
+    }
+
+    def "should return not found for repeated missing or foreign-owned configuration deletion"() {
+        given:
+        prepareData()
+        def configuration = createConfiguration("Deleted once", [1L, 3L])
+        runSqlScripts("/sql/insert-foreign-owned-configuration.sql")
+
+        expect:
+        delete("/configurations/${configuration.id}").status == 204
+        delete("/configurations/${configuration.id}").status == 404
+        delete("/configurations/999").status == 404
+        delete("/configurations/900").status == 404
+        delete("/configurations/0").status == 400
     }
 
     def "should return newest owned configurations with pagination"() {
@@ -112,7 +259,7 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
 
         then:
         result.status == 200
-        def body = objectMapper.readValue(result.body, ModelConfiguration)
+        def body = objectMapper.readValue(result.body, SavedConfiguration)
         body.components.find { it.id == 3L }.archived
     }
 
@@ -163,10 +310,10 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         runSqlScripts("/sql/clear-db.sql", "/sql/insert-configurator-test-data.sql")
     }
 
-    private ModelConfiguration createConfiguration(String name, List<Long> componentIds) {
+    private SavedConfiguration createConfiguration(String name, List<Long> componentIds) {
         def response = post("/domains/1/configurations", request(name, null, componentIds))
         assert response.status == 201
-        return objectMapper.readValue(response.body, ModelConfiguration)
+        return objectMapper.readValue(response.body, SavedConfiguration)
     }
 
     private static Map<String, ?> request(String name, String description, List<Long> componentIds) {

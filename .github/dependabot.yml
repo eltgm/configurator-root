@@ -1,5 +1,24 @@
 version: 2
 updates:
+  - package-ecosystem: npm
+    directory: /configurator-web
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:30"
+      timezone: Europe/Moscow
+    groups:
+      frontend-minor-and-patch:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    labels: ["dependencies", "npm"]
+    open-pull-requests-limit: 5
+
   - package-ecosystem: gradle
     directory: /
     target-branch: develop
@@ -9,9 +28,14 @@ updates:
       time: "07:00"
       timezone: Europe/Moscow
     groups:
-      gradle-dependencies:
-        patterns: [ "*" ]
-    labels: [ "dependencies", "gradle" ]
+      gradle-minor-and-patch:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    labels: ["dependencies", "gradle"]
     open-pull-requests-limit: 5
 
   - package-ecosystem: docker
@@ -22,7 +46,26 @@ updates:
       day: monday
       time: "07:30"
       timezone: Europe/Moscow
-    labels: [ "dependencies", "docker" ]
+    ignore:
+      - dependency-name: eclipse-temurin
+        update-types: ["version-update:semver-major"]
+    labels: ["dependencies", "docker"]
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: docker
+    directory: /configurator-web
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:45"
+      timezone: Europe/Moscow
+    ignore:
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
+      - dependency-name: nginxinc/nginx-unprivileged
+        update-types: ["version-update:semver-major"]
+    labels: ["dependencies", "docker", "frontend"]
     open-pull-requests-limit: 3
 
   - package-ecosystem: github-actions
@@ -35,6 +78,6 @@ updates:
       timezone: Europe/Moscow
     groups:
       github-actions:
-        patterns: [ "*" ]
-    labels: [ "dependencies", "github-actions" ]
+        patterns: ["*"]
+    labels: ["dependencies", "github-actions"]
     open-pull-requests-limit: 3

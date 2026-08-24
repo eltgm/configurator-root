@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import org.jetbrains.annotations.NotNull;
 import org.jooq.Converter;
 import org.jooq.exception.DataTypeException;
 
@@ -40,11 +41,14 @@ public class StringToListConverter implements Converter<String, Set<String>> {
   }
 
   @Override
+  @NotNull
   public Class<String> fromType() {
     return String.class;
   }
 
   @Override
+  @NotNull
+  @SuppressWarnings("unchecked") // Generic class literals do not exist; jOOQ only needs Set.class.
   public Class<Set<String>> toType() {
     return (Class<Set<String>>) (Class<?>) Set.class;
   }

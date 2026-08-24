@@ -94,7 +94,12 @@ class ComponentServiceImplTest {
   @Test
   void update_shouldReplaceEditableStateAndAttributesWhilePreservingImages() {
     ComponentImage image =
-        ComponentImage.builder().id(30L).componentId(7L).url("/image.jpg").orderIndex(1).build();
+        ComponentImage.builder()
+            .id(30L)
+            .componentId(7L)
+            .objectKey("components/7/image.jpg")
+            .orderIndex(1)
+            .build();
     Component existingComponent =
         Component.builder()
             .id(7L)
@@ -243,9 +248,19 @@ class ComponentServiceImplTest {
   @Test
   void getImagesByComponentId_shouldReturnImagesForArchivedComponent() {
     ComponentImage firstImage =
-        ComponentImage.builder().id(9L).componentId(7L).url("/first.png").orderIndex(0).build();
+        ComponentImage.builder()
+            .id(9L)
+            .componentId(7L)
+            .objectKey("components/7/first.png")
+            .orderIndex(0)
+            .build();
     ComponentImage secondImage =
-        ComponentImage.builder().id(10L).componentId(7L).url("/second.png").orderIndex(1).build();
+        ComponentImage.builder()
+            .id(10L)
+            .componentId(7L)
+            .objectKey("components/7/second.png")
+            .orderIndex(1)
+            .build();
     Component component =
         Component.builder().id(7L).archived(true).images(List.of(firstImage, secondImage)).build();
     when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
@@ -275,19 +290,192 @@ class ComponentServiceImplTest {
   }
 
   @Test
+  void getImageContent_shouldReadStoredObjectByImageId() {
+    ComponentImage image =
+        ComponentImage.builder()
+            .id(42L)
+            .componentId(7L)
+            .objectKey("components/7/image.webp")
+            .build();
+    ComponentImageContent content = new ComponentImageContent(new byte[] {1, 2, 3}, "image/webp");
+    when(componentRepository.getImageById(42L)).thenReturn(Optional.of(image));
+    when(componentImageStorage.read("components/7/image.webp")).thenReturn(content);
+
+    assertThat(componentService.getImageContent(42L)).isSameAs(content);
+    verify(componentRepository).getImageById(42L);
+    verify(componentImageStorage).read("components/7/image.webp");
+  }
+
+  @Test
+  void getImageContent_shouldThrowNotFoundExceptionBeforeStorageWhenImageDoesNotExist() {
+    when(componentRepository.getImageById(404L)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> componentService.getImageContent(404L))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessageContaining("404");
+
+    verifyNoInteractions(componentImageStorage);
+  }
+
+  @Test
+  void deleteImage_shouldDeleteStoredObjectBeforeMetadata() {
+    ComponentImage image = new ComponentImage(42L, 7L, "components/7/image.webp", 0);
+    Component component = Component.builder().id(7L).archived(false).images(List.of(image)).build();
+    when(componentRepository.getImageById(42L)).thenReturn(Optional.of(image));
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+    when(componentRepository.deleteImageById(42L)).thenReturn(true);
+
+    componentService.deleteImage(42L);
+
+    InOrder deletionOrder = inOrder(componentImageStorage, componentRepository);
+    deletionOrder.verify(componentImageStorage).delete("components/7/image.webp");
+    deletionOrder.verify(componentRepository).deleteImageById(42L);
+  }
+
+  @Test
+  void deleteImage_shouldThrowNotFoundBeforeStorageWhenImageDoesNotExist() {
+    when(componentRepository.getImageById(404L)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> componentService.deleteImage(404L))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessageContaining("404");
+
+    verifyNoInteractions(componentImageStorage);
+    verify(componentRepository, never()).deleteImageById(anyLong());
+  }
+
+  @Test
+  void deleteImage_shouldRejectArchivedComponentBeforeStorage() {
+    ComponentImage image = new ComponentImage(42L, 7L, "components/7/image.webp", 0);
+    Component component = Component.builder().id(7L).archived(true).images(List.of(image)).build();
+    when(componentRepository.getImageById(42L)).thenReturn(Optional.of(image));
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+
+    assertThatThrownBy(() -> componentService.deleteImage(42L))
+        .isInstanceOf(ComponentArchivedException.class)
+        .hasMessageContaining("7");
+
+    verifyNoInteractions(componentImageStorage);
+    verify(componentRepository, never()).deleteImageById(anyLong());
+  }
+
+  @Test
+  void deleteImage_shouldKeepMetadataWhenStorageDeletionFails() {
+    ComponentImage image = new ComponentImage(42L, 7L, "components/7/image.webp", 0);
+    Component component = Component.builder().id(7L).archived(false).images(List.of(image)).build();
+    ExternalStorageException storageException =
+        new ExternalStorageException(new IllegalStateException("offline"), "unavailable");
+    when(componentRepository.getImageById(42L)).thenReturn(Optional.of(image));
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+    doThrow(storageException).when(componentImageStorage).delete(image.objectKey());
+
+    assertThatThrownBy(() -> componentService.deleteImage(42L)).isSameAs(storageException);
+
+    verify(componentRepository, never()).deleteImageById(anyLong());
+  }
+
+  @Test
+  void deleteImage_shouldThrowBusinessExceptionWhenMetadataWasNotDeleted() {
+    ComponentImage image = new ComponentImage(42L, 7L, "components/7/image.webp", 0);
+    Component component = Component.builder().id(7L).archived(false).images(List.of(image)).build();
+    when(componentRepository.getImageById(42L)).thenReturn(Optional.of(image));
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+    when(componentRepository.deleteImageById(42L)).thenReturn(false);
+
+    assertThatThrownBy(() -> componentService.deleteImage(42L))
+        .isInstanceOf(BusinessException.class)
+        .hasMessageContaining("42");
+  }
+
+  @Test
+  void reorderImages_shouldPersistAndReturnContiguousTargetOrder() {
+    ComponentImage first = new ComponentImage(41L, 7L, "components/7/first.webp", 5);
+    ComponentImage second = new ComponentImage(42L, 7L, "components/7/second.webp", null);
+    Component component =
+        Component.builder().id(7L).archived(false).images(List.of(first, second)).build();
+    List<Long> targetOrder = List.of(42L, 41L);
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+    when(componentRepository.updateImageOrder(7L, targetOrder)).thenReturn(2);
+
+    List<ComponentImage> result = componentService.reorderImages(7L, targetOrder);
+
+    assertThat(result)
+        .extracting(ComponentImage::id, ComponentImage::orderIndex)
+        .containsExactly(
+            org.assertj.core.groups.Tuple.tuple(42L, 0),
+            org.assertj.core.groups.Tuple.tuple(41L, 1));
+    verify(componentImageValidator).validateOrder(component.getImages(), targetOrder);
+    verify(componentRepository).updateImageOrder(7L, targetOrder);
+  }
+
+  @Test
+  void reorderImages_shouldAcceptEmptyOrderForEmptyGalleryWithoutPersistenceCall() {
+    Component component = Component.builder().id(7L).archived(false).images(List.of()).build();
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+
+    assertThat(componentService.reorderImages(7L, List.of())).isEmpty();
+
+    verify(componentImageValidator).validateOrder(List.of(), List.of());
+    verify(componentRepository, never()).updateImageOrder(anyLong(), anyList());
+  }
+
+  @Test
+  void reorderImages_shouldRejectArchivedComponentBeforeValidation() {
+    Component component = Component.builder().id(7L).archived(true).images(List.of()).build();
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+
+    assertThatThrownBy(() -> componentService.reorderImages(7L, List.of()))
+        .isInstanceOf(ComponentArchivedException.class)
+        .hasMessageContaining("7");
+
+    verifyNoInteractions(componentImageValidator);
+    verify(componentRepository, never()).updateImageOrder(anyLong(), anyList());
+  }
+
+  @Test
+  void reorderImages_shouldNotPersistWhenValidationFails() {
+    ComponentImage image = new ComponentImage(41L, 7L, "components/7/first.webp", 0);
+    Component component = Component.builder().id(7L).archived(false).images(List.of(image)).build();
+    List<Long> invalidOrder = List.of(99L);
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+    doThrow(new ValidationException("invalid order"))
+        .when(componentImageValidator)
+        .validateOrder(component.getImages(), invalidOrder);
+
+    assertThatThrownBy(() -> componentService.reorderImages(7L, invalidOrder))
+        .isInstanceOf(ValidationException.class);
+
+    verify(componentRepository, never()).updateImageOrder(anyLong(), anyList());
+  }
+
+  @Test
+  void reorderImages_shouldThrowWhenRepositoryDidNotUpdateEveryImage() {
+    ComponentImage image = new ComponentImage(41L, 7L, "components/7/first.webp", 0);
+    Component component = Component.builder().id(7L).archived(false).images(List.of(image)).build();
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+    when(componentRepository.updateImageOrder(7L, List.of(41L))).thenReturn(0);
+
+    assertThatThrownBy(() -> componentService.reorderImages(7L, List.of(41L)))
+        .isInstanceOf(BusinessException.class)
+        .hasMessageContaining("7");
+  }
+
+  @Test
   void getByPageByDomainId_shouldDelegateSearchWithoutComponentTypeFilter() {
     Domain domain = Domain.builder().id(1L).componentTypes(List.of()).build();
     Page<Component> page = new Page<>(List.of(), 0, 10, 0);
 
     when(domainService.getById(1L)).thenReturn(domain);
-    when(componentRepository.findPageByDomainIdComponentTypeIdName(1L, null, "name", 0, 10))
+    when(componentRepository.findPageByDomainIdComponentTypeIdNameArchived(
+            1L, null, "name", true, 0, 10))
         .thenReturn(page);
 
-    Page<Component> result = componentService.getByPageByDomainId(1L, null, "name", 0, 10);
+    Page<Component> result = componentService.getByPageByDomainId(1L, null, "name", true, 0, 10);
 
     assertThat(result).isSameAs(page);
     verify(domainService).getById(1L);
-    verify(componentRepository).findPageByDomainIdComponentTypeIdName(1L, null, "name", 0, 10);
+    verify(componentRepository)
+        .findPageByDomainIdComponentTypeIdNameArchived(1L, null, "name", true, 0, 10);
   }
 
   @Test
@@ -296,11 +484,14 @@ class ComponentServiceImplTest {
     Page<Component> page = new Page<>(List.of(), 0, 10, 0);
 
     when(domainService.getById(1L)).thenReturn(domain);
-    when(componentRepository.findPageByDomainIdComponentTypeIdName(1L, null, null, 0, 10))
+    when(componentRepository.findPageByDomainIdComponentTypeIdNameArchived(
+            1L, null, null, null, 0, 10))
         .thenReturn(page);
 
-    assertThat(componentService.getByPageByDomainId(1L, null, null, null, null)).isSameAs(page);
-    verify(componentRepository).findPageByDomainIdComponentTypeIdName(1L, null, null, 0, 10);
+    assertThat(componentService.getByPageByDomainId(1L, null, null, null, null, null))
+        .isSameAs(page);
+    verify(componentRepository)
+        .findPageByDomainIdComponentTypeIdNameArchived(1L, null, null, null, 0, 10);
   }
 
   @Test
@@ -308,13 +499,13 @@ class ComponentServiceImplTest {
     Domain domain = Domain.builder().id(1L).componentTypes(List.of()).build();
     when(domainService.getById(1L)).thenReturn(domain);
 
-    assertThatThrownBy(() -> componentService.getByPageByDomainId(1L, null, null, -1, 10))
+    assertThatThrownBy(() -> componentService.getByPageByDomainId(1L, null, null, null, -1, 10))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Page index");
-    assertThatThrownBy(() -> componentService.getByPageByDomainId(1L, null, null, 0, 0))
+    assertThatThrownBy(() -> componentService.getByPageByDomainId(1L, null, null, null, 0, 0))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Page size");
-    assertThatThrownBy(() -> componentService.getByPageByDomainId(1L, null, null, 0, 101))
+    assertThatThrownBy(() -> componentService.getByPageByDomainId(1L, null, null, null, 0, 101))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Page size");
 
@@ -331,13 +522,15 @@ class ComponentServiceImplTest {
     Page<Component> page = new Page<>(List.of(), 1, 5, 0);
 
     when(domainService.getById(1L)).thenReturn(domain);
-    when(componentRepository.findPageByDomainIdComponentTypeIdName(1L, 2L, null, 1, 5))
+    when(componentRepository.findPageByDomainIdComponentTypeIdNameArchived(
+            1L, 2L, null, false, 1, 5))
         .thenReturn(page);
 
-    Page<Component> result = componentService.getByPageByDomainId(1L, 2L, null, 1, 5);
+    Page<Component> result = componentService.getByPageByDomainId(1L, 2L, null, false, 1, 5);
 
     assertThat(result).isSameAs(page);
-    verify(componentRepository).findPageByDomainIdComponentTypeIdName(1L, 2L, null, 1, 5);
+    verify(componentRepository)
+        .findPageByDomainIdComponentTypeIdNameArchived(1L, 2L, null, false, 1, 5);
   }
 
   @Test
@@ -350,7 +543,7 @@ class ComponentServiceImplTest {
 
     when(domainService.getById(1L)).thenReturn(domain);
 
-    assertThatThrownBy(() -> componentService.getByPageByDomainId(1L, 2L, null, 0, 10))
+    assertThatThrownBy(() -> componentService.getByPageByDomainId(1L, 2L, null, null, 0, 10))
         .isInstanceOf(ValidationException.class)
         .hasMessage("Тип компонента не принадлежит указанному домену");
 
@@ -413,20 +606,77 @@ class ComponentServiceImplTest {
   }
 
   @Test
+  void restoreById_shouldRestoreArchivedComponentAndPreserveRelatedData() {
+    AttributeValue attribute = AttributeValue.builder().id(11L).value("42").build();
+    ComponentImage image = new ComponentImage(21L, 7L, "components/7/image.png", 0);
+    Component component =
+        Component.builder()
+            .id(7L)
+            .archived(true)
+            .attributes(List.of(attribute))
+            .images(List.of(image))
+            .build();
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+    when(componentRepository.restoreComponentById(7L)).thenReturn(true);
+
+    Component result = componentService.restoreById(7L);
+
+    assertThat(result).isSameAs(component);
+    assertThat(result.getArchived()).isFalse();
+    assertThat(result.getAttributes()).containsExactly(attribute);
+    assertThat(result.getImages()).containsExactly(image);
+    verify(componentRepository).restoreComponentById(7L);
+  }
+
+  @Test
+  void restoreById_shouldBeIdempotentForActiveComponent() {
+    Component component = Component.builder().id(7L).archived(false).build();
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+
+    assertThat(componentService.restoreById(7L)).isSameAs(component);
+
+    verify(componentRepository, never()).restoreComponentById(anyLong());
+  }
+
+  @Test
+  void restoreById_shouldThrowNotFoundExceptionWhenComponentDoesNotExist() {
+    when(componentRepository.getById(7L)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> componentService.restoreById(7L))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessageContaining("7");
+
+    verify(componentRepository, never()).restoreComponentById(anyLong());
+  }
+
+  @Test
+  void restoreById_shouldThrowBusinessExceptionWhenRepositoryDidNotRestoreComponent() {
+    Component component = Component.builder().id(7L).archived(true).build();
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
+    when(componentRepository.restoreComponentById(7L)).thenReturn(false);
+
+    assertThatThrownBy(() -> componentService.restoreById(7L))
+        .isInstanceOf(BusinessException.class)
+        .hasMessageContaining("Failed to restore component");
+    assertThat(component.getArchived()).isTrue();
+  }
+
+  @Test
   void uploadImage_shouldStoreAndPersistImageWithNextOrderIndex() {
     Component component = Component.builder().id(7L).archived(false).build();
     ComponentImageUpload upload = new ComponentImageUpload(new byte[] {1, 2, 3}, "image/png");
-    StoredImage storedImage =
-        new StoredImage(
-            "components/7/image.png",
-            "http://storage/configurator-components/components/7/image.png");
+    StoredImage storedImage = new StoredImage("components/7/image.png");
     ComponentImage expectedMetadata =
-        ComponentImage.builder().componentId(7L).url(storedImage.url()).orderIndex(4).build();
+        ComponentImage.builder()
+            .componentId(7L)
+            .objectKey(storedImage.objectKey())
+            .orderIndex(4)
+            .build();
     ComponentImage createdImage =
         ComponentImage.builder()
             .id(12L)
             .componentId(7L)
-            .url(storedImage.url())
+            .objectKey(storedImage.objectKey())
             .orderIndex(4)
             .build();
 
@@ -448,7 +698,7 @@ class ComponentServiceImplTest {
   void uploadImage_shouldUseExplicitOrderIndex() {
     Component component = Component.builder().id(7L).archived(false).build();
     ComponentImageUpload upload = new ComponentImageUpload(new byte[] {1, 2, 3}, "image/png");
-    StoredImage storedImage = new StoredImage("components/7/image.png", "http://storage/image.png");
+    StoredImage storedImage = new StoredImage("components/7/image.png");
     ComponentImage createdImage =
         ComponentImage.builder().id(12L).componentId(7L).orderIndex(9).build();
 
@@ -462,7 +712,11 @@ class ComponentServiceImplTest {
     verify(componentRepository, never()).getNextImageOrderIndex(anyLong());
     verify(componentRepository)
         .createImage(
-            ComponentImage.builder().componentId(7L).url(storedImage.url()).orderIndex(9).build());
+            ComponentImage.builder()
+                .componentId(7L)
+                .objectKey(storedImage.objectKey())
+                .orderIndex(9)
+                .build());
   }
 
   @Test
@@ -499,7 +753,7 @@ class ComponentServiceImplTest {
   void uploadImage_shouldDeleteStoredObjectWhenMetadataPersistenceFails() {
     Component component = Component.builder().id(7L).archived(false).build();
     ComponentImageUpload upload = new ComponentImageUpload(new byte[] {1, 2, 3}, "image/png");
-    StoredImage storedImage = new StoredImage("components/7/image.png", "http://storage/image.png");
+    StoredImage storedImage = new StoredImage("components/7/image.png");
     when(componentRepository.getById(7L)).thenReturn(Optional.of(component));
     when(componentRepository.getNextImageOrderIndex(7L)).thenReturn(0);
     when(componentImageStorage.store(7L, upload)).thenReturn(storedImage);

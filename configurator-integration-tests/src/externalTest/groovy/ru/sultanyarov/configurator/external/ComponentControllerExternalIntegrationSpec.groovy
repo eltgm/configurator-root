@@ -9,10 +9,11 @@ import org.springframework.core.io.ClassPathResource
 import org.springframework.jdbc.datasource.DriverManagerDataSource
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator
 import ru.sultanyarov.configurator.contract.AbstractComponentControllerContract
+import ru.sultanyarov.configurator.contract.BinaryTestResponse
 import ru.sultanyarov.configurator.contract.TestResponse
 
 class ComponentControllerExternalIntegrationSpec extends AbstractComponentControllerContract {
-    final String baseUrl = System.getProperty("test.baseUrl", "http://localhost:8080")
+    final String baseUrl = ExternalTestEnvironment.apiBaseUrl()
     final String dbUrl = System.getProperty("test.dbUrl", "jdbc:postgresql://localhost:5432/configurator")
     final String dbUser = System.getProperty("test.dbUser", "configurator")
     final String dbPassword = System.getProperty("test.dbPassword", "configurator")
@@ -45,8 +46,28 @@ class ComponentControllerExternalIntegrationSpec extends AbstractComponentContro
     }
 
     @Override
+    BinaryTestResponse getBinary(String path) {
+        def response = RestAssured.given()
+                .baseUri(baseUrl)
+                .accept("*/*")
+                .when()
+                .get(path)
+                .then()
+                .extract()
+                .response()
+        def headers = response.headers().collectEntries { header ->
+            [(header.name): header.value]
+        }
+        return new BinaryTestResponse(response.statusCode(), response.asByteArray(), headers)
+    }
+
+    @Override
     TestResponse post(String path, Object body) {
-        def response = RestAssured.given().baseUri(baseUrl).contentType(ContentType.JSON).accept(ContentType.JSON).body(objectMapper.writeValueAsString(body)).when().post(path).then().extract().response()
+        def request = RestAssured.given().baseUri(baseUrl).accept(ContentType.JSON)
+        if (body != null) {
+            request.contentType(ContentType.JSON).body(objectMapper.writeValueAsString(body))
+        }
+        def response = request.when().post(path).then().extract().response()
         return new TestResponse(response.statusCode(), response.asString())
     }
 

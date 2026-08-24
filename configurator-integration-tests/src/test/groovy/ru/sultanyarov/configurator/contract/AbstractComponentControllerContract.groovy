@@ -2,6 +2,7 @@ package ru.sultanyarov.configurator.contract
 
 
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.AttributeValueInput
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.Component
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentImage
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentPage
@@ -65,7 +66,30 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         then:
         result.status == 400
         def errorResponse = objectMapper.readValue(result.body, ErrorResponse)
-        errorResponse.getMessage() != null
+        errorResponse.getStatus() == 400
+        errorResponse.getError() == "Bad Request"
+        errorResponse.getCode() == ApiErrorCode.VALIDATION_ERROR
+        errorResponse.getMessage()
+        errorResponse.getPath() == "/components"
+        errorResponse.getTimestamp()
+        errorResponse.getDetails().size() == 1
+        errorResponse.getDetails().first().getField() == "name"
+        errorResponse.getDetails().first().getCode() == "PATTERN"
+        errorResponse.getDetails().first().getMessage()
+    }
+
+    def "should return structured malformed request error"() {
+        when:
+        def result = post("/components", "not an object")
+
+        then:
+        result.status == 400
+        def errorResponse = objectMapper.readValue(result.body, ErrorResponse)
+        errorResponse.getCode() == ApiErrorCode.VALIDATION_ERROR
+        errorResponse.getMessage() == "Malformed request body"
+        errorResponse.getDetails()*.getField() == [null]
+        errorResponse.getDetails()*.getCode() == ["MALFORMED_REQUEST"]
+        errorResponse.getDetails()*.getMessage() == ["Malformed request body"]
     }
 
     def "should return not found when creating component for non-existent component type"() {
@@ -80,6 +104,9 @@ abstract class AbstractComponentControllerContract extends Specification impleme
 
         then:
         result.status == 404
+        def errorResponse = objectMapper.readValue(result.body, ErrorResponse)
+        errorResponse.getCode() == ApiErrorCode.NOT_FOUND
+        errorResponse.getDetails().isEmpty()
     }
 
     def "should return conflict when creating component with duplicate name in same component type"() {
@@ -99,6 +126,9 @@ abstract class AbstractComponentControllerContract extends Specification impleme
 
         then:
         result.status == 409
+        def errorResponse = objectMapper.readValue(result.body, ErrorResponse)
+        errorResponse.getCode() == ApiErrorCode.ENTITY_ALREADY_EXISTS
+        errorResponse.getDetails().isEmpty()
     }
 
     def "should return bad request when request contains duplicate attribute ids"() {
@@ -250,7 +280,7 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         responseBody.getAttributes()*.getValue().toSet() == ["ISO", "TKL"].toSet()
         responseBody.getImages().size() == 1
         responseBody.getImages().first().getId() == 501L
-        responseBody.getImages().first().getUrl() == "/files/components/1/main.jpg"
+        responseBody.getImages().first().getUrl() == "/component-images/501/content"
     }
 
     def "should clear nullable fields when updating component"() {
@@ -455,7 +485,7 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         responseBody.getAttributes()*.getAttributeDefinitionId().containsAll([101L, 102L, 103L])
         responseBody.getImages().size() == 1
         responseBody.getImages().first().getId() == 501L
-        responseBody.getImages().first().getUrl() == "/files/components/1/main.jpg"
+        responseBody.getImages().first().getUrl() == "/component-images/501/content"
     }
 
     def "should return no content when archiving component repeatedly"() {
@@ -488,6 +518,77 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         delete("/components/0").status == 400
     }
 
+    def "should restore archived component without losing attributes or images"() {
+        given:
+        prepareComponentUpdateData()
+        delete("/components/1").status == 204
+        def archivedBeforeRestore = get("/domains/1/components", [archived: true])
+        assert archivedBeforeRestore.status == 200
+        assert objectMapper.readValue(archivedBeforeRestore.body, ComponentPage)
+                .getItems()*.getId() == [1L]
+
+        when:
+        def result = post("/components/1/restore", null)
+
+        then:
+        result.status == 200
+        def responseBody = objectMapper.readValue(result.body, Component)
+        responseBody.getId() == 1L
+        !responseBody.getArchived()
+        responseBody.getAttributes().size() == 3
+        responseBody.getAttributes()*.getAttributeDefinitionId().containsAll([101L, 102L, 103L])
+        responseBody.getImages()*.getId() == [501L]
+        responseBody.getImages().first().getUrl() == "/component-images/501/content"
+
+        and: "the restored component moves from the archive back to the active list"
+        def archivedPage = objectMapper.readValue(
+                get("/domains/1/components", [archived: true]).body,
+                ComponentPage
+        )
+        def activePage = objectMapper.readValue(
+                get("/domains/1/components", [archived: false]).body,
+                ComponentPage
+        )
+        archivedPage.getItems().isEmpty()
+        activePage.getItems()*.getId().contains(1L)
+    }
+
+    def "should restore active component idempotently"() {
+        given:
+        prepareComponentUpdateData()
+
+        when:
+        def firstResult = post("/components/1/restore", null)
+        def secondResult = post("/components/1/restore", null)
+
+        then:
+        firstResult.status == 200
+        secondResult.status == 200
+        objectMapper.readTree(firstResult.body) == objectMapper.readTree(secondResult.body)
+        !objectMapper.readValue(secondResult.body, Component).getArchived()
+    }
+
+    def "should return not found when restoring non-existent component"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        when:
+        def result = post("/components/999999/restore", null)
+
+        then:
+        result.status == 404
+        objectMapper.readValue(result.body, ErrorResponse).getMessage() ==
+                "Component with id 999999 not found"
+    }
+
+    def "should return bad request when component id for restoration is not positive"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        expect:
+        post("/components/0/restore", null).status == 400
+    }
+
     def "should upload supported #contentType component image"() {
         given:
         prepareComponentImageData()
@@ -506,8 +607,7 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         def responseBody = objectMapper.readValue(result.body, ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentImage)
         responseBody.getId() != null
         responseBody.getOrderIndex() == 3
-        responseBody.getUrl().contains("/configurator-components/components/1/")
-        responseBody.getUrl().endsWith(extension)
+        responseBody.getUrl() == "/component-images/${responseBody.getId()}/content"
 
         and:
         def componentResult = get("/components/1")
@@ -519,10 +619,215 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         component.getImages().first().getOrderIndex() == 3
 
         where:
-        filename     | contentType  | content     | extension
-        "image.jpg"  | "image/jpeg" | jpegBytes() | ".jpg"
-        "image.png"  | "image/png"  | pngBytes()  | ".png"
-        "image.webp" | "image/webp" | webpBytes() | ".webp"
+        filename     | contentType  | content
+        "image.jpg"  | "image/jpeg" | jpegBytes()
+        "image.png"  | "image/png"  | pngBytes()
+        "image.webp" | "image/webp" | webpBytes()
+    }
+
+    def "should return original uploaded component image content"() {
+        given:
+        prepareComponentImageData()
+        def content = pngBytes()
+        def uploadResult = postMultipart(
+                "/components/1/images",
+                "image.png",
+                "image/png",
+                content,
+                0
+        )
+        def image = objectMapper.readValue(uploadResult.body, ComponentImage)
+
+        when:
+        def result = getBinary(image.getUrl())
+
+        then:
+        uploadResult.status == 201
+        result.status == 200
+        result.body == content
+        result.headers["Content-Type"] == "image/png"
+        result.headers["Content-Length"] == String.valueOf(content.length)
+        result.headers["Cache-Control"] == "private, no-cache"
+        result.headers["Content-Disposition"] == "inline"
+    }
+
+    def "should return image content after component is archived"() {
+        given:
+        prepareComponentImageData()
+        def uploadResult = postMultipart(
+                "/components/1/images",
+                "image.webp",
+                "image/webp",
+                webpBytes(),
+                null
+        )
+        def image = objectMapper.readValue(uploadResult.body, ComponentImage)
+        delete("/components/1").status == 204
+
+        expect:
+        getBinary(image.getUrl()).status == 200
+    }
+
+    def "should return not found for missing component image content"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        expect:
+        getBinary("/component-images/999999/content").status == 404
+    }
+
+    def "should return service unavailable when component image object is missing from storage"() {
+        given:
+        prepareComponentUpdateData()
+
+        expect:
+        getBinary("/component-images/501/content").status == 503
+    }
+
+    def "should return bad request for non-positive component image id"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        expect:
+        getBinary("/component-images/0/content").status == 400
+    }
+
+    def "should permanently delete uploaded component image"() {
+        given:
+        prepareComponentImageData()
+        def uploadResult = postMultipart(
+                "/components/1/images",
+                "delete-me.png",
+                "image/png",
+                pngBytes(),
+                0
+        )
+        def image = objectMapper.readValue(uploadResult.body, ComponentImage)
+
+        when:
+        def deleteResult = delete("/component-images/${image.getId()}")
+
+        then:
+        uploadResult.status == 201
+        deleteResult.status == 204
+        getBinary(image.getUrl()).status == 404
+        objectMapper.readerForListOf(ComponentImage)
+                .readValue(get("/components/1/images").body)
+                .isEmpty()
+    }
+
+    def "should return not found when deleting missing component image"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        expect:
+        delete("/component-images/999999").status == 404
+    }
+
+    def "should return bad request when component image id for deletion is not positive"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        expect:
+        delete("/component-images/0").status == 400
+    }
+
+    def "should return conflict and preserve image when deleting it from archived component"() {
+        given:
+        prepareComponentImageData()
+        def uploadResult = postMultipart(
+                "/components/1/images",
+                "archived.png",
+                "image/png",
+                pngBytes(),
+                0
+        )
+        def image = objectMapper.readValue(uploadResult.body, ComponentImage)
+        delete("/components/1").status == 204
+
+        expect:
+        delete("/component-images/${image.getId()}").status == 409
+        getBinary(image.getUrl()).status == 200
+    }
+
+    def "should atomically replace complete component image order"() {
+        given:
+        prepareComponentImagesReadData()
+
+        when:
+        def result = put("/components/1/images/order", [imageIds: [601L, 604L, 603L, 602L]])
+
+        then:
+        result.status == 200
+        List<ComponentImage> responseBody = objectMapper.readerForListOf(ComponentImage)
+                .readValue(result.body)
+        responseBody*.getId() == [601L, 604L, 603L, 602L]
+        responseBody*.getOrderIndex() == [0, 1, 2, 3]
+
+        and:
+        List<ComponentImage> persistedImages = objectMapper.readerForListOf(ComponentImage)
+                .readValue(get("/components/1/images").body)
+        persistedImages*.getId() == [601L, 604L, 603L, 602L]
+        persistedImages*.getOrderIndex() == [0, 1, 2, 3]
+    }
+
+    def "should reject #caseName image order and keep persisted order unchanged"() {
+        given:
+        prepareComponentImagesReadData()
+
+        when:
+        def result = put("/components/1/images/order", [imageIds: imageIds])
+
+        then:
+        result.status == 400
+        List<ComponentImage> persistedImages = objectMapper.readerForListOf(ComponentImage)
+                .readValue(get("/components/1/images").body)
+        persistedImages*.getId() == [602L, 603L, 604L, 601L]
+        persistedImages*.getOrderIndex() == [0, 2, 2, null]
+
+        where:
+        caseName                 | imageIds
+        "duplicate identifiers" | [602L, 602L, 604L, 601L]
+        "omitted identifier"    | [602L, 603L, 604L]
+        "foreign identifier"    | [602L, 603L, 604L, 605L]
+        "non-positive id"       | [0L, 603L, 604L, 601L]
+    }
+
+    def "should return conflict when reordering images of archived component"() {
+        given:
+        prepareComponentImagesReadData()
+        delete("/components/1").status == 204
+
+        expect:
+        put("/components/1/images/order", [imageIds: [602L, 603L, 604L, 601L]]).status == 409
+    }
+
+    def "should reorder empty component gallery with an empty list"() {
+        given:
+        prepareComponentImageData()
+
+        when:
+        def result = put("/components/1/images/order", [imageIds: []])
+
+        then:
+        result.status == 200
+        objectMapper.readerForListOf(ComponentImage).readValue(result.body).isEmpty()
+    }
+
+    def "should return not found when reordering images of missing component"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        expect:
+        put("/components/999999/images/order", [imageIds: []]).status == 404
+    }
+
+    def "should return bad request when component id for image reorder is not positive"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql")
+
+        expect:
+        put("/components/0/images/order", [imageIds: []]).status == 400
     }
 
     def "should assign next image order index when it is omitted"() {
@@ -699,10 +1004,10 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         responseBody*.getId() == [602L, 603L, 604L, 601L]
         responseBody*.getOrderIndex() == [0, 2, 2, null]
         responseBody*.getUrl() == [
-                "/files/components/1/zero.png",
-                "/files/components/1/first-two.png",
-                "/files/components/1/second-two.png",
-                "/files/components/1/unordered.png"
+                "/component-images/602/content",
+                "/component-images/603/content",
+                "/component-images/604/content",
+                "/component-images/601/content"
         ]
     }
 
@@ -785,6 +1090,56 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         responseBody.getSize() == 10
         responseBody.getTotalItems() == 3
         responseBody.getItems()*.getId() == [1L, 2L, 3L]
+    }
+
+    def "should filter domain components by archive status"() {
+        given:
+        prepareComponentSearchData()
+        delete("/components/2").status == 204
+
+        when:
+        def allResult = get("/domains/1/components")
+        def activeResult = get("/domains/1/components", [archived: false])
+        def archivedResult = get("/domains/1/components", [archived: true])
+
+        then: "an omitted filter remains backward compatible and returns both statuses"
+        allResult.status == 200
+        objectMapper.readValue(allResult.body, ComponentPage).getItems()*.getId() == [1L, 2L, 3L]
+
+        and:
+        activeResult.status == 200
+        def activePage = objectMapper.readValue(activeResult.body, ComponentPage)
+        activePage.getTotalItems() == 2
+        activePage.getItems()*.getId() == [1L, 3L]
+        activePage.getItems().every { !it.getArchived() }
+
+        and:
+        archivedResult.status == 200
+        def archivedPage = objectMapper.readValue(archivedResult.body, ComponentPage)
+        archivedPage.getTotalItems() == 1
+        archivedPage.getItems()*.getId() == [2L]
+        archivedPage.getItems().every { it.getArchived() }
+    }
+
+    def "should combine archive status with existing component filters"() {
+        given:
+        prepareComponentSearchData()
+        delete("/components/2").status == 204
+
+        when:
+        def result = get("/domains/1/components", [
+                componentTypeId: 1,
+                name: "Keychron K2",
+                archived: true,
+                page: 0,
+                size: 10
+        ])
+
+        then:
+        result.status == 200
+        def responseBody = objectMapper.readValue(result.body, ComponentPage)
+        responseBody.getTotalItems() == 1
+        responseBody.getItems()*.getId() == [2L]
     }
 
     def "should filter domain components by component type"() {

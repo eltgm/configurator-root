@@ -43,12 +43,45 @@ public interface ComponentRepository {
   boolean archiveComponentById(Long id);
 
   /**
+   * Marks a component as active.
+   *
+   * @param id the unique identifier of the component
+   * @return {@code true} when a component row was updated
+   */
+  boolean restoreComponentById(Long id);
+
+  /**
    * Persists image metadata for a component.
    *
-   * @param image image metadata containing component, URL and display order
+   * @param image image metadata containing component, object key and display order
    * @return the created image with generated identifier, or empty if creation failed
    */
   Optional<ComponentImage> createImage(ComponentImage image);
+
+  /**
+   * Retrieves image metadata by its unique identifier.
+   *
+   * @param id the component image identifier
+   * @return image metadata, or empty when it does not exist
+   */
+  Optional<ComponentImage> getImageById(Long id);
+
+  /**
+   * Permanently deletes image metadata.
+   *
+   * @param id the component image identifier
+   * @return {@code true} when a row was deleted
+   */
+  boolean deleteImageById(Long id);
+
+  /**
+   * Replaces image display indexes for the supplied component.
+   *
+   * @param componentId the component identifier
+   * @param orderedImageIds complete image identifiers in the target order
+   * @return number of updated rows
+   */
+  int updateImageOrder(Long componentId, List<Long> orderedImageIds);
 
   /**
    * Returns the next display order after the maximum existing image order.
@@ -77,6 +110,6 @@ public interface ComponentRepository {
    * @param size the number of items per page
    * @return a page containing components matching the specified filters and pagination information
    */
-  Page<Component> findPageByDomainIdComponentTypeIdName(
-      Long domainId, Long componentTypeId, String name, int page, int size);
+  Page<Component> findPageByDomainIdComponentTypeIdNameArchived(
+      Long domainId, Long componentTypeId, String name, Boolean archived, int page, int size);
 }

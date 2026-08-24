@@ -1,0 +1,56 @@
+.card {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+  flex-direction: column;
+}
+
+.card-body {
+  flex: 1;
+}
+
+.preview {
+  display: grid;
+  height: 11rem;
+  place-items: center;
+  overflow: hidden;
+  background: var(--mantine-color-default-hover);
+}
+
+.preview-compact {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 2.75rem;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-default-hover);
+}
+
+.desktop-table {
+  overflow: hidden;
+}
+
+.mobile-list {
+  display: none;
+}
+
+.link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+@media (width <= 48em) {
+  .desktop-table {
+    display: none;
+  }
+
+  .mobile-list {
+    display: flex;
+  }
+}

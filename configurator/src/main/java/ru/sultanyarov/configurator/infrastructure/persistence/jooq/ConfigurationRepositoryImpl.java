@@ -46,19 +46,40 @@ public class ConfigurationRepositoryImpl implements ConfigurationRepository {
       return Optional.empty();
     }
 
-    var insertQueries =
-        configuration.components().stream()
-            .map(
-                component ->
-                    dslContext
-                        .insertInto(CONFIGURATION_COMPONENT)
-                        .set(CONFIGURATION_COMPONENT.CONFIGURATION_ID, configurationId)
-                        .set(CONFIGURATION_COMPONENT.COMPONENT_ID, component.id()))
-            .toList();
-    if (!insertQueries.isEmpty()) {
-      dslContext.batch(insertQueries).execute();
-    }
+    insertComponents(configurationId, configuration.components());
     return findByIdAndUserId(configurationId, configuration.createdByUserId());
+  }
+
+  @Override
+  public Optional<Configuration> update(Long id, Long userId, Configuration configuration) {
+    int updatedRows =
+        dslContext
+            .update(CONFIGURATION)
+            .set(CONFIGURATION.NAME, configuration.name())
+            .set(CONFIGURATION.DESCRIPTION, configuration.description())
+            .where(CONFIGURATION.ID.eq(id))
+            .and(CONFIGURATION.CREATED_BY_USER_ID.eq(userId))
+            .execute();
+    if (updatedRows == 0) {
+      return Optional.empty();
+    }
+
+    dslContext
+        .deleteFrom(CONFIGURATION_COMPONENT)
+        .where(CONFIGURATION_COMPONENT.CONFIGURATION_ID.eq(id))
+        .execute();
+    insertComponents(id, configuration.components());
+    return findByIdAndUserId(id, userId);
+  }
+
+  @Override
+  public boolean deleteByIdAndUserId(Long id, Long userId) {
+    return dslContext
+            .deleteFrom(CONFIGURATION)
+            .where(CONFIGURATION.ID.eq(id))
+            .and(CONFIGURATION.CREATED_BY_USER_ID.eq(userId))
+            .execute()
+        > 0;
   }
 
   @Override
@@ -88,6 +109,21 @@ public class ConfigurationRepositoryImpl implements ConfigurationRepository {
         page,
         size,
         configurationMapper());
+  }
+
+  private void insertComponents(Long configurationId, List<ConfigurationComponent> components) {
+    var insertQueries =
+        components.stream()
+            .map(
+                component ->
+                    dslContext
+                        .insertInto(CONFIGURATION_COMPONENT)
+                        .set(CONFIGURATION_COMPONENT.CONFIGURATION_ID, configurationId)
+                        .set(CONFIGURATION_COMPONENT.COMPONENT_ID, component.id()))
+            .toList();
+    if (!insertQueries.isEmpty()) {
+      dslContext.batch(insertQueries).execute();
+    }
   }
 
   private List<SelectFieldOrAsterisk> configurationFields() {

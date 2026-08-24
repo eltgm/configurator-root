@@ -12,7 +12,7 @@ import ru.sultanyarov.configurator.contract.AbstractConfigurationControllerContr
 import ru.sultanyarov.configurator.contract.TestResponse
 
 class ConfigurationControllerExternalIntegrationSpec extends AbstractConfigurationControllerContract {
-    final String baseUrl = System.getProperty("test.baseUrl", "http://localhost:8080")
+    final String baseUrl = ExternalTestEnvironment.apiBaseUrl()
     final String dbUrl = System.getProperty("test.dbUrl", "jdbc:postgresql://localhost:5432/configurator")
     final String dbUser = System.getProperty("test.dbUser", "configurator")
     final String dbPassword = System.getProperty("test.dbPassword", "configurator")
@@ -61,11 +61,18 @@ class ConfigurationControllerExternalIntegrationSpec extends AbstractConfigurati
 
     @Override
     TestResponse put(String path, Object body) {
-        throw new UnsupportedOperationException()
+        def response = RestAssured.given().baseUri(baseUrl)
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .body(objectMapper.writeValueAsString(body))
+                .when().put(path).then().extract().response()
+        return new TestResponse(response.statusCode(), response.asString())
     }
 
     @Override
     TestResponse delete(String path) {
-        throw new UnsupportedOperationException()
+        def response = RestAssured.given().baseUri(baseUrl).accept(ContentType.JSON)
+                .when().delete(path).then().extract().response()
+        return new TestResponse(response.statusCode(), response.asString())
     }
 }

@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
 import ru.sultanyarov.configurator.ConfiguratorApplication
 import ru.sultanyarov.configurator.contract.AbstractComponentControllerContract
+import ru.sultanyarov.configurator.contract.BinaryTestResponse
 import ru.sultanyarov.configurator.contract.TestResponse
 
 import javax.sql.DataSource
@@ -59,10 +60,27 @@ class ComponentControllerIntegrationSpec extends AbstractComponentControllerCont
     }
 
     @Override
+    BinaryTestResponse getBinary(String path) {
+        def result = mockMvc.perform(MockMvcRequestBuilders.get(path)).andReturn()
+        def headers = result.response.headerNames.collectEntries { name ->
+            [(name): result.response.getHeader(name)]
+        }
+        return new BinaryTestResponse(
+                result.response.status,
+                result.response.contentAsByteArray,
+                headers
+        )
+    }
+
+    @Override
     TestResponse post(String path, Object body) {
-        def result = mockMvc.perform(MockMvcRequestBuilders.post(path)
-                .contentType("application/json")
-                .content(objectMapper.writeValueAsString(body))).andReturn()
+        def requestBuilder = MockMvcRequestBuilders.post(path)
+        if (body != null) {
+            requestBuilder
+                    .contentType("application/json")
+                    .content(objectMapper.writeValueAsString(body))
+        }
+        def result = mockMvc.perform(requestBuilder).andReturn()
         return new TestResponse(result.response.status, result.response.contentAsString)
     }
 

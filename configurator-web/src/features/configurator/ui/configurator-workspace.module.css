@@ -1,0 +1,60 @@
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(19rem, 2fr);
+  grid-template-areas: 'browser assembly';
+  gap: var(--mantine-spacing-lg);
+  align-items: start;
+}
+
+.browser {
+  grid-area: browser;
+  min-width: 0;
+}
+
+.assembly {
+  grid-area: assembly;
+  min-width: 0;
+  position: sticky;
+  top: calc(var(--app-shell-header-height) + var(--mantine-spacing-md));
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(11rem, 1fr);
+  gap: var(--mantine-spacing-sm);
+}
+
+.browser-card,
+.assembly-card {
+  background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
+}
+
+.preview {
+  width: 4rem;
+  min-width: 4rem;
+  height: 4rem;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--mantine-radius-md);
+  background: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-5));
+}
+
+@media (width <= 62em) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'assembly'
+      'browser';
+  }
+
+  .assembly {
+    position: static;
+  }
+}
+
+@media (width <= 36em) {
+  .filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

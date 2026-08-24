@@ -7,10 +7,7 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties(prefix = "app.storage.component-images")
 public record ComponentImageStorageProperties(
-        @NotBlank String endpoint,
-        @NotBlank String accessKey,
-        @NotBlank String secretKey,
-        @NotBlank String bucket,
-        @NotBlank String publicUrl
-) {
-}
+    @NotBlank String endpoint,
+    @NotBlank String accessKey,
+    @NotBlank String secretKey,
+    @NotBlank String bucket) {}

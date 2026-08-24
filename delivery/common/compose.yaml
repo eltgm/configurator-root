@@ -1,0 +1,102 @@
+name: configurator
+
+services:
+  postgres:
+    image: ${CONFIGURATOR_POSTGRES_IMAGE}
+    environment:
+      POSTGRES_DB: ${CONFIGURATOR_DB_NAME}
+      POSTGRES_USER: ${CONFIGURATOR_DB_USER}
+      POSTGRES_PASSWORD: ${CONFIGURATOR_DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${CONFIGURATOR_DB_USER} -d ${CONFIGURATOR_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  minio:
+    image: ${CONFIGURATOR_MINIO_IMAGE}
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${CONFIGURATOR_MINIO_USER}
+      MINIO_ROOT_PASSWORD: ${CONFIGURATOR_MINIO_PASSWORD}
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
+  app:
+    image: ${CONFIGURATOR_APP_IMAGE}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${CONFIGURATOR_DB_NAME}
+      DB_USER: ${CONFIGURATOR_DB_USER}
+      DB_PASSWORD: ${CONFIGURATOR_DB_PASSWORD}
+      IMAGE_STORAGE_ENDPOINT: http://minio:9000
+      IMAGE_STORAGE_ACCESS_KEY: ${CONFIGURATOR_MINIO_USER}
+      IMAGE_STORAGE_SECRET_KEY: ${CONFIGURATOR_MINIO_PASSWORD}
+      IMAGE_STORAGE_BUCKET: ${CONFIGURATOR_MINIO_BUCKET}
+    restart: unless-stopped
+
+  gateway:
+    image: ${CONFIGURATOR_GATEWAY_IMAGE}
+    depends_on:
+      app:
+        condition: service_started
+    ports:
+      - "127.0.0.1:8080:8080"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    restart: unless-stopped
+
+  postgres-maintenance:
+    image: ${CONFIGURATOR_POSTGRES_IMAGE}
+    user: "${CONFIGURATOR_MAINTENANCE_USER:-0:0}"
+    profiles: [maintenance]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGDATABASE: ${CONFIGURATOR_DB_NAME}
+      PGUSER: ${CONFIGURATOR_DB_USER}
+      PGPASSWORD: ${CONFIGURATOR_DB_PASSWORD}
+    volumes:
+      - type: bind
+        source: ${CONFIGURATOR_MAINTENANCE_DIR}
+        target: /backup
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+
+  minio-maintenance:
+    image: ${CONFIGURATOR_MINIO_CLIENT_IMAGE}
+    user: "${CONFIGURATOR_MAINTENANCE_USER:-0:0}"
+    profiles: [maintenance]
+    depends_on:
+      minio:
+        condition: service_started
+    environment:
+      MC_HOST_configurator: http://${CONFIGURATOR_MINIO_USER}:${CONFIGURATOR_MINIO_PASSWORD}@minio:9000
+      MC_CONFIG_DIR: /tmp/.mc
+    volumes:
+      - type: bind
+        source: ${CONFIGURATOR_MAINTENANCE_DIR}
+        target: /backup
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+
+volumes:
+  postgres_data:
+  minio_data:
