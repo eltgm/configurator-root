@@ -31,8 +31,8 @@ dependencies {
     testImplementation "org.testcontainers:testcontainers-postgresql:${testcontainersVersion}"
     testImplementation "org.testcontainers:testcontainers-junit-jupiter:${testcontainersVersion}"
 
-    externalTestImplementation 'io.rest-assured:rest-assured:5.5.0'
-    externalTestImplementation 'org.apache.groovy:groovy-sql:4.0.24'
+    externalTestImplementation 'io.rest-assured:rest-assured:5.5.7'
+    externalTestImplementation 'org.apache.groovy:groovy-sql:4.0.33'
 }
 
 java {
