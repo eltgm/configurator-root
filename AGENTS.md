@@ -195,12 +195,16 @@ gateway, SPA deep links и реальный `/api` boundary.
 delivery/tests/package-contract.sh
 delivery/tests/macos-scripts-test.sh
 delivery/tests/archive-contract.sh
+delivery/tests/release-assets-contract.sh
+delivery/tests/release-workflow-contract.sh
 delivery/tests/docker-lifecycle-contract.sh
 ```
 
 Windows dispatcher остаётся совместимым с Windows PowerShell 5.1/CRLF/UTF-8 BOM; macOS dispatcher — со штатным Bash
 3.2/LF. Backup format v1, stable Compose project, preview channel и строгая остановка app/gateway после failed Update
-или Restore — публичные delivery contracts. Публикация multi-platform images и release assets относится к 9.30.
+или Restore — публичные delivery contracts. Release contract дополнительно фиксирует public GHCR app/web images,
+`linux/amd64` + `linux/arm64`, exact/sha/preview tags без `latest`, `IMAGE_DIGESTS`, unified `SHA256SUMS`, BuildKit
+SBOM/provenance, GitHub OIDC attestations и draft-only publication. Tag/release workflow из feature branch не запускать.
 
 ## 6. Локальное окружение
 
@@ -255,7 +259,11 @@ CON<версия>-<номер> <English description in past tense>
 - до реализации authentication/authorization — только `0.x`;
 - default Gradle version может быть `-SNAPSHOT`, release workflow передаёт `-PreleaseVersion=X.Y.Z`;
 - тег ставится только на commit, достижимый из `master`;
-- `.github/workflows/release.yml` создаёт draft release; публикация draft — явное действие владельца;
+- tag должен быть annotated, а соответствующая версия — присутствовать в `CHANGELOG.md`;
+- `.github/workflows/release.yml` публикует public multi-platform app/gateway images, проверяет anonymous pull,
+  аттестует images/assets и создаёт или обновляет draft pre-release;
+- exact `X.Y.Z` и commit image tags immutable по policy, `preview` mutable, `latest` до отдельной stable policy запрещён;
+- GHCR visibility и clean-machine Windows/macOS smoke проверяет владелец; публикация draft — явное действие владельца;
 - release notes и `CHANGELOG.md` должны соответствовать фактически проверенному функционалу.
 
 ## 8. GitHub repository hygiene

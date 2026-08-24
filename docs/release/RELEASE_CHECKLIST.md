@@ -23,7 +23,7 @@
 - [x] CODEOWNERS.
 - [x] Issue forms.
 - [x] Dependabot для Gradle, Docker и GitHub Actions.
-- [x] CI и draft release workflow.
+- [x] CI и rerunnable draft release workflow с multi-platform publishing/attestations.
 - [x] CHANGELOG.
 - [x] Выбрана и добавлена лицензия MIT.
 - [ ] Настроены repository description, topics и social preview.
@@ -61,17 +61,21 @@
 
 ## Локальная пользовательская поставка
 
-9.29 реализует и проверяет package contract; 9.30 должна опубликовать public multi-platform images и добавить архивы
-в GitHub Release. Не считать одни только локально собранные архивы готовым пользовательским релизом.
+9.29 реализует package lifecycle, а 9.30 — multi-platform publishing, assets и supply-chain automation. Не считать
+workflow готовым пользовательским релизом до фактического trusted tag run и ручной публикации проверенного draft.
 
 - [x] Image-only Compose без `build`, с единственным bind `127.0.0.1:8080`.
 - [x] Windows `.cmd`/PowerShell 5.1 и macOS `.command`/Bash 3.2 launchers.
 - [x] Start/Stop/Update/Backup/Restore package contracts и versioned archive builder.
 - [x] PostgreSQL + MinIO backup format v1, checksums и pre-restore safety backup.
 - [x] Real Docker lifecycle: destructive mutation/recovery, preview Update success и strict failure.
-- [ ] 9.30: public `linux/amd64` + `linux/arm64` app/gateway manifests опубликованы и доступны без registry login.
-- [ ] 9.30: Windows/macOS archives и `SHA256SUMS` прикреплены к draft GitHub Release.
-- [ ] 9.30: SBOM/provenance/signing policy выполнены согласно актуальным требованиям.
+- [x] 9.30 automation: exact/sha/preview tags без `latest`, minimum permissions и full-SHA action pins.
+- [x] 9.30 automation: BuildKit SPDX SBOM/max provenance и GitHub OIDC attestations для images/assets.
+- [x] 9.30 automation: versioned JAR/OpenAPI/Windows/macOS/`IMAGE_DIGESTS`/unified `SHA256SUMS` asset contract.
+- [ ] Trusted tag run: public `linux/amd64` + `linux/arm64` app/gateway manifests доступны без registry login.
+- [ ] Trusted tag run: Windows/macOS assets и `SHA256SUMS` прикреплены к draft GitHub Release.
+- [ ] Trusted tag run: image/download attestations фактически проверены через `gh attestation verify`.
+- [ ] При первом push оба GHCR packages переведены в public, связаны с repository, затем workflow повторно запущен.
 - [ ] Чистая Windows 10/11 x86-64: download, extract, Start/repeated Start, Stop, Update, Backup, Restore.
 - [ ] Чистая macOS Intel: download, extract, right-click/Open, полный lifecycle и browser opening.
 - [ ] Чистая macOS Apple Silicon: download, extract, right-click/Open, полный lifecycle и browser opening.
@@ -80,12 +84,13 @@
 
 ## Выпуск
 
-1. [ ] Обновить `CHANGELOG.md`, версию и дату.
+1. [x] Обновить `CHANGELOG.md`, версию и дату.
 2. [ ] Открыть и проверить PR `develop -> master`.
 3. [ ] После merge убедиться, что CI на `master` зелёный.
 4. [ ] Создать annotated tag `v0.1.0` на commit из `master` и push tag.
 5. [ ] Дождаться release workflow: он повторно проверит проект и создаст draft release.
-6. [ ] Проверить JAR, OpenAPI, пользовательские архивы, `SHA256SUMS`, image manifests и generated notes.
+6. [ ] Проверить JAR, OpenAPI, пользовательские архивы, `IMAGE_DIGESTS`, `SHA256SUMS`, image manifests, attestations и
+       generated notes.
 7. [ ] Опубликовать draft как pre-release.
 8. [ ] Выполнить smoke test из release artifact.
 

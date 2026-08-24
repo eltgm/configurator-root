@@ -102,6 +102,11 @@ export function ConfiguratorCandidateCard({
               <Button
                 size="xs"
                 leftSection={<IconPlus size={14} />}
+                aria-label={
+                  replacementMode
+                    ? t('configurator.browser.selectReplacementNamed', { name: component.name })
+                    : undefined
+                }
                 onClick={() => onSelect(component)}
               >
                 {replacementMode
