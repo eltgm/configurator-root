@@ -12,10 +12,12 @@ mkdir -p "${REPOSITORY_ROOT}/delivery-output"
 readonly TEMP_DIRECTORY="$(mktemp -d "${REPOSITORY_ROOT}/delivery-output/docker-contract.XXXXXX")"
 readonly PACKAGE_ROOT="${TEMP_DIRECTORY}/package with spaces/Configurator"
 readonly MAINTENANCE_DIRECTORY="${TEMP_DIRECTORY}/maintenance"
+readonly MAINTENANCE_USER="$(id -u):$(id -g)"
 REGISTRY_CONTAINER=""
 
 compose() {
   CONFIGURATOR_MAINTENANCE_DIR="${MAINTENANCE_DIRECTORY}" \
+    CONFIGURATOR_MAINTENANCE_USER="${MAINTENANCE_USER}" \
     docker compose --project-directory "${PACKAGE_ROOT}" \
     --env-file "${PACKAGE_ROOT}/configurator.env" -f "${PACKAGE_ROOT}/compose.yaml" "$@"
 }
@@ -40,6 +42,13 @@ fail() {
   compose ps >&2 || true
   compose logs --no-color --tail 120 app gateway postgres minio >&2 || true
   exit 1
+}
+
+assert_host_writable_directories() {
+  local directory
+  while IFS= read -r -d '' directory; do
+    [[ -w "${directory}" ]] || fail "backup directory is not host-writable: ${directory}"
+  done < <(find "${PACKAGE_ROOT}/backups" -type d -print0)
 }
 
 docker image inspect "${APP_IMAGE}" >/dev/null 2>&1 ||
@@ -158,6 +167,7 @@ set -e
 if grep -R -Fq 'configurator-local-preview' "${PACKAGE_ROOT}/logs" "${PACKAGE_ROOT}/backups"; then
   fail 'local credentials leaked into logs or backup metadata'
 fi
+assert_host_writable_directories
 
 "${PACKAGE_ROOT}/scripts/configurator.sh" stop --non-interactive --no-open || fail 'Stop failed'
 echo 'docker-lifecycle-contract: OK'

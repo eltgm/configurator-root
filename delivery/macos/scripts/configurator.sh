@@ -35,6 +35,7 @@ LOG_FILE=""
 LAST_BACKUP_DIR=""
 DOCKER_WAIT_SECONDS=${CONFIGURATOR_DOCKER_WAIT_SECONDS:-180}
 READINESS_WAIT_SECONDS=${CONFIGURATOR_READINESS_WAIT_SECONDS:-180}
+MAINTENANCE_USER="$(id -u):$(id -g)"
 
 usage() {
   echo "Usage: configurator.sh start|stop|update|backup|restore [--non-interactive] [--no-open] [--yes] [--backup PATH]" >&2
@@ -102,7 +103,8 @@ run_logged() {
 }
 
 compose() {
-  docker compose --project-directory "$PACKAGE_ROOT" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
+  CONFIGURATOR_MAINTENANCE_USER="$MAINTENANCE_USER" \
+    docker compose --project-directory "$PACKAGE_ROOT" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
 }
 
 release_lock() {
