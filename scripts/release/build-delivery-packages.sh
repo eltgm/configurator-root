@@ -6,10 +6,31 @@ readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly REPOSITORY_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 readonly VERSION="${1:-}"
 readonly OUTPUT_DIRECTORY="${2:-${REPOSITORY_ROOT}/delivery-output}"
+readonly RELEASE_CHANNEL="${CONFIGURATOR_RELEASE_CHANNEL:-preview}"
+readonly RELEASE_APP_IMAGE="${CONFIGURATOR_RELEASE_APP_IMAGE:-}"
+readonly RELEASE_GATEWAY_IMAGE="${CONFIGURATOR_RELEASE_GATEWAY_IMAGE:-}"
 
 if [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
   echo "Usage: $0 X.Y.Z [output-directory]" >&2
   exit 2
+fi
+
+if [[ ! "${RELEASE_CHANNEL}" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then
+  echo "Invalid release channel: ${RELEASE_CHANNEL}" >&2
+  exit 2
+fi
+
+if [[ -n "${RELEASE_APP_IMAGE}" || -n "${RELEASE_GATEWAY_IMAGE}" ]]; then
+  if [[ -z "${RELEASE_APP_IMAGE}" || -z "${RELEASE_GATEWAY_IMAGE}" ]]; then
+    echo "Both CONFIGURATOR_RELEASE_APP_IMAGE and CONFIGURATOR_RELEASE_GATEWAY_IMAGE are required" >&2
+    exit 2
+  fi
+  for image_reference in "${RELEASE_APP_IMAGE}" "${RELEASE_GATEWAY_IMAGE}"; do
+    if [[ ! "${image_reference}" =~ ^[a-z0-9]+([._-][a-z0-9]+)*(\.[a-z0-9]+([._-][a-z0-9]+)*)*(:[0-9]+)?/[a-z0-9]+([._/-][a-z0-9]+)*:[a-z0-9][a-z0-9._-]*$ ]]; then
+      echo "Invalid release image reference: ${image_reference}" >&2
+      exit 2
+    fi
+  done
 fi
 
 for command in gzip zip tar shasum; do
@@ -39,8 +60,15 @@ stage_common_files() {
   printf '%s\n' "${VERSION}" >"${package_root}/VERSION"
 
   sed -i.bak \
-    "s/^CONFIGURATOR_PACKAGE_VERSION=.*/CONFIGURATOR_PACKAGE_VERSION=${VERSION}/" \
+    -e "s/^CONFIGURATOR_PACKAGE_VERSION=.*/CONFIGURATOR_PACKAGE_VERSION=${VERSION}/" \
+    -e "s/^CONFIGURATOR_CHANNEL=.*/CONFIGURATOR_CHANNEL=${RELEASE_CHANNEL}/" \
     "${package_root}/configurator.env"
+  if [[ -n "${RELEASE_APP_IMAGE}" ]]; then
+    sed -i.bak \
+      -e "s|^CONFIGURATOR_APP_IMAGE=.*|CONFIGURATOR_APP_IMAGE=${RELEASE_APP_IMAGE}|" \
+      -e "s|^CONFIGURATOR_GATEWAY_IMAGE=.*|CONFIGURATOR_GATEWAY_IMAGE=${RELEASE_GATEWAY_IMAGE}|" \
+      "${package_root}/configurator.env"
+  fi
   rm "${package_root}/configurator.env.bak"
 
 }

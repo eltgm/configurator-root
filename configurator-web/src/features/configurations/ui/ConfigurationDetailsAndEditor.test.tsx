@@ -354,7 +354,7 @@ describe('configuration details and editor', () => {
     await user.click(screen.getByRole('button', { name: 'Заменить' }));
     const browser = screen.getByRole('region', { name: 'Выбор замены' });
     expect(await within(browser).findByText('Core Ultra 9')).toBeInTheDocument();
-    await user.click(within(browser).getByRole('button', { name: 'Выбрать' }));
+    await user.click(within(browser).getByRole('button', { name: 'Выбрать Core Ultra 9' }));
     expect(screen.getByText('Core Ultra 9')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Сохранить изменения' }));
 

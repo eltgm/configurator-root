@@ -1,7 +1,20 @@
 # Локальная поставка Configurator
 
-Этот документ описывает эксплуатационный контракт пользовательских архивов 9.29. Фактическая публикация
-multi-platform app/gateway images и GitHub Release assets выполняется в 9.30.
+Этот документ описывает эксплуатационный контракт пользовательских архивов и release automation 9.29–9.30. Tag
+workflow публикует public multi-platform app/gateway images, формирует Windows/macOS assets и создаёт draft
+pre-release. До явной публикации draft владельцем локально собранные архивы не считаются готовым пользовательским
+релизом.
+
+## Скачивание и запуск
+
+1. Откройте <https://github.com/eltgm/configurator-root/releases>.
+2. Скачайте `configurator-windows-vX.Y.Z.zip` или `configurator-macos-vX.Y.Z.tar.gz` и полностью распакуйте архив.
+3. Запустите `Start.cmd` либо `Start.command`. На macOS при первом предупреждении используйте правый клик → «Открыть».
+4. Дождитесь открытия <http://127.0.0.1:8080>.
+
+Registry login не требуется: `configurator-app` и `configurator-web` публикуются в GHCR как public manifests для
+`linux/amd64` и `linux/arm64`. Пакет использует mutable `preview` channel для Update, а `IMAGE_DIGESTS` в GitHub Release
+фиксирует immutable digest конкретной версии.
 
 ## Поддерживаемое окружение
 
@@ -14,13 +27,13 @@ multi-platform app/gateway images и GitHub Release assets выполняетс�
 
 ## Операции
 
-| Команда   | Поведение |
-| --------- | --------- |
-| `Start`   | Проверяет Docker/Compose и порт, запускает stack, ждёт UI и API, открывает браузер. |
-| `Stop`    | Останавливает project containers, сохраняя volumes, images и backups. |
-| `Backup`  | Останавливает запись, сохраняет PostgreSQL и MinIO, проверяет снимок и возвращает прежнее состояние. |
+| Команда   | Поведение                                                                                                    |
+| --------- | ------------------------------------------------------------------------------------------------------------ |
+| `Start`   | Проверяет Docker/Compose и порт, запускает stack, ждёт UI и API, открывает браузер.                          |
+| `Stop`    | Останавливает project containers, сохраняя volumes, images и backups.                                        |
+| `Backup`  | Останавливает запись, сохраняет PostgreSQL и MinIO, проверяет снимок и возвращает прежнее состояние.         |
 | `Restore` | Проверяет выбранный backup, запрашивает подтверждение, создаёт страховочный backup и заменяет оба хранилища. |
-| `Update`  | Создаёт обязательный backup, загружает app/gateway канала `preview` и проверяет readiness. |
+| `Update`  | Создаёт обязательный backup, загружает app/gateway канала `preview` и проверяет readiness.                   |
 
 Все команды защищены общим lock. Логи создаются в `logs/`, backups — в `backups/`. Переименование и перенос
 распакованной папки не меняют Compose project и не теряют именованные volumes.
@@ -66,15 +79,47 @@ Backup логический и переносимый: PostgreSQL хранитс
 
 Runtime-аутентификация отсутствует. Поставка local-only preview и не является production-ready.
 
+## Проверка скачанных файлов
+
+`SHA256SUMS` проверяет целостность JAR, OpenAPI, обоих пользовательских архивов и `IMAGE_DIGESTS`. Linux/macOS:
+
+```bash
+shasum -a 256 -c SHA256SUMS
+```
+
+Windows PowerShell для отдельного файла:
+
+```powershell
+Get-FileHash -Algorithm SHA256 .\configurator-windows-v0.1.0.zip
+```
+
+Технический пользователь с GitHub CLI может дополнительно проверить подписанное provenance:
+
+```bash
+gh attestation verify configurator-windows-v0.1.0.zip -R eltgm/configurator-root
+gh attestation verify oci://ghcr.io/eltgm/configurator-app:0.1.0 -R eltgm/configurator-root
+```
+
+Checksum обнаруживает изменение байтов, а attestation связывает artifact с GitHub workflow/repository. Они не
+гарантируют отсутствие уязвимостей и не заменяют security review.
+
 ## Проверка и сборка для разработчика
 
 ```bash
 delivery/tests/package-contract.sh
 delivery/tests/macos-scripts-test.sh
 delivery/tests/archive-contract.sh
+delivery/tests/release-assets-contract.sh
+delivery/tests/release-workflow-contract.sh
 delivery/tests/docker-lifecycle-contract.sh
 scripts/release/build-delivery-packages.sh 0.1.0
 ```
 
 Windows PowerShell 5.1 contract выполняется в Windows CI. Реальный lifecycle-тест использует изолированный Compose
 project и локальный OCI registry, проверяет Start/Stop, оба хранилища, Update success и строгий Update failure.
+Фактическая GHCR visibility, anonymous multi-platform pull, OIDC attestations и draft assets проверяются только trusted
+tag workflow после merge в `master`; чистые Windows/macOS машины остаются обязательной ручной release-проверкой.
+
+При первом image push GitHub может создать packages как private. Тогда anonymous gate ожидаемо остановит workflow:
+владелец переводит `configurator-app` и `configurator-web` в public, связывает packages с repository и запускает тот же
+workflow повторно. Персональный токен и автоматическое расширение visibility для этого не требуются.

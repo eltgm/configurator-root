@@ -49,7 +49,7 @@ test('saves the current assembly and shows it in the configurations list', async
   await composition.getByRole('button', { name: 'Заменить' }).click();
   const replacementBrowser = page.getByRole('region', { name: 'Выбор замены' });
   await expect(replacementBrowser.getByText('Core Ultra 9 285K')).toBeVisible();
-  await replacementBrowser.locator('button:visible', { hasText: 'Выбрать' }).click();
+  await replacementBrowser.getByRole('button', { name: 'Выбрать Core Ultra 9 285K' }).click();
   await expect(composition.getByText('Core Ultra 9 285K')).toBeVisible();
 
   const updateRequest = page.waitForRequest(

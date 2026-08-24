@@ -898,6 +898,48 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
   не поддерживается;
 - OpenAPI, backend/frontend behavior, Flyway, jOOQ, БД и generated API client в 9.29 не меняются.
 
+#### 9.30 — CI, документация и подготовка локального релиза
+
+- release automation запускается только для SemVer tag `vX.Y.Z` или совместимого prerelease tag на commit,
+  достижимом из `master`; до публикации выполняются backend, frontend, external, browser и delivery quality gates;
+- публичные OCI images публикуются в `ghcr.io/eltgm/configurator-app` и `ghcr.io/eltgm/configurator-web` едиными
+  manifest lists для `linux/amd64` и `linux/arm64`;
+- каждый image получает immutable exact version tag `X.Y.Z`, traceability tag по commit SHA и mutable update channel
+  `preview`; tag `latest` до отдельно согласованной production-ready release policy не публикуется;
+- app/gateway images используют reviewed digest-pinned multi-arch base images и OCI labels source, revision, version,
+  title, description, licenses и creation time без credentials или host-specific paths;
+- BuildKit создаёт для каждого multi-platform image max-level provenance и SPDX SBOM OCI attestations; GitHub OIDC
+  keyless artifact attestation подписывает опубликованный manifest digest без долгоживущего signing key;
+- external actions pinned на full commit SHA, а elevated permissions разделены по jobs: `packages: write` используется
+  только для image publication, `id-token: write` и `attestations: write` — только для attestations, `contents: write` —
+  только для draft release;
+- после публикации workflow использует credential-free Docker configuration и проверяет anonymous manifest inspect/
+  pull, обе платформы, OCI metadata, attestations и соответствие ожидаемым digest; неверная public visibility блокирует
+  release и не обходится broad PAT;
+- пользовательские release assets содержат versioned JAR, `configurator-api.yaml`, Windows ZIP, macOS TAR.GZ,
+  `IMAGE_DIGESTS` с immutable app/gateway references и единый `SHA256SUMS` для всех скачиваемых non-checksum files;
+- Windows/macOS packages сохраняют `CONFIGURATOR_*_IMAGE=:preview`, чтобы Update продолжал следовать принятому mutable
+  preview channel; конкретный release воспроизводится через exact tags и `IMAGE_DIGESTS`;
+- downloadable release assets получают GitHub keyless provenance attestations; документация разделяет checksum
+  integrity, signed provenance и vulnerability/security assessment и не считает их взаимозаменяемыми;
+- draft GitHub pre-release создаётся или обновляется идемпотентно для того же tag; повторный workflow run заменяет
+  только соответствующие assets и не требует вручную удалять draft;
+- quality gates выполняются до первой registry mutation; при частичной публикации workflow сохраняет diagnostics и
+  допускает безопасный rerun, но автоматически не удаляет packages/images;
+- публикация draft остаётся явным действием владельца после проверки assets, public package visibility, attestations и
+  clean-machine smoke; release automation не публикует pre-release автоматически;
+- CI на обычных push/PR проверяет package/release helpers, workflow policy, full-SHA pins, minimum permissions,
+  platforms/tags, отсутствие `latest`, asset inventory и checksum/digest contracts без публикации в registry;
+- первый локальный preview release остаётся `v0.1.0`; `CHANGELOG`, release audit, README, contributor/agent guidance и
+  local-delivery runbook актуализируются по фактически проверенному составу epic 9;
+- пользовательский quick start остаётся минимальным: установить Docker Desktop, скачать архив, распаковать и запустить
+  Start; JDK, Gradle, Node.js, npm, Git, registry login и терминал не требуются;
+- public package visibility, repository settings, annotated tag, публикация draft и clean-machine Windows/macOS audit
+  являются owner/post-merge operations и не выполняются из feature branch;
+- runtime остаётся local-only single-user preview без authentication/authorization; TLS, LAN/public deployment,
+  package self-update, automatic database downgrade и production operations в 9.30 не входят;
+- OpenAPI, backend/frontend behavior, Flyway, jOOQ, БД и generated API client в 9.30 не меняются.
+
 ## Демонстрационная предметная область
 
 Пункт 9.7 добавляет атомарное создание примера «Сборка ПК» через `POST /domains/demo`. Пример содержит типы, определения

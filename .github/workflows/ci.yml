@@ -144,6 +144,8 @@ jobs:
           delivery/tests/package-contract.sh
           delivery/tests/macos-scripts-test.sh
           delivery/tests/archive-contract.sh
+          delivery/tests/release-assets-contract.sh
+          delivery/tests/release-workflow-contract.sh
 
       - name: Assemble reviewable delivery archives
         run: scripts/release/build-delivery-packages.sh 0.0.0-ci.1

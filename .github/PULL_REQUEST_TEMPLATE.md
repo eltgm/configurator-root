@@ -12,6 +12,7 @@
 - [ ] Frontend: `npm run check` и `npm run test:coverage` выполнены либо frontend не затронут
 - [ ] Docker delivery: `npm run test:delivery` выполнен либо gateway/runtime-контракт не затронут
 - [ ] User packages: package/archive/OS scripts/lifecycle contracts выполнены либо `delivery/**` не затронут
+- [ ] Release supply chain: workflow/assets/checksums/image metadata contracts выполнены либо release-контур не затронут
 - [ ] Frontend browser gates (`test:e2e`, `test:accessibility`, `test:visual`) выполнены либо не затронуты
 - [ ] Visual baselines обновлены в pinned Docker image и reviewed либо UI визуально не изменялся
 - [ ] Нет generated, IDE, secret или host-specific файлов

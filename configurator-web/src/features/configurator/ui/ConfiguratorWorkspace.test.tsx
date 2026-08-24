@@ -302,7 +302,9 @@ describe('configurator workspace', () => {
       await within(replacementBrowser).findByRole('heading', { name: 'Выбор замены' }),
     ).toBeInTheDocument();
     expect(await within(replacementBrowser).findByText(intel.name)).toBeInTheDocument();
-    await user.click(within(replacementBrowser).getByRole('button', { name: 'Выбрать' }));
+    await user.click(
+      within(replacementBrowser).getByRole('button', { name: `Выбрать ${intel.name}` }),
+    );
     const replaceDialog = await screen.findByRole('dialog', {
       name: 'Заменить компонент этого типа?',
     });
@@ -397,7 +399,9 @@ describe('configurator workspace', () => {
     await user.click(within(assembly).getByRole('button', { name: `Заменить ${ryzen.name}` }));
     const replacementBrowser = screen.getByRole('region', { name: 'Выбор замены' });
     expect(await within(replacementBrowser).findByText(intel.name)).toBeInTheDocument();
-    await user.click(within(replacementBrowser).getByRole('button', { name: 'Выбрать' }));
+    await user.click(
+      within(replacementBrowser).getByRole('button', { name: `Выбрать ${intel.name}` }),
+    );
     await user.click(
       within(
         await screen.findByRole('dialog', { name: 'Заменить компонент этого типа?' }),
