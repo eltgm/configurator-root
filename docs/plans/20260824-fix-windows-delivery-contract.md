@@ -15,6 +15,8 @@ lifecycle script or its public behavior.
 - The production script already converts a non-zero Docker pull exit into Update exit code `60`.
 - The current test controls the fake command through a mutable child-process environment variable and matches the full
   command line with `findstr`.
+- The first hardened Windows run proved that the marker and command matching worked, but Windows PowerShell reported
+  `0` when `exit /b 1` was followed by another command in the same parenthesized batch block.
 - Windows PowerShell 5.1 and CRLF/UTF-8 BOM compatibility must be preserved.
 - OpenAPI, Flyway/jOOQ, generated code, backend architecture, and integration contracts are not affected.
 
@@ -31,7 +33,8 @@ lifecycle script or its public behavior.
 The fake Docker command will derive a failure-marker path from its existing log path. The PowerShell test creates that
 marker immediately before the failed Update scenario and removes it in cleanup. The fake command will parse arguments
 without relying on `findstr` over a path containing spaces and non-ASCII characters, and it will return `1` only for
-the configured pull operation.
+the configured pull operation. Batch handlers use labels so the shared non-zero `exit /b` is not followed by another
+command in the same compound block when invoked from PowerShell.
 
 The failed Update scenario will verify exit code, command sequence, retained backup, and absence of the success message.
 
