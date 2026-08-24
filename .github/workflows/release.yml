@@ -543,3 +543,4 @@ jobs:
               --generate-notes \
               --notes-file "${notes_file}" \
               --title "Configurator ${tag}"
+          fi
