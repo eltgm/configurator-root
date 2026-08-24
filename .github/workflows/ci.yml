@@ -81,6 +81,9 @@ jobs:
     needs: frontend-quality
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # Firefox rejects root with GitHub's /github/home mount because it belongs to uid 1001.
+      HOME: /root
     container:
       image: mcr.microsoft.com/playwright:v1.62.1-noble
       options: --ipc=host
