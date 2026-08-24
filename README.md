@@ -3,16 +3,16 @@
 [![CI](https://github.com/eltgm/configurator-root/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/eltgm/configurator-root/actions/workflows/ci.yml)
 [![Java 21](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/21/)
 [![Spring Boot 3.4.11](https://img.shields.io/badge/Spring%20Boot-3.4.11-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
-[![OpenAPI 3.1](https://img.shields.io/badge/OpenAPI-3.1-6BA539?logo=openapiinitiative&logoColor=white)](specs/configurator-api.yaml)
+[![OpenAPI 3.0](https://img.shields.io/badge/OpenAPI-3.0-6BA539?logo=openapiinitiative&logoColor=white)](specs/configurator-api.yaml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Backend-first конфигуратор компонентов с React-интерфейсом: каталог предметных областей и компонентов, ручные и
 атрибутивные правила совместимости, поиск совместимых наборов и сохранение конфигураций.
 
 > [!IMPORTANT]
-> Текущий релизный уровень — `0.1.0` (MVP preview). Контракты `POST /auth/register` и `POST /auth/login` описаны в
-> OpenAPI, но аутентификация и авторизация ещё не реализованы. API нельзя публиковать в недоверенной сети до добавления
-> Spring Security/JWT.
+> `v1.0.0` — production-ready локальный продукт для одного доверенного пользователя. Поддерживаемая поставка — только
+> Windows/macOS пакет с Docker Desktop и loopback-адресом `127.0.0.1`; LAN, публичная сеть и серверное развёртывание
+> не входят в контракт этой версии.
 
 ## Возможности
 
@@ -27,7 +27,6 @@ Backend-first конфигуратор компонентов с React-инте�
 | Конфигуратор     | Реализовано     | прямой и транзитивный поиск, поиск по нескольким компонентам, пересечение наборов |
 | Конфигурации     | Реализовано     | создание, список, получение и экспорт в JSON                                      |
 | Web-интерфейс    | Реализовано     | каталог, совместимость, конфигуратор, конфигурации, настройки, mobile/desktop UX  |
-| Аутентификация   | Только контракт | регистрация, login и Bearer JWT описаны, runtime-реализации нет                   |
 
 Web-интерфейс покрывает полный локальный сценарий: создание пустой или демонстрационной предметной области, управление
 типами, атрибутами и компонентами, изображения, ручные и автоматические правила совместимости, граф, прямой/
@@ -56,7 +55,7 @@ controller -> facade -> service -> outbound port -> infrastructure
 - Java 21, Gradle Wrapper;
 - Spring Boot 3.4.11, Spring Web, Bean Validation;
 - PostgreSQL 17, Flyway, jOOQ;
-- OpenAPI 3.1 и OpenAPI Generator;
+- OpenAPI 3.0 и OpenAPI Generator;
 - MinIO для изображений;
 - MapStruct и Lombok;
 - JUnit 5, Spock, ArchUnit, Testcontainers, MockMvc и RestAssured;
@@ -98,21 +97,21 @@ controller -> facade -> service -> outbound port -> infrastructure
 2. Запустите `Start.cmd` в Windows или `Start.command` в macOS двойным кликом.
 3. Дождитесь сообщения о готовности: браузер откроет <http://127.0.0.1:8080>.
 
-Рядом доступны `Stop`, `Update`, `Backup` и `Restore`. Update всегда создаёт backup до загрузки preview-образов;
+Рядом доступны `Stop`, `Update`, `Backup` и `Restore`. Update всегда создаёт backup до загрузки stable-образов;
 Restore проверяет контрольные суммы и сначала создаёт страховочный backup. Backups не зашифрованы. На macOS при
 первом предупреждении Gatekeeper используйте правый клик → «Открыть», не отключая системную защиту.
 
 Tag workflow собирает публичные multi-platform app/gateway images, прикладывает оба архива, `IMAGE_DIGESTS` и
-`SHA256SUMS` к draft pre-release. Для локальной проверки структуры архивов разработчик может выполнить:
+`SHA256SUMS` к draft release. Для локальной проверки структуры архивов разработчик может выполнить:
 
 ```bash
-scripts/release/build-delivery-packages.sh 0.1.0
+scripts/release/build-delivery-packages.sh 1.0.0
 ```
 
 Подробности эксплуатации и recovery: [`docs/release/LOCAL_DELIVERY.md`](docs/release/LOCAL_DELIVERY.md).
 
-> Runtime-аутентификация пока не реализована. Пакет предназначен только для одного пользователя на локальном
-> компьютере; не публикуйте порт 8080 в LAN или интернет.
+> Пакет предназначен только для доверенного пользователя на локальном компьютере. Не меняйте loopback-привязку порта
+> 8080 и не публикуйте приложение в LAN или интернет.
 
 ## Быстрый старт из исходного кода
 
@@ -130,7 +129,7 @@ docker compose up -d --build
 - OpenAPI JSON через gateway — <http://127.0.0.1:8080/api/v3/api-docs>.
 
 Основной Compose публикует только loopback-порт gateway. Backend, PostgreSQL и MinIO доступны внутри Docker network.
-Это уменьшает поверхность локального приложения, но не заменяет отсутствующую runtime-аутентификацию.
+Это является обязательной границей поддерживаемого локального сценария.
 
 ### Development Compose override
 
@@ -248,16 +247,16 @@ production build. После `npx playwright install` функциональны
 
 ## Релизы
 
-Проект использует Semantic Versioning. До реализации безопасности выпускаются версии `0.x`.
+Проект использует Semantic Versioning. `v1.0.0` фиксирует стабильный контракт локальной Windows/macOS поставки.
 
 - рабочая ветка — `develop`;
 - стабильная ветка — `master`;
 - релиз готовится PR из `develop` в `master`;
 - тег формата `vX.Y.Z` ставится только на проверенный commit из `master`;
 - workflow проверяет полный backend/frontend/delivery контур;
-- публикует public `linux/amd64`/`linux/arm64` app и gateway images в GHCR с exact, commit и `preview` tags;
+- публикует public `linux/amd64`/`linux/arm64` app и gateway images в GHCR с exact, commit и `stable` tags;
 - добавляет OCI SBOM/provenance и GitHub OIDC keyless attestations;
-- создаёт или обновляет draft pre-release с JAR, OpenAPI, Windows/macOS archives, `IMAGE_DIGESTS` и `SHA256SUMS`;
+- создаёт или обновляет draft release с JAR, OpenAPI, Windows/macOS archives, `IMAGE_DIGESTS` и `SHA256SUMS`;
 - публикация draft остаётся явным действием владельца после anonymous-pull и clean-machine проверки.
 
 История изменений: [`CHANGELOG.md`](CHANGELOG.md). Чеклист первого релиза: [
@@ -265,8 +264,9 @@ production build. После `npx playwright install` функциональны
 
 ## Безопасность и поддержка
 
-Уязвимости не следует публиковать в обычных issues. Используйте процедуру из [`SECURITY.md`](SECURITY.md). Для ошибок и
-предложений предусмотрены GitHub issue templates.
+Уязвимости не следует публиковать в обычных issues. Используйте процедуру из [`SECURITY.md`](SECURITY.md). Границы
+поддержки и данные для bug report описаны в [`SUPPORT.md`](SUPPORT.md); для ошибок и предложений предусмотрены issue
+templates.
 
 ## Лицензия
 

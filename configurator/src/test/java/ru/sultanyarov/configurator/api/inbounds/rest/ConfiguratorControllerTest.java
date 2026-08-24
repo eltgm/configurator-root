@@ -1,5 +1,10 @@
 package ru.sultanyarov.configurator.api.inbounds.rest;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -14,77 +19,58 @@ import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorIntersectio
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorResponse;
 import ru.sultanyarov.configurator.application.facade.ConfiguratorFacade;
 
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 @ExtendWith(MockitoExtension.class)
 class ConfiguratorControllerTest {
-    @Mock
-    private ConfiguratorFacade configuratorFacade;
-    @InjectMocks
-    private ConfiguratorController controller;
+  @Mock private ConfiguratorFacade configuratorFacade;
+  @InjectMocks private ConfiguratorController controller;
 
-    @Test
-    void domainsIdConfiguratorCompatibleGet_shouldDelegateToFacade() {
-        ConfiguratorResponse responseBody = new ConfiguratorResponse(7L, List.of());
-        when(configuratorFacade.getCompatibleComponents(1L, 7L, true)).thenReturn(responseBody);
+  @Test
+  void getDomainsByIdConfiguratorCompatible_shouldDelegateToFacade() {
+    ConfiguratorResponse responseBody = new ConfiguratorResponse(7L, List.of());
+    when(configuratorFacade.getCompatibleComponents(1L, 7L, true)).thenReturn(responseBody);
 
-        var response = controller.domainsIdConfiguratorCompatibleGet(1L, 7L, true);
+    var response = controller.getDomainsByIdConfiguratorCompatible(1L, 7L, true);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isSameAs(responseBody);
-        verify(configuratorFacade).getCompatibleComponents(1L, 7L, true);
-    }
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).isSameAs(responseBody);
+    verify(configuratorFacade).getCompatibleComponents(1L, 7L, true);
+  }
 
-    @Test
-    void domainsIdConfiguratorCompatibleGet_shouldDefaultTransitiveFlagToFalse() {
-        ConfiguratorResponse responseBody = new ConfiguratorResponse(7L, List.of());
-        when(configuratorFacade.getCompatibleComponents(1L, 7L, false))
-                .thenReturn(responseBody);
+  @Test
+  void getDomainsByIdConfiguratorCompatible_shouldDefaultTransitiveFlagToFalse() {
+    ConfiguratorResponse responseBody = new ConfiguratorResponse(7L, List.of());
+    when(configuratorFacade.getCompatibleComponents(1L, 7L, false)).thenReturn(responseBody);
 
-        var response = controller.domainsIdConfiguratorCompatibleGet(1L, 7L, null);
+    var response = controller.getDomainsByIdConfiguratorCompatible(1L, 7L, null);
 
-        assertThat(response.getBody()).isSameAs(responseBody);
-        verify(configuratorFacade).getCompatibleComponents(1L, 7L, false);
-    }
+    assertThat(response.getBody()).isSameAs(responseBody);
+    verify(configuratorFacade).getCompatibleComponents(1L, 7L, false);
+  }
 
-    @Test
-    void domainsIdConfiguratorCompatibleSearchPost_shouldDelegateToFacade() {
-        ConfiguratorBatchSearchRequest request = new ConfiguratorBatchSearchRequest(
-                List.of(7L, 8L)
-        );
-        ConfiguratorBatchSearchResponse responseBody = new ConfiguratorBatchSearchResponse(
-                List.of()
-        );
-        when(configuratorFacade.searchCompatibleComponents(1L, request))
-                .thenReturn(responseBody);
+  @Test
+  void postDomainsByIdConfiguratorCompatibleSearch_shouldDelegateToFacade() {
+    ConfiguratorBatchSearchRequest request = new ConfiguratorBatchSearchRequest(List.of(7L, 8L));
+    ConfiguratorBatchSearchResponse responseBody = new ConfiguratorBatchSearchResponse(List.of());
+    when(configuratorFacade.searchCompatibleComponents(1L, request)).thenReturn(responseBody);
 
-        var response = controller.domainsIdConfiguratorCompatibleSearchPost(1L, request);
+    var response = controller.postDomainsByIdConfiguratorCompatibleSearch(1L, request);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isSameAs(responseBody);
-        verify(configuratorFacade).searchCompatibleComponents(1L, request);
-    }
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).isSameAs(responseBody);
+    verify(configuratorFacade).searchCompatibleComponents(1L, request);
+  }
 
-    @Test
-    void domainsIdConfiguratorCompatibleIntersectionPost_shouldDelegateToFacade() {
-        ConfiguratorIntersectionRequest request = new ConfiguratorIntersectionRequest(
-                List.of(7L, 8L)
-        );
-        ConfiguratorIntersectionResponse responseBody = new ConfiguratorIntersectionResponse(
-                List.of(7L, 8L),
-                List.of()
-        );
-        when(configuratorFacade.intersectCompatibleComponents(1L, request))
-                .thenReturn(responseBody);
+  @Test
+  void postDomainsByIdConfiguratorCompatibleIntersection_shouldDelegateToFacade() {
+    ConfiguratorIntersectionRequest request = new ConfiguratorIntersectionRequest(List.of(7L, 8L));
+    ConfiguratorIntersectionResponse responseBody =
+        new ConfiguratorIntersectionResponse(List.of(7L, 8L), List.of());
+    when(configuratorFacade.intersectCompatibleComponents(1L, request)).thenReturn(responseBody);
 
-        var response = controller.domainsIdConfiguratorCompatibleIntersectionPost(1L, request);
+    var response = controller.postDomainsByIdConfiguratorCompatibleIntersection(1L, request);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isSameAs(responseBody);
-        verify(configuratorFacade).intersectCompatibleComponents(1L, request);
-    }
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).isSameAs(responseBody);
+    verify(configuratorFacade).intersectCompatibleComponents(1L, request);
+  }
 }

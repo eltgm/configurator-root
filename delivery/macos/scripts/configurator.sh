@@ -616,10 +616,10 @@ operation_update() {
     fail "$EXIT_UPDATE" "Update отменён: обязательный backup не создан."
   fi
   update_backup=$LAST_BACKUP_DIR
-  log "Загружаю новые preview-образы…"
+  log "Загружаю новые stable-образы…"
   if ! run_logged compose pull app gateway; then
     run_logged compose stop gateway app || true
-    fail "$EXIT_UPDATE" "Не удалось загрузить preview-образы. App/gateway остановлены. Backup: $update_backup"
+    fail "$EXIT_UPDATE" "Не удалось загрузить stable-образы. App/gateway остановлены. Backup: $update_backup"
   fi
   log "Запускаю обновлённый Configurator…"
   if ! run_logged compose up -d --remove-orphans || ! wait_for_application; then

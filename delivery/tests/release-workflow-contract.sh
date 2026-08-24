@@ -23,6 +23,7 @@ require_text() {
 [[ -f "${WORKFLOW}" ]] || fail 'release workflow is missing'
 
 require_text 'tags:' 'tag trigger is missing'
+require_text '^v[0-9]+\.[0-9]+\.[0-9]+$' 'stable workflow must reject pre-release tags'
 require_text 'git merge-base --is-ancestor "${GITHUB_SHA}" origin/master' 'master ancestry validation is missing'
 require_text 'Release tag must be annotated' 'annotated tag validation is missing'
 require_text 'APP_IMAGE: ghcr.io/eltgm/configurator-app' 'backend GHCR image is missing'
@@ -30,10 +31,10 @@ require_text 'GATEWAY_IMAGE: ghcr.io/eltgm/configurator-web' 'gateway GHCR image
 require_text 'platforms: linux/amd64,linux/arm64' 'multi-platform build is missing'
 [[ "$(grep -Fc 'platforms: linux/amd64,linux/arm64' "${WORKFLOW}")" == 2 ]] ||
   fail 'both images must be built for amd64 and arm64'
-require_text 'type=raw,value=preview' 'preview tag is missing'
+require_text 'type=raw,value=stable' 'stable tag is missing'
 require_text 'type=raw,value=sha-' 'commit traceability tag is missing'
 if grep -Eq 'value=latest|(^|[[:space:]])latest([[:space:]]|$)' "${WORKFLOW}"; then
-  fail 'latest tag must not be published by the preview workflow'
+  fail 'latest tag must not be published by the stable workflow'
 fi
 [[ "$(grep -Fc 'sbom: true' "${WORKFLOW}")" == 2 ]] || fail 'both image builds must create SBOMs'
 [[ "$(grep -Fc 'provenance: mode=max' "${WORKFLOW}")" == 2 ]] || fail 'both image builds need max provenance'
@@ -44,7 +45,9 @@ require_text 'scripts/release/prepare-release-assets.sh' 'release asset assembly
 require_text 'subject-path: release-assets/*' 'downloadable asset attestation is missing'
 require_text 'gh release upload "${tag}" release-assets/* --clobber' 'idempotent draft upload is missing'
 require_text '--draft' 'draft release flag is missing'
-require_text '--prerelease' 'pre-release flag is missing'
+if grep -Fq -- '--prerelease' "${WORKFLOW}"; then
+  fail 'stable release must not be marked as a pre-release'
+fi
 require_text 'notes_file="docs/release/RELEASE_NOTES_${tag}.md"' 'versioned release notes validation is missing'
 
 for permission in 'packages: write' 'id-token: write' 'attestations: write' 'contents: write'; do

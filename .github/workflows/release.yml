@@ -59,7 +59,7 @@ jobs:
         run: |
           set -euo pipefail
           tag="${GITHUB_REF_NAME}"
-          if [[ ! "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+          if [[ ! "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Unsupported release tag: ${tag}" >&2
             exit 1
           fi
@@ -237,7 +237,7 @@ jobs:
           tags: |
             type=raw,value=${{ needs.verify-release-candidate.outputs.version }}
             type=raw,value=sha-${{ needs.verify-release-candidate.outputs.short-sha }}
-            type=raw,value=preview
+            type=raw,value=stable
           labels: |
             org.opencontainers.image.created=${{ needs.verify-release-candidate.outputs.created }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -270,7 +270,7 @@ jobs:
         run: >-
           docker buildx imagetools create
           --tag "${APP_IMAGE}:sha-${{ needs.verify-release-candidate.outputs.short-sha }}"
-          --tag "${APP_IMAGE}:preview"
+          --tag "${APP_IMAGE}:stable"
           "${APP_IMAGE}@${{ steps.existing.outputs.digest }}"
 
       - name: Resolve backend manifest digest
@@ -348,7 +348,7 @@ jobs:
           tags: |
             type=raw,value=${{ needs.verify-release-candidate.outputs.version }}
             type=raw,value=sha-${{ needs.verify-release-candidate.outputs.short-sha }}
-            type=raw,value=preview
+            type=raw,value=stable
           labels: |
             org.opencontainers.image.created=${{ needs.verify-release-candidate.outputs.created }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -380,7 +380,7 @@ jobs:
         run: >-
           docker buildx imagetools create
           --tag "${GATEWAY_IMAGE}:sha-${{ needs.verify-release-candidate.outputs.short-sha }}"
-          --tag "${GATEWAY_IMAGE}:preview"
+          --tag "${GATEWAY_IMAGE}:stable"
           "${GATEWAY_IMAGE}@${{ steps.existing.outputs.digest }}"
 
       - name: Resolve gateway manifest digest
@@ -501,7 +501,7 @@ jobs:
           retention-days: 3
 
   draft-release:
-    name: Create or update draft pre-release
+    name: Create or update draft release
     needs: [verify-release-candidate, prepare-release-assets]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -517,7 +517,7 @@ jobs:
           name: final-release-assets
           path: release-assets
 
-      - name: Create or update draft pre-release
+      - name: Create or update draft release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -540,7 +540,6 @@ jobs:
             gh release create "${tag}" release-assets/* \
               --verify-tag \
               --draft \
-              --prerelease \
               --generate-notes \
               --notes-file "${notes_file}" \
               --title "Configurator ${tag}"

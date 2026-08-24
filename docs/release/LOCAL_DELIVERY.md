@@ -1,125 +1,88 @@
-# Локальная поставка Configurator
+# Локальная поставка Configurator v1
 
-Этот документ описывает эксплуатационный контракт пользовательских архивов и release automation 9.29–9.30. Tag
-workflow публикует public multi-platform app/gateway images, формирует Windows/macOS assets и создаёт draft
-pre-release. До явной публикации draft владельцем локально собранные архивы не считаются готовым пользовательским
-релизом.
+## Поддерживаемый сценарий
 
-## Скачивание и запуск
+Пользователь получает только готовый пакет Windows 10/11 x86-64 или macOS Intel/Apple Silicon и запускает его через
+Docker Desktop. JDK, Gradle, Node.js, npm и Git не нужны. Приложение доступно только на
+<http://127.0.0.1:8080>; серверная установка и публикация порта вне loopback не поддерживаются.
 
-1. Откройте <https://github.com/eltgm/configurator-root/releases>.
-2. Скачайте `configurator-windows-vX.Y.Z.zip` или `configurator-macos-vX.Y.Z.tar.gz` и полностью распакуйте архив.
-3. Запустите `Start.cmd` либо `Start.command`. На macOS при первом предупреждении используйте правый клик → «Открыть».
-4. Дождитесь открытия <http://127.0.0.1:8080>.
+Пакеты используют public multi-platform images:
 
-Registry login не требуется: `configurator-app` и `configurator-web` публикуются в GHCR как public manifests для
-`linux/amd64` и `linux/arm64`. Пакет использует mutable `preview` channel для Update, а `IMAGE_DIGESTS` в GitHub Release
-фиксирует immutable digest конкретной версии.
+- `ghcr.io/eltgm/configurator-app:stable`;
+- `ghcr.io/eltgm/configurator-web:stable`.
 
-## Поддерживаемое окружение
+Exact version и digest фиксируются в `IMAGE_DIGESTS`. `stable` — единственный mutable update channel; `latest` не
+публикуется.
 
-- Windows 10/11 x86-64 с Docker Desktop в режиме Linux containers;
-- macOS Intel или Apple Silicon с поддерживаемой версией Docker Desktop;
-- доступ в интернет для первого Start и каждого Update;
-- свободный локальный порт `127.0.0.1:8080`.
+## Установка пользователем
 
-Пакет не устанавливает Docker Desktop и не принимает его лицензию. JDK, Gradle, Node.js, npm и Git не нужны.
+1. Установить и запустить актуальный Docker Desktop.
+2. Скачать архив своей ОС, `SHA256SUMS` и при необходимости `IMAGE_DIGESTS` из GitHub Release `v1.0.0`.
+3. Проверить checksum архива.
+4. Полностью распаковать папку `Configurator` в каталог с правом записи. Не запускать файлы внутри ZIP.
+5. Windows: двойной клик `Start.cmd`. macOS: двойной клик `Start.command`; при первом Gatekeeper prompt использовать
+   правый клик → «Открыть».
+6. Дождаться readiness и открытия <http://127.0.0.1:8080>.
 
-## Операции
-
-| Команда   | Поведение                                                                                                    |
-| --------- | ------------------------------------------------------------------------------------------------------------ |
-| `Start`   | Проверяет Docker/Compose и порт, запускает stack, ждёт UI и API, открывает браузер.                          |
-| `Stop`    | Останавливает project containers, сохраняя volumes, images и backups.                                        |
-| `Backup`  | Останавливает запись, сохраняет PostgreSQL и MinIO, проверяет снимок и возвращает прежнее состояние.         |
-| `Restore` | Проверяет выбранный backup, запрашивает подтверждение, создаёт страховочный backup и заменяет оба хранилища. |
-| `Update`  | Создаёт обязательный backup, загружает app/gateway канала `preview` и проверяет readiness.                   |
-
-Все команды защищены общим lock. Логи создаются в `logs/`, backups — в `backups/`. Переименование и перенос
-распакованной папки не меняют Compose project и не теряют именованные volumes.
-
-## Backup и Restore
-
-Формат v1 содержит:
-
-```text
-backups/YYYYMMDD-HHMMSS/
-  database.dump
-  minio/
-  manifest.properties
-  SHA256SUMS
-```
-
-Backup логический и переносимый: PostgreSQL хранится в custom dump, MinIO — как текущий набор объектов. Снимки не
-шифруются; храните их в доверенном месте. Restore поддерживает только неизменённые backups, созданные Configurator.
-Не используйте dump или архив из неизвестного источника.
-
-Перед Restore создаётся `pre-restore-*`. Перед Update — `pre-update-*`. Автоматическое удаление снимков не
-выполняется. После успешного Restore текущие preview-images могут применить Flyway migration вперёд; downgrade на
-старые images не поддерживается.
-
-## Ошибка Update или Restore
-
-При ошибке app и gateway остаются остановленными. Это строгое поведение: автоматический rollback image запрещён,
-поскольку новый backend мог уже изменить схему БД. PostgreSQL, MinIO, выбранный backup и страховочный backup
-сохраняются.
-
-1. Откройте последний файл в `logs/` и сохраните его для диагностики.
-2. Не удаляйте папку `backups` и Docker volumes.
-3. Для возврата данных запустите Restore и выберите указанный в сообщении pre-update/pre-restore backup.
-4. Если Restore снова завершается ошибкой, оставьте приложение остановленным и передайте log без изменения backups.
-
-## Типовые проблемы
-
-- «Docker CLI не найден» — установите/обновите Docker Desktop и повторите Start.
-- «Docker Desktop не готов» — откройте Docker Desktop, завершите первичную настройку и дождитесь статуса Running.
-- «Порт 8080 занят» — остановите другое локальное приложение на 8080; wildcard/LAN bind не поддерживается.
-- macOS блокирует `.command` — правый клик по файлу → «Открыть». Не отключайте Gatekeeper глобально.
-- Операция уже выполняется — дождитесь её окончания; не удаляйте lock во время работающей команды.
-
-Runtime-аутентификация отсутствует. Поставка local-only preview и не является production-ready.
-
-## Проверка скачанных файлов
-
-`SHA256SUMS` проверяет целостность JAR, OpenAPI, обоих пользовательских архивов и `IMAGE_DIGESTS`. Linux/macOS:
-
-```bash
-shasum -a 256 -c SHA256SUMS
-```
-
-Windows PowerShell для отдельного файла:
+Windows PowerShell:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\configurator-windows-v0.1.0.zip
+Get-FileHash -Algorithm SHA256 .\configurator-windows-v1.0.0.zip
 ```
 
-Технический пользователь с GitHub CLI может дополнительно проверить подписанное provenance:
+macOS:
 
 ```bash
-gh attestation verify configurator-windows-v0.1.0.zip -R eltgm/configurator-root
-gh attestation verify oci://ghcr.io/eltgm/configurator-app:0.1.0 -R eltgm/configurator-root
+shasum -a 256 configurator-macos-v1.0.0.tar.gz
 ```
 
-Checksum обнаруживает изменение байтов, а attestation связывает artifact с GitHub workflow/repository. Они не
-гарантируют отсутствие уязвимостей и не заменяют security review.
+## Команды пакета
 
-## Проверка и сборка для разработчика
+| Команда   | Назначение |
+| --------- | ---------- |
+| `Start`   | Проверяет Docker, загружает images, запускает приложение и ждёт readiness. |
+| `Stop`    | Останавливает контейнеры без удаления данных. |
+| `Update`  | Создаёт обязательный backup, загружает `stable` images и проверяет readiness. |
+| `Backup`  | Создаёт checksum-protected PostgreSQL/MinIO backup формата v1. |
+| `Restore` | Проверяет backup, создаёт страховочную копию и восстанавливает состояние. |
+
+После неуспешного Update или Restore app/gateway намеренно остаются остановленными. Исправьте причину, затем повторите
+операцию или восстановите последний заведомо рабочий backup. Backups не зашифрованы.
+
+## Чистая переустановка и удаление
+
+1. При необходимости создать `Backup` и скопировать папку `backups` отдельно.
+2. Выполнить `Stop`.
+3. Для полного сброса данных открыть терминал в папке `Configurator` и выполнить:
 
 ```bash
-delivery/tests/package-contract.sh
-delivery/tests/macos-scripts-test.sh
-delivery/tests/archive-contract.sh
-delivery/tests/release-assets-contract.sh
-delivery/tests/release-workflow-contract.sh
-delivery/tests/docker-lifecycle-contract.sh
-scripts/release/build-delivery-packages.sh 0.1.0
+docker compose --env-file configurator.env -f compose.yaml down --volumes --remove-orphans
 ```
 
-Windows PowerShell 5.1 contract выполняется в Windows CI. Реальный lifecycle-тест использует изолированный Compose
-project и локальный OCI registry, проверяет Start/Stop, оба хранилища, Update success и строгий Update failure.
-Фактическая GHCR visibility, anonymous multi-platform pull, OIDC attestations и draft assets проверяются только trusted
-tag workflow после merge в `master`; чистые Windows/macOS машины остаются обязательной ручной release-проверкой.
+4. Удалить распакованную папку. Для переустановки распаковать новый архив в пустой каталог и выполнить `Start`.
 
-При первом image push GitHub может создать packages как private. Тогда anonymous gate ожидаемо остановит workflow:
-владелец переводит `configurator-app` и `configurator-web` в public, связывает packages с repository и запускает тот же
-workflow повторно. Персональный токен и автоматическое расширение visibility для этого не требуются.
+Сброс необратимо удаляет локальные volumes. Backup до `v1.0.0` может быть несовместим; в этом случае используйте
+чистую установку.
+
+## Проверка происхождения
+
+```bash
+gh attestation verify configurator-macos-v1.0.0.tar.gz -R eltgm/configurator-root
+gh attestation verify oci://ghcr.io/eltgm/configurator-web:1.0.0 -R eltgm/configurator-root
+```
+
+## Доставка владельцем
+
+1. Убедиться, что checklist и release audit актуальны, CI зелёный, GHCR packages public.
+2. Влить release PR `develop` → `master`.
+3. Создать annotated tag на commit из `master`: `git tag -a v1.0.0 -m "Configurator v1.0.0"` и push tag.
+4. Дождаться workflow `Prepare GitHub release`: он повторно запускает полный test matrix, публикует exact/sha/stable
+   images, attestations и draft release assets.
+5. Проверить anonymous pull и clean-machine установку на Windows и macOS, checksum, Start/Stop/Update/Backup/Restore.
+6. Просмотреть release notes и вручную опубликовать draft.
+
+Локальная сборка структуры пакетов для проверки:
+
+```bash
+scripts/release/build-delivery-packages.sh 1.0.0
+```

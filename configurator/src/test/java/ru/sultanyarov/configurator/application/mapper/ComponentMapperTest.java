@@ -39,6 +39,10 @@ class ComponentMapperTest {
     assertThat(result.getAttributes()).hasSize(1);
     assertThat(result.getAttributes().get(0).attributeDefinitionId()).isEqualTo(1L);
     assertThat(result.getAttributes().get(0).value()).isEqualTo("42");
+    assertThat(result.getAttributes().get(0).id()).isNull();
+    assertThat(result.getAttributes().get(0).name()).isNull();
+    assertThat(result.getAttributes().get(0).label()).isNull();
+    assertThat(result.getAttributes().get(0).dataType()).isNull();
   }
 
   @Test
@@ -64,6 +68,10 @@ class ComponentMapperTest {
             attribute -> {
               assertThat(attribute.attributeDefinitionId()).isEqualTo(1L);
               assertThat(attribute.value()).isEqualTo("55");
+              assertThat(attribute.id()).isNull();
+              assertThat(attribute.name()).isNull();
+              assertThat(attribute.label()).isNull();
+              assertThat(attribute.dataType()).isNull();
             });
   }
 

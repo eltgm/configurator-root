@@ -1,47 +1,44 @@
 # Changelog
 
-Все значимые изменения проекта документируются в этом файле. Формат основан
-на [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/), версии
-следуют [Semantic Versioning](https://semver.org/lang/ru/).
+Все значимые изменения документируются в этом файле. Формат основан на
+[Keep a Changelog](https://keepachangelog.com/ru/1.1.0/), версии следуют
+[Semantic Versioning](https://semver.org/lang/ru/).
 
 ## [Unreleased]
 
-### Planned
-
-- Spring Security, регистрация/login и JWT authorization.
-- Удаление определений атрибутов.
-- Production configuration и deployment hardening.
-
-## [0.1.0] - 2026-08-24
+## [1.0.0] - 2026-08-24
 
 ### Added
 
-- CRUD доменов и типов компонентов.
-- Создание, получение списка и обновление определений атрибутов.
-- Создание, чтение, обновление, архивирование и поиск компонентов.
-- Загрузка и получение изображений компонентов через MinIO.
-- Ручные связи совместимости и граф домена.
-- CRUD автоматических правил `attribute ↔ attribute` с объяснениями результата.
-- Прямой и транзитивный поиск совместимости, batch search и intersection.
-- Сохранение, чтение, пагинация и JSON-экспорт конфигураций.
-- OpenAPI и jOOQ code generation, Flyway migrations.
-- Unit, repository, architecture и общие local/external integration contracts.
-- CI, Dependabot, GitHub templates и draft release automation.
-- Совместимый со Spring Boot 3 runtime для Swagger UI и `/v3/api-docs`.
-- React/Vite интерфейс для предметных областей, каталога, совместимости, конфигуратора, конфигураций и настроек.
-- Демонстрационная предметная область «Сборка ПК», светлая/тёмная темы, desktop/mobile UX и WCAG 2.2 AA evidence.
-- Frontend unit/component, functional Playwright, accessibility, visual regression и production delivery gates.
-- Unprivileged same-origin web gateway с loopback-only entry point и production Docker image.
-- Windows/macOS Start, Stop, Update, Backup и Restore packages для локального запуска через Docker Desktop.
-- Multi-platform GHCR release automation с SBOM, provenance, OIDC attestations, image digests и checksums.
+- Полный CRUD предметных областей, типов, атрибутов и компонентов с архивированием и фильтрацией.
+- Хранение, сортировка и выдача изображений компонентов через MinIO.
+- Ручные связи, граф и автоматические правила совместимости с объяснением результата.
+- Прямой, транзитивный, множественный поиск и пересечение совместимых компонентов.
+- Сохранение, копирование, пагинация и JSON-экспорт конфигураций.
+- Адаптивный React-интерфейс, демонстрационная область, темы, desktop/mobile navigation.
+- Единые local/external integration contracts, frontend unit/E2E/accessibility/visual/delivery gates.
+- Воспроизводимые Windows/macOS пакеты для Docker Desktop с Start, Stop, Update, Backup и Restore.
+- Public multi-platform GHCR images, checksums, digests, SBOM, provenance и OIDC attestations.
 
-### Known limitations
+### Changed
 
-- Контракты регистрации/login и Bearer JWT пока не имеют runtime-реализации.
-- Текущий пользователь временно представлен системной записью с ID `-1`.
-- Runtime поддерживает только локальный однопользовательский preview через `127.0.0.1`; LAN/public deployment не
-  поддерживается.
-- Публикация draft pre-release и clean-machine Windows/macOS проверка остаются явными действиями владельца.
+- Пользовательская поставка переведена на стабильный канал образов `stable`; тег `latest` не публикуется.
+- REST-операции получили стабильные `operationId`; API формализован как OpenAPI 3.0.3.
+- Frontend routes загружаются по требованию, а browser gates выполняются против production build server и отклоняют
+  ошибки приложения в консоли.
+- Обновлены поддерживаемые frontend dependencies и зафиксирована opt-in policy для install script MSW.
+- Версии Gradle, frontend package и release automation синхронизированы с `1.0.0`.
 
-[Unreleased]: https://github.com/eltgm/configurator-root/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/eltgm/configurator-root/releases/tag/v0.1.0
+### Fixed
+
+- Устранены actionable MapStruct, unchecked compiler и Gradle/JUnit launcher warnings.
+- Удалён неиспользуемый route placeholder и устранён oversized entry chunk frontend.
+
+### Support boundary
+
+- Поддерживаются только локальные пакеты Windows 10/11 x86-64 и macOS Intel/Apple Silicon с Docker Desktop.
+- Единственная поддерживаемая точка входа — `http://127.0.0.1:8080`; LAN/public/server deployment не входит в v1.0.0.
+- Совместимость с данными и backup формата до `v1.0.0` не гарантируется; разрешена чистая переустановка.
+
+[Unreleased]: https://github.com/eltgm/configurator-root/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/eltgm/configurator-root/releases/tag/v1.0.0

@@ -6,7 +6,7 @@ import classes from './compatibility-graph.module.css';
 export interface CompatibilityGraphNodeData extends Record<string, unknown> {
   name: string;
   componentTypeName: string;
-  brand?: string;
+  brand?: string | null;
   color: string;
   isolated: boolean;
   highlighted: boolean;

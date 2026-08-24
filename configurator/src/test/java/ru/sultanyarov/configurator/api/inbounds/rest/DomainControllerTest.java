@@ -30,14 +30,14 @@ class DomainControllerTest {
   @InjectMocks private DomainController domainController;
 
   @Test
-  void domainsDemoPost_shouldReturnCreatedDomain() {
+  void postDomainsDemo_shouldReturnCreatedDomain() {
     Domain expectedDomain = new Domain();
     expectedDomain.setId(1L);
     expectedDomain.setName("Сборка ПК");
     expectedDomain.setCreatedAt(LocalDateTime.now());
     when(domainFacade.createDemoDomain()).thenReturn(expectedDomain);
 
-    ResponseEntity<Domain> response = domainController.domainsDemoPost();
+    ResponseEntity<Domain> response = domainController.postDomainsDemo();
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(response.getBody()).isSameAs(expectedDomain);
@@ -45,7 +45,7 @@ class DomainControllerTest {
   }
 
   @Test
-  void domainsGet_shouldReturnDomainPage() {
+  void getDomains_shouldReturnDomainPage() {
     // Arrange
     int page = 0;
     int size = 10;
@@ -71,7 +71,7 @@ class DomainControllerTest {
     when(domainFacade.getDomains(anyInt(), anyInt())).thenReturn(expectedPage);
 
     // Act
-    ResponseEntity<DomainPage> response = domainController.domainsGet(page, size);
+    ResponseEntity<DomainPage> response = domainController.getDomains(page, size);
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -80,12 +80,12 @@ class DomainControllerTest {
   }
 
   @Test
-  void domainsIdDelete_shouldReturnNoContent() {
+  void deleteDomainsById_shouldReturnNoContent() {
     // Arrange
     Long id = 1L;
 
     // Act
-    ResponseEntity<Void> response = domainController.domainsIdDelete(id);
+    ResponseEntity<Void> response = domainController.deleteDomainsById(id);
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
@@ -93,7 +93,7 @@ class DomainControllerTest {
   }
 
   @Test
-  void domainsIdGet_shouldReturnDomain() {
+  void getDomainsById_shouldReturnDomain() {
     // Arrange
     Long id = 1L;
 
@@ -106,7 +106,7 @@ class DomainControllerTest {
     when(domainFacade.getDomainById(id)).thenReturn(expectedDomain);
 
     // Act
-    ResponseEntity<Domain> response = domainController.domainsIdGet(id);
+    ResponseEntity<Domain> response = domainController.getDomainsById(id);
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -115,7 +115,7 @@ class DomainControllerTest {
   }
 
   @Test
-  void domainsIdPut_shouldReturnUpdatedDomain() {
+  void putDomainsById_shouldReturnUpdatedDomain() {
     // Arrange
     Long id = 1L;
     UpdateDomainRequest request = new UpdateDomainRequest();
@@ -132,7 +132,7 @@ class DomainControllerTest {
         .thenReturn(expectedDomain);
 
     // Act
-    ResponseEntity<Domain> response = domainController.domainsIdPut(id, request);
+    ResponseEntity<Domain> response = domainController.putDomainsById(id, request);
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -141,7 +141,7 @@ class DomainControllerTest {
   }
 
   @Test
-  void domainsPost_shouldReturnCreatedDomain() {
+  void postDomains_shouldReturnCreatedDomain() {
     // Arrange
     CreateDomainRequest request = new CreateDomainRequest();
     request.setName("New Domain");
@@ -156,7 +156,7 @@ class DomainControllerTest {
     when(domainFacade.createDomain(any(CreateDomainRequest.class))).thenReturn(expectedDomain);
 
     // Act
-    ResponseEntity<Domain> response = domainController.domainsPost(request);
+    ResponseEntity<Domain> response = domainController.postDomains(request);
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);

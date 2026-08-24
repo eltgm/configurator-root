@@ -95,11 +95,11 @@ mkdir -p "${TEMP_DIRECTORY}/package"
 tar -xzf "${OUTPUT_DIRECTORY}/configurator-macos-v${VERSION}.tar.gz" -C "${TEMP_DIRECTORY}/package"
 grep -Fxq "CONFIGURATOR_PACKAGE_VERSION=${VERSION}" "${TEMP_DIRECTORY}/package/Configurator/configurator.env" ||
   fail 'package version was not injected'
-grep -Fxq 'CONFIGURATOR_CHANNEL=preview' "${TEMP_DIRECTORY}/package/Configurator/configurator.env" ||
-  fail 'preview channel was not injected'
-grep -Fxq "CONFIGURATOR_APP_IMAGE=${APP_IMAGE}:preview" \
-  "${TEMP_DIRECTORY}/package/Configurator/configurator.env" || fail 'preview app image was not injected'
-grep -Fxq "CONFIGURATOR_GATEWAY_IMAGE=${GATEWAY_IMAGE}:preview" \
-  "${TEMP_DIRECTORY}/package/Configurator/configurator.env" || fail 'preview gateway image was not injected'
+grep -Fxq 'CONFIGURATOR_CHANNEL=stable' "${TEMP_DIRECTORY}/package/Configurator/configurator.env" ||
+  fail 'stable channel was not injected'
+grep -Fxq "CONFIGURATOR_APP_IMAGE=${APP_IMAGE}:stable" \
+  "${TEMP_DIRECTORY}/package/Configurator/configurator.env" || fail 'stable app image was not injected'
+grep -Fxq "CONFIGURATOR_GATEWAY_IMAGE=${GATEWAY_IMAGE}:stable" \
+  "${TEMP_DIRECTORY}/package/Configurator/configurator.env" || fail 'stable gateway image was not injected'
 
 echo 'release-assets-contract: OK'

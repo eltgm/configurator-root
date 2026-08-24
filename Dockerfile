@@ -9,7 +9,7 @@ ARG OCI_REVISION="unknown"
 ARG OCI_VERSION="0.0.0-dev"
 
 LABEL org.opencontainers.image.title="Configurator Backend" \
-      org.opencontainers.image.description="Spring Boot API for the local Configurator preview" \
+      org.opencontainers.image.description="Spring Boot API for the local Configurator release" \
       org.opencontainers.image.source="https://github.com/eltgm/configurator-root" \
       org.opencontainers.image.revision="${OCI_REVISION}" \
       org.opencontainers.image.version="${OCI_VERSION}" \
@@ -18,7 +18,7 @@ LABEL org.opencontainers.image.title="Configurator Backend" \
 
 WORKDIR /app
 
-ARG JAR_FILE=configurator/build/libs/configurator-0.1.0-SNAPSHOT.jar
+ARG JAR_FILE=configurator/build/libs/configurator-1.0.0-SNAPSHOT.jar
 COPY --chown=10001:10001 ${JAR_FILE} app.jar
 
 EXPOSE 8080

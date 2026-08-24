@@ -1,6 +1,6 @@
 import { Anchor, AppShell, Group, Text, ThemeIcon, VisuallyHidden } from '@mantine/core';
 import { IconAssembly } from '@tabler/icons-react';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Outlet } from 'react-router-dom';
 
@@ -15,6 +15,7 @@ import {
   documentTitleChangedEvent,
   type DocumentTitleChangedEvent,
 } from '@/shared/lib/useDocumentTitle';
+import { LoadingState } from '@/shared/ui';
 
 export function AppLayout() {
   return (
@@ -96,7 +97,9 @@ function AppLayoutContent() {
         </AppShell.Navbar>
 
         <AppShell.Main id="main-content" className={classes.main} tabIndex={-1}>
-          <Outlet />
+          <Suspense fallback={<LoadingState rows={2} />}>
+            <Outlet />
+          </Suspense>
         </AppShell.Main>
 
         <AppShell.Footer hiddenFrom="sm">

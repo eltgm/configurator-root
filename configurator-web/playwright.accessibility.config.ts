@@ -11,7 +11,7 @@ export default defineConfig({
     : [['list'], ['html', { open: 'never', outputFolder: 'playwright-report/accessibility' }]],
   outputDir: 'test-results/accessibility',
   use: {
-    baseURL: 'http://127.0.0.1:5173',
+    baseURL: 'http://127.0.0.1:4173',
     locale: 'ru-RU',
     timezoneId: 'Europe/Moscow',
     trace: 'on-first-retry',
@@ -28,8 +28,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
-    url: 'http://127.0.0.1:5173',
+    command: 'npm run build && npm run preview',
+    url: 'http://127.0.0.1:4173',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

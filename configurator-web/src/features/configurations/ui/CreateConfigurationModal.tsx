@@ -28,7 +28,7 @@ export interface ConfigurationSummaryItem {
   id: number;
   name: string;
   typeName: string;
-  brand?: string;
+  brand?: string | null;
   archived?: boolean;
 }
 

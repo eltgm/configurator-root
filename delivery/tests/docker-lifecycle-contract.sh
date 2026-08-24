@@ -76,12 +76,12 @@ for _ in $(seq 1 30); do
   sleep 1
 done
 [[ "${registry_ready}" -eq 1 ]] || fail 'local test registry did not become ready'
-readonly APP_PREVIEW_IMAGE="localhost:${registry_port}/configurator-app:preview"
-readonly GATEWAY_PREVIEW_IMAGE="localhost:${registry_port}/configurator-web:preview"
-docker tag "${APP_IMAGE}" "${APP_PREVIEW_IMAGE}"
-docker tag "${GATEWAY_IMAGE}" "${GATEWAY_PREVIEW_IMAGE}"
-docker push "${APP_PREVIEW_IMAGE}" >/dev/null
-docker push "${GATEWAY_PREVIEW_IMAGE}" >/dev/null
+readonly APP_STABLE_IMAGE="localhost:${registry_port}/configurator-app:stable"
+readonly GATEWAY_STABLE_IMAGE="localhost:${registry_port}/configurator-web:stable"
+docker tag "${APP_IMAGE}" "${APP_STABLE_IMAGE}"
+docker tag "${GATEWAY_IMAGE}" "${GATEWAY_STABLE_IMAGE}"
+docker push "${APP_STABLE_IMAGE}" >/dev/null
+docker push "${GATEWAY_STABLE_IMAGE}" >/dev/null
 
 "${REPOSITORY_ROOT}/scripts/release/build-delivery-packages.sh" \
   "${TEST_VERSION}" "${TEMP_DIRECTORY}/archives" >/dev/null
@@ -92,8 +92,8 @@ tar -xzf "${TEMP_DIRECTORY}/archives/configurator-macos-v${TEST_VERSION}.tar.gz"
 
 sed -i.bak \
   -e "s|^name: configurator$|name: ${PROJECT_NAME}|" \
-  -e "s|^    image: \${CONFIGURATOR_APP_IMAGE}$|    image: ${APP_PREVIEW_IMAGE}|" \
-  -e "s|^    image: \${CONFIGURATOR_GATEWAY_IMAGE}$|    image: ${GATEWAY_PREVIEW_IMAGE}|" \
+  -e "s|^    image: \${CONFIGURATOR_APP_IMAGE}$|    image: ${APP_STABLE_IMAGE}|" \
+  -e "s|^    image: \${CONFIGURATOR_GATEWAY_IMAGE}$|    image: ${GATEWAY_STABLE_IMAGE}|" \
   "${PACKAGE_ROOT}/compose.yaml"
 rm "${PACKAGE_ROOT}/compose.yaml.bak"
 
@@ -148,14 +148,14 @@ restored_object=$(compose run --rm --no-deps minio-maintenance \
 [[ "${restored_object}" == 'delivery-contract-object' ]] || fail 'restored MinIO object differs'
 
 "${PACKAGE_ROOT}/scripts/configurator.sh" update --non-interactive --no-open ||
-  fail 'Update with reachable preview images failed'
+  fail 'Update with reachable stable images failed'
 
 postgres_image=$(sed -n 's/^CONFIGURATOR_POSTGRES_IMAGE=//p' "${PACKAGE_ROOT}/configurator.env")
-docker tag "${postgres_image}" "${APP_PREVIEW_IMAGE}"
-docker push "${APP_PREVIEW_IMAGE}" >/dev/null
-# Keep the currently running/local preview healthy so the mandatory backup can complete.
+docker tag "${postgres_image}" "${APP_STABLE_IMAGE}"
+docker push "${APP_STABLE_IMAGE}" >/dev/null
+# Keep the currently running/local stable release healthy so the mandatory backup can complete.
 # The subsequent pull must be the point where the intentionally non-ready remote image becomes active.
-docker tag "${APP_IMAGE}" "${APP_PREVIEW_IMAGE}"
+docker tag "${APP_IMAGE}" "${APP_STABLE_IMAGE}"
 export CONFIGURATOR_READINESS_WAIT_SECONDS=30
 set +e
 "${PACKAGE_ROOT}/scripts/configurator.sh" update --non-interactive --no-open
@@ -164,7 +164,7 @@ set -e
 [[ "${strict_update_exit}" -eq 60 ]] || fail "strict Update returned ${strict_update_exit}, expected 60"
 [[ -z "$(compose ps --status running --quiet app)" ]] || fail 'app is running after strict Update failure'
 [[ -z "$(compose ps --status running --quiet gateway)" ]] || fail 'gateway is running after strict Update failure'
-if grep -R -Fq 'configurator-local-preview' "${PACKAGE_ROOT}/logs" "${PACKAGE_ROOT}/backups"; then
+if grep -R -Fq 'configurator-local-v1' "${PACKAGE_ROOT}/logs" "${PACKAGE_ROOT}/backups"; then
   fail 'local credentials leaked into logs or backup metadata'
 fi
 assert_host_writable_directories

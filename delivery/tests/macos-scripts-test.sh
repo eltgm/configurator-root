@@ -151,7 +151,7 @@ set -e
 if find "$PACKAGE_ROOT/backups" -type d -name '*.partial' | grep -q .; then
   fail "partial backup directory leaked"
 fi
-if grep -R -Fq 'configurator-local-preview' "$PACKAGE_ROOT/logs"; then
+if grep -R -Fq 'configurator-local-v1' "$PACKAGE_ROOT/logs"; then
   fail "local credentials leaked into operation logs"
 fi
 
