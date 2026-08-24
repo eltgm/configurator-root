@@ -8,7 +8,7 @@ import type {
 export interface ConfiguratorComponentSelection {
   id: number;
   name: string;
-  brand?: string;
+  brand?: string | null;
   componentTypeId: number;
 }
 

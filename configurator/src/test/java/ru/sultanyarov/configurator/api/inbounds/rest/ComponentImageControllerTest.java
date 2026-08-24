@@ -24,8 +24,8 @@ class ComponentImageControllerTest {
   @InjectMocks private ComponentImageController controller;
 
   @Test
-  void componentImagesIdDelete_shouldDelegateAndReturnNoContent() {
-    ResponseEntity<Void> response = controller.componentImagesIdDelete(42L);
+  void deleteComponentImagesById_shouldDelegateAndReturnNoContent() {
+    ResponseEntity<Void> response = controller.deleteComponentImagesById(42L);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     assertThat(response.getBody()).isNull();
@@ -33,12 +33,12 @@ class ComponentImageControllerTest {
   }
 
   @Test
-  void componentImagesIdContentGet_shouldReturnOriginalContentAndSafeHeaders() throws Exception {
+  void getComponentImagesByIdContent_shouldReturnOriginalContentAndSafeHeaders() throws Exception {
     byte[] bytes = new byte[] {1, 2, 3};
     when(componentFacade.getComponentImageContent(42L))
         .thenReturn(new ComponentImageContent(bytes, "image/png"));
 
-    ResponseEntity<Resource> response = controller.componentImagesIdContentGet(42L);
+    ResponseEntity<Resource> response = controller.getComponentImagesByIdContent(42L);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getHeaders().getContentType().toString()).isEqualTo("image/png");

@@ -2,7 +2,7 @@ package ru.sultanyarov.configurator.contract
 
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfigurationExport
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfigurationPage
-import ru.sultanyarov.configurator.api.inbounds.rest.dto.ModelConfiguration
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.SavedConfiguration
 import spock.lang.Specification
 
 abstract class AbstractConfigurationControllerContract extends Specification implements ApiTestSupport {
@@ -16,7 +16,7 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
 
         then:
         result.status == 201
-        def body = objectMapper.readValue(result.body, ModelConfiguration)
+        def body = objectMapper.readValue(result.body, SavedConfiguration)
         body.id != null
         body.domainId == 1L
         body.name == "Manual build"
@@ -96,7 +96,7 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
 
         then:
         result.status == 200
-        def body = objectMapper.readValue(result.body, ModelConfiguration)
+        def body = objectMapper.readValue(result.body, SavedConfiguration)
         body.id == original.id
         body.domainId == original.domainId
         body.createdAt == original.createdAt
@@ -107,7 +107,7 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         and: "the complete replacement is visible on a subsequent read"
         def persisted = objectMapper.readValue(
                 get("/configurations/${original.id}").body,
-                ModelConfiguration
+                SavedConfiguration
         )
         persisted.name == "Updated build"
         persisted.components*.id == [1L, 2L]
@@ -126,7 +126,7 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
 
         then:
         result.status == 200
-        objectMapper.readValue(result.body, ModelConfiguration).description == null
+        objectMapper.readValue(result.body, SavedConfiguration).description == null
     }
 
     def "should strictly reject archived component already present in configuration"() {
@@ -147,7 +147,7 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         and: "validation failure leaves the original configuration unchanged"
         def persisted = objectMapper.readValue(
                 get("/configurations/${original.id}").body,
-                ModelConfiguration
+                SavedConfiguration
         )
         persisted.name == "Initial"
         persisted.components*.id == [1L, 3L]
@@ -172,7 +172,7 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         and:
         def persisted = objectMapper.readValue(
                 get("/configurations/${original.id}").body,
-                ModelConfiguration
+                SavedConfiguration
         )
         persisted.name == "Initial"
         persisted.components*.id == [1L, 3L]
@@ -259,7 +259,7 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
 
         then:
         result.status == 200
-        def body = objectMapper.readValue(result.body, ModelConfiguration)
+        def body = objectMapper.readValue(result.body, SavedConfiguration)
         body.components.find { it.id == 3L }.archived
     }
 
@@ -310,10 +310,10 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         runSqlScripts("/sql/clear-db.sql", "/sql/insert-configurator-test-data.sql")
     }
 
-    private ModelConfiguration createConfiguration(String name, List<Long> componentIds) {
+    private SavedConfiguration createConfiguration(String name, List<Long> componentIds) {
         def response = post("/domains/1/configurations", request(name, null, componentIds))
         assert response.status == 201
-        return objectMapper.readValue(response.body, ModelConfiguration)
+        return objectMapper.readValue(response.body, SavedConfiguration)
     }
 
     private static Map<String, ?> request(String name, String description, List<Long> componentIds) {

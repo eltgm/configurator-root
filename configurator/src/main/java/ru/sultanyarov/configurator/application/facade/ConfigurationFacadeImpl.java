@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfigurationExport;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfigurationPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateConfigurationRequest;
-import ru.sultanyarov.configurator.api.inbounds.rest.dto.ModelConfiguration;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.SavedConfiguration;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateConfigurationRequest;
 import ru.sultanyarov.configurator.application.mapper.ConfigurationMapper;
 import ru.sultanyarov.configurator.application.service.ConfigurationService;
@@ -19,14 +19,14 @@ public class ConfigurationFacadeImpl implements ConfigurationFacade {
   private final ConfigurationMapper configurationMapper;
 
   @Override
-  public ModelConfiguration create(Long domainId, CreateConfigurationRequest request) {
+  public SavedConfiguration create(Long domainId, CreateConfigurationRequest request) {
     log.info("Creating configuration in domain {}", domainId);
     return configurationMapper.toDto(
         configurationService.create(domainId, configurationMapper.toDomain(request)));
   }
 
   @Override
-  public ModelConfiguration update(Long id, UpdateConfigurationRequest request) {
+  public SavedConfiguration update(Long id, UpdateConfigurationRequest request) {
     log.info("Updating configuration {}", id);
     return configurationMapper.toDto(
         configurationService.update(id, configurationMapper.toDomain(request)));
@@ -45,7 +45,7 @@ public class ConfigurationFacadeImpl implements ConfigurationFacade {
   }
 
   @Override
-  public ModelConfiguration getById(Long id) {
+  public SavedConfiguration getById(Long id) {
     log.info("Getting configuration {}", id);
     return configurationMapper.toDto(configurationService.getById(id));
   }

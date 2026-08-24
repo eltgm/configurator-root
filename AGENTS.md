@@ -20,8 +20,9 @@
 
 OpenAPI содержит `POST /auth/register`, `POST /auth/login` и Bearer JWT scheme, но runtime-аутентификация и авторизация
 не реализованы. `TemporaryCurrentUserProvider` возвращает системного пользователя `-1`; соответствующая запись создаётся
-миграцией `V5`. Не описывать текущую версию как production-ready и не считать OpenAPI security declaration фактической
-защитой endpoint'ов.
+миграцией `V5`. `v1.0.0` считается production-ready только в trusted-local Windows/macOS поставке с loopback gateway;
+OpenAPI security declaration не считать фактической защитой endpoint'ов и не расширять этот статус на LAN/public/server
+deployment.
 
 ## 2. Стек
 
@@ -201,9 +202,9 @@ delivery/tests/docker-lifecycle-contract.sh
 ```
 
 Windows dispatcher остаётся совместимым с Windows PowerShell 5.1/CRLF/UTF-8 BOM; macOS dispatcher — со штатным Bash
-3.2/LF. Backup format v1, stable Compose project, preview channel и строгая остановка app/gateway после failed Update
+3.2/LF. Backup format v1, stable Compose project, stable channel и строгая остановка app/gateway после failed Update
 или Restore — публичные delivery contracts. Release contract дополнительно фиксирует public GHCR app/web images,
-`linux/amd64` + `linux/arm64`, exact/sha/preview tags без `latest`, `IMAGE_DIGESTS`, unified `SHA256SUMS`, BuildKit
+`linux/amd64` + `linux/arm64`, exact/sha/stable tags без `latest`, `IMAGE_DIGESTS`, unified `SHA256SUMS`, BuildKit
 SBOM/provenance, GitHub OIDC attestations и draft-only publication. Tag/release workflow из feature branch не запускать.
 
 ## 6. Локальное окружение
@@ -256,13 +257,13 @@ CON<версия>-<номер> <English description in past tense>
 ### Версии и release automation
 
 - Semantic Versioning, tag `vX.Y.Z`;
-- до реализации authentication/authorization — только `0.x`;
+- `v1.0.0` и последующие стабильные версии относятся только к trusted-local Windows/macOS product contract;
 - default Gradle version может быть `-SNAPSHOT`, release workflow передаёт `-PreleaseVersion=X.Y.Z`;
 - тег ставится только на commit, достижимый из `master`;
 - tag должен быть annotated, а соответствующая версия — присутствовать в `CHANGELOG.md`;
 - `.github/workflows/release.yml` публикует public multi-platform app/gateway images, проверяет anonymous pull,
-  аттестует images/assets и создаёт или обновляет draft pre-release;
-- exact `X.Y.Z` и commit image tags immutable по policy, `preview` mutable, `latest` до отдельной stable policy запрещён;
+  аттестует images/assets и создаёт или обновляет draft release;
+- exact `X.Y.Z` и commit image tags immutable по policy, `stable` mutable, `latest` запрещён;
 - GHCR visibility и clean-machine Windows/macOS smoke проверяет владелец; публикация draft — явное действие владельца;
 - release notes и `CHANGELOG.md` должны соответствовать фактически проверенному функционалу.
 

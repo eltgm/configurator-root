@@ -2,20 +2,22 @@ import { IconSettings } from '@tabler/icons-react';
 import { Navigate, type RouteObject } from 'react-router-dom';
 
 import { AppLayout } from '@/app/layout/AppLayout';
+import {
+  CompatibilityGraphPage,
+  CompatibilityRuleFormPage,
+  CompatibilityRulesPage,
+  ComponentDetailsPage,
+  ComponentFormPage,
+  ComponentsPage,
+  ComponentTypesPage,
+  ConfigurationDetailsPage,
+  ConfigurationEditPage,
+  ConfigurationsPage,
+  ConfiguratorPage,
+  DomainSettingsPage,
+  ManualCompatibilityPage,
+} from '@/app/router/lazy-pages';
 import { RequireDomain } from '@/features/domains/ui/RequireDomain';
-import { ComponentsPage } from '@/pages/ComponentsPage';
-import { ComponentDetailsPage } from '@/pages/ComponentDetailsPage';
-import { ComponentFormPage } from '@/pages/ComponentFormPage';
-import { ComponentTypesPage } from '@/pages/ComponentTypesPage';
-import { CompatibilityGraphPage } from '@/pages/CompatibilityGraphPage';
-import { CompatibilityRuleFormPage } from '@/pages/CompatibilityRuleFormPage';
-import { CompatibilityRulesPage } from '@/pages/CompatibilityRulesPage';
-import { ConfiguratorPage } from '@/pages/ConfiguratorPage';
-import { ConfigurationDetailsPage } from '@/pages/ConfigurationDetailsPage';
-import { ConfigurationEditPage } from '@/pages/ConfigurationEditPage';
-import { ConfigurationsPage } from '@/pages/ConfigurationsPage';
-import { DomainSettingsPage } from '@/pages/DomainSettingsPage';
-import { ManualCompatibilityPage } from '@/pages/ManualCompatibilityPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { RouteErrorPage } from '@/pages/RouteErrorPage';
 

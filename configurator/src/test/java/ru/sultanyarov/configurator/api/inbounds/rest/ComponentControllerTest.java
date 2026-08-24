@@ -30,13 +30,13 @@ class ComponentControllerTest {
   @InjectMocks private ComponentController componentController;
 
   @Test
-  void componentsPost_shouldDelegateCreationToFacade() {
+  void postComponents_shouldDelegateCreationToFacade() {
     CreateComponentRequest request = new CreateComponentRequest();
     Component component = new Component();
 
     when(componentFacade.createComponent(request)).thenReturn(component);
 
-    ResponseEntity<Component> response = componentController.componentsPost(request);
+    ResponseEntity<Component> response = componentController.postComponents(request);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(response.getBody()).isSameAs(component);
@@ -44,14 +44,14 @@ class ComponentControllerTest {
   }
 
   @Test
-  void domainsDomainIdComponentsGet_shouldDelegateSearchToFacade() {
+  void getDomainsByDomainIdComponents_shouldDelegateSearchToFacade() {
     ComponentPage componentPage = new ComponentPage();
 
     when(componentFacade.getComponentsByDomainId(1L, 2L, "name", true, 0, 10))
         .thenReturn(componentPage);
 
     ResponseEntity<ComponentPage> response =
-        componentController.domainsDomainIdComponentsGet(1L, 2L, "name", true, 0, 10);
+        componentController.getDomainsByDomainIdComponents(1L, 2L, "name", true, 0, 10);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isSameAs(componentPage);
@@ -59,13 +59,13 @@ class ComponentControllerTest {
   }
 
   @Test
-  void componentsIdPut_shouldDelegateUpdateToFacade() {
+  void putComponentsById_shouldDelegateUpdateToFacade() {
     UpdateComponentRequest request = new UpdateComponentRequest(1L, "Updated", List.of());
     Component component = new Component();
 
     when(componentFacade.updateComponent(7L, request)).thenReturn(component);
 
-    ResponseEntity<Component> response = componentController.componentsIdPut(7L, request);
+    ResponseEntity<Component> response = componentController.putComponentsById(7L, request);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isSameAs(component);
@@ -73,12 +73,12 @@ class ComponentControllerTest {
   }
 
   @Test
-  void componentsIdGet_shouldDelegateRetrievalToFacade() {
+  void getComponentsById_shouldDelegateRetrievalToFacade() {
     Component component = new Component();
 
     when(componentFacade.getComponentById(1L)).thenReturn(component);
 
-    ResponseEntity<Component> response = componentController.componentsIdGet(1L);
+    ResponseEntity<Component> response = componentController.getComponentsById(1L);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isSameAs(component);
@@ -86,8 +86,8 @@ class ComponentControllerTest {
   }
 
   @Test
-  void componentsIdDelete_shouldDelegateArchivingToFacade() {
-    ResponseEntity<Void> response = componentController.componentsIdDelete(7L);
+  void deleteComponentsById_shouldDelegateArchivingToFacade() {
+    ResponseEntity<Void> response = componentController.deleteComponentsById(7L);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     assertThat(response.getBody()).isNull();
@@ -95,11 +95,11 @@ class ComponentControllerTest {
   }
 
   @Test
-  void componentsIdRestorePost_shouldDelegateRestorationToFacade() {
+  void postComponentsByIdRestore_shouldDelegateRestorationToFacade() {
     Component component = new Component();
     when(componentFacade.restoreComponent(7L)).thenReturn(component);
 
-    ResponseEntity<Component> response = componentController.componentsIdRestorePost(7L);
+    ResponseEntity<Component> response = componentController.postComponentsByIdRestore(7L);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isSameAs(component);
@@ -107,7 +107,7 @@ class ComponentControllerTest {
   }
 
   @Test
-  void componentsIdImagesPost_shouldDelegateUploadToFacade() {
+  void postComponentsByIdImages_shouldDelegateUploadToFacade() {
     MockMultipartFile file =
         new MockMultipartFile("file", "image.png", "image/png", new byte[] {1, 2, 3});
     ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentImage image =
@@ -115,7 +115,7 @@ class ComponentControllerTest {
     when(componentFacade.uploadComponentImage(7L, file, 2)).thenReturn(image);
 
     ResponseEntity<ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentImage> response =
-        componentController.componentsIdImagesPost(7L, file, 2);
+        componentController.postComponentsByIdImages(7L, file, 2);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(response.getBody()).isSameAs(image);
@@ -123,11 +123,11 @@ class ComponentControllerTest {
   }
 
   @Test
-  void componentsIdImagesGet_shouldDelegateRetrievalToFacade() {
+  void getComponentsByIdImages_shouldDelegateRetrievalToFacade() {
     List<ComponentImage> images = List.of(new ComponentImage(10L, "/image.png").orderIndex(2));
     when(componentFacade.getComponentImages(7L)).thenReturn(images);
 
-    ResponseEntity<List<ComponentImage>> response = componentController.componentsIdImagesGet(7L);
+    ResponseEntity<List<ComponentImage>> response = componentController.getComponentsByIdImages(7L);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isSameAs(images);
@@ -135,7 +135,7 @@ class ComponentControllerTest {
   }
 
   @Test
-  void componentsIdImagesOrderPut_shouldDelegateReplacementToFacade() {
+  void putComponentsByIdImagesOrder_shouldDelegateReplacementToFacade() {
     ReorderComponentImagesRequest request = new ReorderComponentImagesRequest(List.of(42L, 41L));
     List<ComponentImage> images =
         List.of(
@@ -144,7 +144,7 @@ class ComponentControllerTest {
     when(componentFacade.reorderComponentImages(7L, request.getImageIds())).thenReturn(images);
 
     ResponseEntity<List<ComponentImage>> response =
-        componentController.componentsIdImagesOrderPut(7L, request);
+        componentController.putComponentsByIdImagesOrder(7L, request);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isSameAs(images);

@@ -194,7 +194,7 @@ finally { $listener.Stop() }
     Assert-True ($partial.Count -eq 0) 'partial backup directory leaked'
     $credentialLeak = $false
     foreach ($logFile in Get-ChildItem (Join-Path $PackageRoot 'logs') -File) {
-        if (Select-String -LiteralPath $logFile.FullName -SimpleMatch 'configurator-local-preview' -Quiet) {
+        if (Select-String -LiteralPath $logFile.FullName -SimpleMatch 'configurator-local-v1' -Quiet) {
             $credentialLeak = $true
             break
         }

@@ -22,54 +22,54 @@ public class ComponentController implements ComponentsApi {
   private final ComponentFacade componentFacade;
 
   @Override
-  public ResponseEntity<Void> componentsIdDelete(Long id) {
+  public ResponseEntity<Void> deleteComponentsById(Long id) {
     componentFacade.archiveComponent(id);
     return ResponseEntity.noContent().build();
   }
 
   @Override
-  public ResponseEntity<Component> componentsIdGet(Long id) {
+  public ResponseEntity<Component> getComponentsById(Long id) {
     return ResponseEntity.ok(componentFacade.getComponentById(id));
   }
 
   @Override
-  public ResponseEntity<List<ComponentImage>> componentsIdImagesGet(Long id) {
+  public ResponseEntity<List<ComponentImage>> getComponentsByIdImages(Long id) {
     return ResponseEntity.ok(componentFacade.getComponentImages(id));
   }
 
   @Override
-  public ResponseEntity<List<ComponentImage>> componentsIdImagesOrderPut(
+  public ResponseEntity<List<ComponentImage>> putComponentsByIdImagesOrder(
       Long id, ReorderComponentImagesRequest reorderComponentImagesRequest) {
     return ResponseEntity.ok(
         componentFacade.reorderComponentImages(id, reorderComponentImagesRequest.getImageIds()));
   }
 
   @Override
-  public ResponseEntity<ComponentImage> componentsIdImagesPost(
+  public ResponseEntity<ComponentImage> postComponentsByIdImages(
       Long id, MultipartFile file, Integer orderIndex) {
     return ResponseEntity.status(CREATED)
         .body(componentFacade.uploadComponentImage(id, file, orderIndex));
   }
 
   @Override
-  public ResponseEntity<Component> componentsIdPut(
+  public ResponseEntity<Component> putComponentsById(
       Long id, UpdateComponentRequest updateComponentRequest) {
     return ResponseEntity.ok(componentFacade.updateComponent(id, updateComponentRequest));
   }
 
   @Override
-  public ResponseEntity<Component> componentsIdRestorePost(Long id) {
+  public ResponseEntity<Component> postComponentsByIdRestore(Long id) {
     return ResponseEntity.ok(componentFacade.restoreComponent(id));
   }
 
   @Override
-  public ResponseEntity<Component> componentsPost(CreateComponentRequest createComponentRequest) {
+  public ResponseEntity<Component> postComponents(CreateComponentRequest createComponentRequest) {
     return ResponseEntity.status(CREATED)
         .body(componentFacade.createComponent(createComponentRequest));
   }
 
   @Override
-  public ResponseEntity<ComponentPage> domainsDomainIdComponentsGet(
+  public ResponseEntity<ComponentPage> getDomainsByDomainIdComponents(
       Long domainId,
       Long componentTypeId,
       String name,

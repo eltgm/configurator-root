@@ -13,7 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfigurationPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateConfigurationRequest;
-import ru.sultanyarov.configurator.api.inbounds.rest.dto.ModelConfiguration;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.SavedConfiguration;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateConfigurationRequest;
 import ru.sultanyarov.configurator.application.mapper.ConfigurationMapper;
 import ru.sultanyarov.configurator.application.service.ConfigurationService;
@@ -32,7 +32,7 @@ class ConfigurationFacadeImplTest {
     CreateConfigurationRequest request = new CreateConfigurationRequest("Build", List.of(1L));
     ConfigurationDraft draft = new ConfigurationDraft("Build", null, List.of(1L));
     Configuration configuration = configuration(7L);
-    ModelConfiguration response = response(7L);
+    SavedConfiguration response = response(7L);
     when(configurationMapper.toDomain(request)).thenReturn(draft);
     when(configurationService.create(1L, draft)).thenReturn(configuration);
     when(configurationMapper.toDto(configuration)).thenReturn(response);
@@ -45,7 +45,7 @@ class ConfigurationFacadeImplTest {
     UpdateConfigurationRequest request = new UpdateConfigurationRequest("Updated", List.of(2L));
     ConfigurationDraft draft = new ConfigurationDraft("Updated", null, List.of(2L));
     Configuration configuration = configuration(7L);
-    ModelConfiguration response = response(7L);
+    SavedConfiguration response = response(7L);
     when(configurationMapper.toDomain(request)).thenReturn(draft);
     when(configurationService.update(7L, draft)).thenReturn(configuration);
     when(configurationMapper.toDto(configuration)).thenReturn(response);
@@ -103,7 +103,7 @@ class ConfigurationFacadeImplTest {
         .build();
   }
 
-  private static ModelConfiguration response(Long id) {
-    return new ModelConfiguration(id, 1L, "Build", LocalDateTime.now(), List.of());
+  private static SavedConfiguration response(Long id) {
+    return new SavedConfiguration(id, 1L, "Build", LocalDateTime.now(), List.of());
   }
 }

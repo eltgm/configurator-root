@@ -1,5 +1,8 @@
 # Epic 9 — Пользовательский интерфейс и локальная поставка
 
+> Статус: реализовано для `v1.0.0`. Релизные детали разделов 9.28–9.30 актуализированы политикой stable local-only;
+> оперативные инструкции находятся в `docs/release/LOCAL_DELIVERY.md`.
+
 ## Цель
 
 Предоставить актуальный и функциональный UI для локального однопользовательского использования Configurator на
@@ -840,8 +843,7 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
   multi-platform manifest выполняется в 9.30, а Start/Stop/Update/Backup/Restore packages — в 9.29;
 - Docker Dependabot отслеживает nested Dockerfile в `/configurator-web`; exact base image digest обновляется только
   reviewed dependency change;
-- runtime authentication/authorization в 9.28 не добавляется: поставка остаётся local-only preview и не считается
-  безопасной для публикации в недоверенной сети;
+- security scope в 9.28 не расширяется: поставка остаётся local-only и не публикуется в недоверенной сети;
 - OpenAPI, backend business logic, Flyway, jOOQ, БД и generated API client в 9.28 не меняются.
 
 #### 9.29 — Пакеты запуска, обновления, backup и restore
@@ -849,7 +851,7 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
 - конечному пользователю предоставляются отдельные архивы `configurator-windows-vX.Y.Z.zip` и
   `configurator-macos-vX.Y.Z.tar.gz`; после установки Docker Desktop не требуются JDK, Gradle, Node.js, npm, Git или
   локальная сборка image;
-- архив содержит image-only Compose, настройки локального preview, лицензию, краткую инструкцию и отдельные Start,
+- архив содержит image-only Compose, настройки локального stable-релиза, лицензию, краткую инструкцию и отдельные Start,
   Stop, Update, Backup и Restore launchers; исходники, JAR и build tools в пакет не входят;
 - Windows x86-64 использует запускаемые двойным кликом `.cmd` wrappers и совместимый с Windows PowerShell 5.1
   dispatcher; macOS Intel/Apple Silicon использует executable `.command` wrappers и штатный Bash 3.2;
@@ -857,7 +859,7 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
   не зависят от текущего рабочего каталога;
 - Compose project name фиксирован, поэтому PostgreSQL/MinIO named volumes сохраняются при переименовании или переносе
   распакованной папки; единственным host bind остаётся `127.0.0.1:8080` gateway;
-- app и gateway загружаются из публичного канала `preview`; конкретные image references параметризованы для CI и
+- app и gateway загружаются из публичного канала `stable`; конкретные image references параметризованы для CI и
   будущей публикации 9.30, а пользовательский Compose не содержит `build`;
 - Start проверяет поддерживаемую OS/architecture, Docker CLI, Compose plugin и порт 8080, при необходимости пытается
   открыть Docker Desktop, ждёт daemon, запускает stack, проверяет `/healthz` и `/api/v3/api-docs`, затем открывает UI;
@@ -894,18 +896,17 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
   Start/Stop, backup, destructive mutation, restore, update success и strict update failure;
 - публикация public multi-platform images, release assets, signing, SBOM и provenance выполняется в 9.30; до неё 9.29
   использует локальные image overrides/test registry;
-- runtime authentication/authorization не добавляется: package остаётся local-only preview, wildcard/LAN/public bind
-  не поддерживается;
+- package остаётся local-only; wildcard/LAN/public bind не поддерживается;
 - OpenAPI, backend/frontend behavior, Flyway, jOOQ, БД и generated API client в 9.29 не меняются.
 
 #### 9.30 — CI, документация и подготовка локального релиза
 
-- release automation запускается только для SemVer tag `vX.Y.Z` или совместимого prerelease tag на commit,
+- release automation запускается только для финального SemVer tag `vX.Y.Z` на commit,
   достижимом из `master`; до публикации выполняются backend, frontend, external, browser и delivery quality gates;
 - публичные OCI images публикуются в `ghcr.io/eltgm/configurator-app` и `ghcr.io/eltgm/configurator-web` едиными
   manifest lists для `linux/amd64` и `linux/arm64`;
 - каждый image получает immutable exact version tag `X.Y.Z`, traceability tag по commit SHA и mutable update channel
-  `preview`; tag `latest` до отдельно согласованной production-ready release policy не публикуется;
+  `stable`; tag `latest` не публикуется;
 - app/gateway images используют reviewed digest-pinned multi-arch base images и OCI labels source, revision, version,
   title, description, licenses и creation time без credentials или host-specific paths;
 - BuildKit создаёт для каждого multi-platform image max-level provenance и SPDX SBOM OCI attestations; GitHub OIDC
@@ -918,26 +919,26 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
   release и не обходится broad PAT;
 - пользовательские release assets содержат versioned JAR, `configurator-api.yaml`, Windows ZIP, macOS TAR.GZ,
   `IMAGE_DIGESTS` с immutable app/gateway references и единый `SHA256SUMS` для всех скачиваемых non-checksum files;
-- Windows/macOS packages сохраняют `CONFIGURATOR_*_IMAGE=:preview`, чтобы Update продолжал следовать принятому mutable
-  preview channel; конкретный release воспроизводится через exact tags и `IMAGE_DIGESTS`;
+- Windows/macOS packages сохраняют `CONFIGURATOR_*_IMAGE=:stable`, чтобы Update следовал принятому mutable stable
+  channel; конкретный release воспроизводится через exact tags и `IMAGE_DIGESTS`;
 - downloadable release assets получают GitHub keyless provenance attestations; документация разделяет checksum
   integrity, signed provenance и vulnerability/security assessment и не считает их взаимозаменяемыми;
-- draft GitHub pre-release создаётся или обновляется идемпотентно для того же tag; повторный workflow run заменяет
+- draft GitHub release создаётся или обновляется идемпотентно для того же tag; повторный workflow run заменяет
   только соответствующие assets и не требует вручную удалять draft;
 - quality gates выполняются до первой registry mutation; при частичной публикации workflow сохраняет diagnostics и
   допускает безопасный rerun, но автоматически не удаляет packages/images;
 - публикация draft остаётся явным действием владельца после проверки assets, public package visibility, attestations и
-  clean-machine smoke; release automation не публикует pre-release автоматически;
+  clean-machine smoke; release automation не публикует release автоматически;
 - CI на обычных push/PR проверяет package/release helpers, workflow policy, full-SHA pins, minimum permissions,
   platforms/tags, отсутствие `latest`, asset inventory и checksum/digest contracts без публикации в registry;
-- первый локальный preview release остаётся `v0.1.0`; `CHANGELOG`, release audit, README, contributor/agent guidance и
+- первый стабильный локальный release — `v1.0.0`; `CHANGELOG`, release audit, README, contributor/agent guidance и
   local-delivery runbook актуализируются по фактически проверенному составу epic 9;
 - пользовательский quick start остаётся минимальным: установить Docker Desktop, скачать архив, распаковать и запустить
   Start; JDK, Gradle, Node.js, npm, Git, registry login и терминал не требуются;
 - public package visibility, repository settings, annotated tag, публикация draft и clean-machine Windows/macOS audit
   являются owner/post-merge operations и не выполняются из feature branch;
-- runtime остаётся local-only single-user preview без authentication/authorization; TLS, LAN/public deployment,
-  package self-update, automatic database downgrade и production operations в 9.30 не входят;
+- runtime остаётся local-only single-user; TLS, LAN/public deployment, package self-update, automatic database
+  downgrade и server operations в 9.30 не входят;
 - OpenAPI, backend/frontend behavior, Flyway, jOOQ, БД и generated API client в 9.30 не меняются.
 
 ## Демонстрационная предметная область
@@ -959,4 +960,4 @@ Windows x86-64 и macOS Intel/Apple Silicon. Конечному пользова
 - frontend unit/component tests обязательны для каждой задачи;
 - основные пользовательские пути покрываются Playwright;
 - frontend lint, typecheck, tests и production build выполняются в CI;
-- проект остаётся release line `0.x` до реализации runtime-аутентификации и авторизации.
+- проект выпускается как stable line `1.0.x` в пределах local-only product contract.

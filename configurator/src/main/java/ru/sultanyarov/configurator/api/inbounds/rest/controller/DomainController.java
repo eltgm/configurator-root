@@ -19,33 +19,33 @@ public class DomainController implements DomainsApi {
   private final DomainFacade domainFacade;
 
   @Override
-  public ResponseEntity<Domain> domainsDemoPost() {
+  public ResponseEntity<Domain> postDomainsDemo() {
     return ResponseEntity.status(CREATED).body(domainFacade.createDemoDomain());
   }
 
   @Override
-  public ResponseEntity<DomainPage> domainsGet(Integer page, Integer size) {
+  public ResponseEntity<DomainPage> getDomains(Integer page, Integer size) {
     return ResponseEntity.ok(domainFacade.getDomains(page, size));
   }
 
   @Override
-  public ResponseEntity<Void> domainsIdDelete(Long id) {
+  public ResponseEntity<Void> deleteDomainsById(Long id) {
     domainFacade.deleteDomainById(id);
     return ResponseEntity.status(NO_CONTENT).build();
   }
 
   @Override
-  public ResponseEntity<Domain> domainsIdGet(Long id) {
+  public ResponseEntity<Domain> getDomainsById(Long id) {
     return ResponseEntity.ok(domainFacade.getDomainById(id));
   }
 
   @Override
-  public ResponseEntity<Domain> domainsIdPut(Long id, UpdateDomainRequest updateDomainRequest) {
+  public ResponseEntity<Domain> putDomainsById(Long id, UpdateDomainRequest updateDomainRequest) {
     return ResponseEntity.ok(domainFacade.updateDomain(id, updateDomainRequest));
   }
 
   @Override
-  public ResponseEntity<Domain> domainsPost(CreateDomainRequest createDomainRequest) {
+  public ResponseEntity<Domain> postDomains(CreateDomainRequest createDomainRequest) {
     return ResponseEntity.status(CREATED).body(domainFacade.createDomain(createDomainRequest));
   }
 }

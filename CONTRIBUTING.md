@@ -72,9 +72,9 @@ delivery/tests/docker-lifecycle-contract.sh
 ```
 
 Windows PowerShell 5.1 contract выполняется job `Windows delivery scripts contract`. Не меняйте backup format,
-preview channel, строгий Update/Restore failure contract, line endings или состав архива без актуализации требований и
+stable channel, строгий Update/Restore failure contract, line endings или состав архива без актуализации требований и
 `docs/release/LOCAL_DELIVERY.md`. Release workflow сохраняет public GHCR namespace, amd64/arm64 manifests,
-exact/sha/preview tags без `latest`, minimum permissions, full-SHA action pins, SBOM/provenance, OIDC attestations и
+exact/sha/stable tags без `latest`, minimum permissions, full-SHA action pins, SBOM/provenance, OIDC attestations и
 draft-only publication. Не запускайте tag/release публикацию из feature branch.
 
 ## Стиль и архитектура

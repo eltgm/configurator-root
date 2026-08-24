@@ -20,7 +20,7 @@ export default defineConfig({
   },
   use: {
     ...devices['Desktop Chrome'],
-    baseURL: 'http://127.0.0.1:5173',
+    baseURL: 'http://127.0.0.1:4173',
     locale: 'ru-RU',
     timezoneId: 'Europe/Moscow',
     colorScheme: 'light',
@@ -30,8 +30,8 @@ export default defineConfig({
   },
   projects: [{ name: 'linux-chromium' }],
   webServer: {
-    command: 'npm run dev',
-    url: 'http://127.0.0.1:5173',
+    command: 'npm run build && npm run preview',
+    url: 'http://127.0.0.1:4173',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

@@ -6,7 +6,7 @@ readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly REPOSITORY_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 readonly VERSION="${1:-}"
 readonly OUTPUT_DIRECTORY="${2:-${REPOSITORY_ROOT}/delivery-output}"
-readonly RELEASE_CHANNEL="${CONFIGURATOR_RELEASE_CHANNEL:-preview}"
+readonly RELEASE_CHANNEL="${CONFIGURATOR_RELEASE_CHANNEL:-stable}"
 readonly RELEASE_APP_IMAGE="${CONFIGURATOR_RELEASE_APP_IMAGE:-}"
 readonly RELEASE_GATEWAY_IMAGE="${CONFIGURATOR_RELEASE_GATEWAY_IMAGE:-}"
 

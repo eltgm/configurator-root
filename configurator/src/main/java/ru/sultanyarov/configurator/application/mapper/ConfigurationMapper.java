@@ -4,7 +4,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfigurationPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateConfigurationRequest;
-import ru.sultanyarov.configurator.api.inbounds.rest.dto.ModelConfiguration;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.SavedConfiguration;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateConfigurationRequest;
 import ru.sultanyarov.configurator.domain.model.ConfigurationDraft;
 import ru.sultanyarov.configurator.domain.model.Page;
@@ -15,7 +15,7 @@ public interface ConfigurationMapper {
 
   ConfigurationDraft toDomain(UpdateConfigurationRequest request);
 
-  ModelConfiguration toDto(ru.sultanyarov.configurator.domain.model.Configuration configuration);
+  SavedConfiguration toDto(ru.sultanyarov.configurator.domain.model.Configuration configuration);
 
   ConfigurationPage toDto(
       Page<ru.sultanyarov.configurator.domain.model.Configuration> configurations);

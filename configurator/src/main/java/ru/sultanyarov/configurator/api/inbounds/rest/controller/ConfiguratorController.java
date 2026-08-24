@@ -14,46 +14,29 @@ import ru.sultanyarov.configurator.application.facade.ConfiguratorFacade;
 @RestController
 @RequiredArgsConstructor
 public class ConfiguratorController implements ConfiguratorApi {
-    private final ConfiguratorFacade configuratorFacade;
+  private final ConfiguratorFacade configuratorFacade;
 
-    @Override
-    public ResponseEntity<ConfiguratorResponse> domainsIdConfiguratorCompatibleGet(
-            Long id,
-            Long componentId,
-            Boolean includeTransitive
-    ) {
-        return ResponseEntity.ok(
-                configuratorFacade.getCompatibleComponents(
-                        id,
-                        componentId,
-                        Boolean.TRUE.equals(includeTransitive)
-                )
-        );
-    }
+  @Override
+  public ResponseEntity<ConfiguratorResponse> getDomainsByIdConfiguratorCompatible(
+      Long id, Long componentId, Boolean includeTransitive) {
+    return ResponseEntity.ok(
+        configuratorFacade.getCompatibleComponents(
+            id, componentId, Boolean.TRUE.equals(includeTransitive)));
+  }
 
-    @Override
-    public ResponseEntity<ConfiguratorBatchSearchResponse> domainsIdConfiguratorCompatibleSearchPost(
-            Long id,
-            ConfiguratorBatchSearchRequest configuratorBatchSearchRequest
-    ) {
-        return ResponseEntity.ok(
-                configuratorFacade.searchCompatibleComponents(
-                        id,
-                        configuratorBatchSearchRequest
-                )
-        );
-    }
+  @Override
+  public ResponseEntity<ConfiguratorBatchSearchResponse>
+      postDomainsByIdConfiguratorCompatibleSearch(
+          Long id, ConfiguratorBatchSearchRequest configuratorBatchSearchRequest) {
+    return ResponseEntity.ok(
+        configuratorFacade.searchCompatibleComponents(id, configuratorBatchSearchRequest));
+  }
 
-    @Override
-    public ResponseEntity<ConfiguratorIntersectionResponse> domainsIdConfiguratorCompatibleIntersectionPost(
-            Long id,
-            ConfiguratorIntersectionRequest configuratorIntersectionRequest
-    ) {
-        return ResponseEntity.ok(
-                configuratorFacade.intersectCompatibleComponents(
-                        id,
-                        configuratorIntersectionRequest
-                )
-        );
-    }
+  @Override
+  public ResponseEntity<ConfiguratorIntersectionResponse>
+      postDomainsByIdConfiguratorCompatibleIntersection(
+          Long id, ConfiguratorIntersectionRequest configuratorIntersectionRequest) {
+    return ResponseEntity.ok(
+        configuratorFacade.intersectCompatibleComponents(id, configuratorIntersectionRequest));
+  }
 }

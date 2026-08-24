@@ -38,7 +38,7 @@ export type ApiErrorDetail = {
   /**
    * Request field or parameter path; absent for object-level errors
    */
-  field?: string;
+  field?: string | null;
   /**
    * Stable detail or validation constraint code in UPPER_SNAKE_CASE
    */
@@ -64,7 +64,7 @@ export type ComponentPage = {
 };
 
 export type ConfigurationPage = {
-  items: Array<Configuration>;
+  items: Array<SavedConfiguration>;
   page: number;
   size: number;
   totalItems: number;
@@ -73,13 +73,13 @@ export type ConfigurationPage = {
 export type User = {
   id: number;
   email: string;
-  displayName?: string;
+  displayName?: string | null;
 };
 
 export type RegisterRequest = {
   email: string;
   password: string;
-  displayName?: string;
+  displayName?: string | null;
 };
 
 export type LoginRequest = {
@@ -95,34 +95,34 @@ export type LoginResponse = {
 export type Domain = {
   id: number;
   name: string;
-  description?: string;
+  description?: string | null;
   createdAt: string;
 };
 
 export type CreateDomainRequest = {
   name: string;
-  description?: string;
+  description?: string | null;
 };
 
 export type UpdateDomainRequest = {
   name: string;
-  description?: string;
+  description?: string | null;
 };
 
 export type ComponentType = {
   id: number;
   domainId: number;
   name: string;
-  code?: string;
-  description?: string;
-  orderIndex?: number;
+  code?: string | null;
+  description?: string | null;
+  orderIndex?: number | null;
 };
 
 export type CreateComponentTypeRequest = {
   name: string;
-  code?: string;
-  description?: string;
-  orderIndex?: number;
+  code?: string | null;
+  description?: string | null;
+  orderIndex?: number | null;
 };
 
 export type AttributeDefinition = {
@@ -131,18 +131,18 @@ export type AttributeDefinition = {
   name: string;
   label: string;
   dataType: 'STRING' | 'NUMBER' | 'BOOLEAN' | 'ENUM';
-  enumValues?: Array<string>;
+  enumValues?: Array<string> | null;
   isRequired: boolean;
-  orderIndex?: number;
+  orderIndex?: number | null;
 };
 
 export type CreateAttributeDefinitionRequest = {
   name: string;
   label: string;
   dataType: 'STRING' | 'NUMBER' | 'BOOLEAN' | 'ENUM';
-  enumValues?: Array<string>;
+  enumValues?: Array<string> | null;
   isRequired?: boolean;
-  orderIndex?: number;
+  orderIndex?: number | null;
 };
 
 export type AttributeValueInput = {
@@ -155,7 +155,7 @@ export type AttributeValue = {
   name: string;
   label: string;
   dataType: 'STRING' | 'NUMBER' | 'BOOLEAN' | 'ENUM';
-  value?: string;
+  value?: string | null;
 };
 
 export type ComponentImage = {
@@ -164,7 +164,7 @@ export type ComponentImage = {
    * Relative backend URL for retrieving the image content
    */
   url: string;
-  orderIndex?: number;
+  orderIndex?: number | null;
 };
 
 /**
@@ -181,8 +181,8 @@ export type Component = {
   id: number;
   componentTypeId: number;
   name: string;
-  brand?: string;
-  description?: string;
+  brand?: string | null;
+  description?: string | null;
   archived: boolean;
   createdAt: string;
   attributes?: Array<AttributeValue>;
@@ -192,16 +192,16 @@ export type Component = {
 export type CreateComponentRequest = {
   componentTypeId: number;
   name: string;
-  brand?: string;
-  description?: string;
-  attributes?: Array<AttributeValueInput>;
+  brand?: string | null;
+  description?: string | null;
+  attributes?: Array<AttributeValueInput> | null;
 };
 
 export type UpdateComponentRequest = {
   componentTypeId: number;
   name: string;
-  brand?: string;
-  description?: string;
+  brand?: string | null;
+  description?: string | null;
   attributes: Array<AttributeValueInput>;
 };
 
@@ -210,7 +210,7 @@ export type CompatibilityLink = {
   domainId: number;
   componentAId: number;
   componentBId: number;
-  comment?: string;
+  comment?: string | null;
 };
 
 export type CreateCompatibilityLinkRequest = {
@@ -219,7 +219,7 @@ export type CreateCompatibilityLinkRequest = {
   /**
    * Optional comment; blank values are normalized to null
    */
-  comment?: string;
+  comment?: string | null;
 };
 
 /**
@@ -234,7 +234,7 @@ export type CompatibilityRuleConditionInput = {
   /**
    * Defaults to the condition position in the request
    */
-  orderIndex?: number;
+  orderIndex?: number | null;
 };
 
 export type SaveCompatibilityRuleSetRequest = {
@@ -277,7 +277,7 @@ export type GraphNode = {
   name: string;
   componentTypeId: number;
   componentTypeName: string;
-  brand?: string;
+  brand?: string | null;
 };
 
 /**
@@ -290,7 +290,7 @@ export type GraphEdge = {
   /**
    * Compatibility link comment
    */
-  comment?: string;
+  comment?: string | null;
 };
 
 /**
@@ -304,7 +304,7 @@ export type GraphResponse = {
 export type ComponentShort = {
   id: number;
   name: string;
-  brand?: string;
+  brand?: string | null;
   componentTypeId: number;
 };
 
@@ -334,23 +334,23 @@ export type CompatibilityConditionExplanation = {
  */
 export type CompatibilityExplanation = {
   source: CompatibilityExplanationSource;
-  linkId?: number;
-  comment?: string;
-  ruleSetId?: number;
-  ruleSetName?: string;
-  conditions?: Array<CompatibilityConditionExplanation>;
+  linkId?: number | null;
+  comment?: string | null;
+  ruleSetId?: number | null;
+  ruleSetName?: string | null;
+  conditions?: Array<CompatibilityConditionExplanation> | null;
   /**
    * Ordered shortest path from the base component to a transitively compatible
    * component. Present only for TRANSITIVE explanations.
    *
    */
-  pathComponentIds?: Array<number>;
+  pathComponentIds?: Array<number> | null;
 };
 
 export type ConfiguratorCompatibleComponent = {
   id: number;
   name: string;
-  brand?: string;
+  brand?: string | null;
   componentTypeId: number;
   /**
    * All manual links and enabled automatic rule sets that matched
@@ -409,7 +409,7 @@ export type ConfiguratorBaseCompatibility = {
 export type ConfiguratorIntersectionCompatibleComponent = {
   id: number;
   name: string;
-  brand?: string;
+  brand?: string | null;
   componentTypeId: number;
   /**
    * Compatibility evidence for every selected base component in request order
@@ -440,7 +440,7 @@ export type ConfiguratorIntersectionResponse = {
 export type ConfigurationComponent = {
   id: number;
   name: string;
-  brand?: string;
+  brand?: string | null;
   componentTypeId: number;
   componentTypeName: string;
   /**
@@ -454,11 +454,11 @@ export type ConfigurationComponent = {
  * by component type orderIndex, component type name and component id.
  *
  */
-export type Configuration = {
+export type SavedConfiguration = {
   id: number;
   domainId: number;
   name: string;
-  description?: string;
+  description?: string | null;
   createdAt: string;
   components: Array<ConfigurationComponent>;
 };
@@ -471,7 +471,7 @@ export type CreateConfigurationRequest = {
   /**
    * Blank description is normalized to null
    */
-  description?: string;
+  description?: string | null;
   /**
    * Unique active components from the path domain. At most one component of each type is
    * allowed. Every pair must be directly compatible through a manual link or an enabled
@@ -494,7 +494,7 @@ export type UpdateConfigurationRequest = {
   /**
    * Blank description is normalized to null
    */
-  description?: string;
+  description?: string | null;
   /**
    * Complete replacement set of unique active components from the configuration domain.
    * At most one component of each type is allowed. Every pair must be directly compatible
@@ -511,7 +511,7 @@ export type UpdateConfigurationRequest = {
 export type ConfigurationExport = {
   schemaVersion: number;
   exportedAt: string;
-  configuration: Configuration;
+  configuration: SavedConfiguration;
 };
 
 export type PostAuthRegisterData = {
@@ -1313,7 +1313,7 @@ export type PostComponentsByIdImagesData = {
     /**
      * Optional non-negative display order; defaults to the next available index
      */
-    orderIndex?: number;
+    orderIndex?: number | null;
   };
   path: {
     id: number;
@@ -1859,7 +1859,7 @@ export type PostDomainsByIdConfigurationsResponses = {
   /**
    * Created
    */
-  201: Configuration;
+  201: SavedConfiguration;
 };
 
 export type PostDomainsByIdConfigurationsResponse =
@@ -1929,7 +1929,7 @@ export type GetConfigurationsByIdResponses = {
   /**
    * Success
    */
-  200: Configuration;
+  200: SavedConfiguration;
 };
 
 export type GetConfigurationsByIdResponse =
@@ -1970,7 +1970,7 @@ export type PutConfigurationsByIdResponses = {
   /**
    * Updated configuration
    */
-  200: Configuration;
+  200: SavedConfiguration;
 };
 
 export type PutConfigurationsByIdResponse =

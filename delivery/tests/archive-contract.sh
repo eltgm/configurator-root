@@ -5,8 +5,8 @@ set -euo pipefail
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly REPOSITORY_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 readonly TEST_VERSION="0.9.29-test.1"
-readonly TEST_APP_IMAGE="ghcr.io/eltgm/configurator-app:preview"
-readonly TEST_GATEWAY_IMAGE="ghcr.io/eltgm/configurator-web:preview"
+readonly TEST_APP_IMAGE="ghcr.io/eltgm/configurator-app:stable"
+readonly TEST_GATEWAY_IMAGE="ghcr.io/eltgm/configurator-web:stable"
 readonly TEMP_DIRECTORY="$(mktemp -d "${TMPDIR:-/tmp}/configurator-archive-test.XXXXXX")"
 trap 'rm -rf "${TEMP_DIRECTORY}"' EXIT
 
@@ -28,13 +28,13 @@ if CONFIGURATOR_RELEASE_APP_IMAGE="${TEST_APP_IMAGE}" \
   "${TEST_VERSION}" "${TEMP_DIRECTORY}/missing-image" >/dev/null 2>&1; then
   fail 'one-sided release image override was accepted'
 fi
-if CONFIGURATOR_RELEASE_CHANNEL='Preview Invalid' \
+if CONFIGURATOR_RELEASE_CHANNEL='Stable Invalid' \
   "${REPOSITORY_ROOT}/scripts/release/build-delivery-packages.sh" \
   "${TEST_VERSION}" "${TEMP_DIRECTORY}/invalid-channel" >/dev/null 2>&1; then
   fail 'invalid release channel was accepted'
 fi
 
-CONFIGURATOR_RELEASE_CHANNEL=preview \
+CONFIGURATOR_RELEASE_CHANNEL=stable \
   CONFIGURATOR_RELEASE_APP_IMAGE="${TEST_APP_IMAGE}" \
   CONFIGURATOR_RELEASE_GATEWAY_IMAGE="${TEST_GATEWAY_IMAGE}" \
   "${REPOSITORY_ROOT}/scripts/release/build-delivery-packages.sh" \
@@ -56,7 +56,7 @@ unzip -q "${WINDOWS_ARCHIVE}" -d "${TEMP_DIRECTORY}/windows"
 tar -xzf "${MACOS_ARCHIVE}" -C "${TEMP_DIRECTORY}/macos"
 mkdir -p "${TEMP_DIRECTORY}/overridden-macos"
 tar -xzf "${OVERRIDDEN_MACOS_ARCHIVE}" -C "${TEMP_DIRECTORY}/overridden-macos"
-grep -Fxq "CONFIGURATOR_CHANNEL=preview" \
+grep -Fxq "CONFIGURATOR_CHANNEL=stable" \
   "${TEMP_DIRECTORY}/overridden-macos/Configurator/configurator.env" ||
   fail 'release channel was not injected'
 grep -Fxq "CONFIGURATOR_APP_IMAGE=${TEST_APP_IMAGE}" \

@@ -498,11 +498,11 @@ function Update-Configurator {
     Write-OperationLog 'Перед Update создаю обязательный backup…'
     try { $updateBackup = New-FullBackup 'pre-update' }
     catch { Stop-WithError $ExitUpdate 'Update отменён: обязательный backup не создан.' }
-    Write-OperationLog 'Загружаю новые preview-образы…'
+    Write-OperationLog 'Загружаю новые stable-образы…'
     try { $null = Invoke-Compose @('pull', 'app', 'gateway') }
     catch {
         $null = Invoke-Compose @('stop', 'gateway', 'app') -AllowFailure
-        Stop-WithError $ExitUpdate "Не удалось загрузить preview-образы. App/gateway остановлены. Backup: $updateBackup"
+        Stop-WithError $ExitUpdate "Не удалось загрузить stable-образы. App/gateway остановлены. Backup: $updateBackup"
     }
     Write-OperationLog 'Запускаю обновлённый Configurator…'
     try {

@@ -165,7 +165,7 @@ function configuratorResponse(
   };
 }
 
-export const frontendApiBaseUrl = 'http://127.0.0.1:5173/api';
+export const frontendApiBaseUrl = 'http://127.0.0.1:4173/api';
 
 export async function expectNoUnexpectedHorizontalOverflow(page: Page) {
   const metrics = await page.evaluate<{ viewportWidth: number; contentWidth: number }>(
@@ -193,7 +193,7 @@ export async function waitForJsonRequest<T>(
 }
 
 async function installMockApi(page: Page) {
-  await page.route(/^https?:\/\/(?!127\.0\.0\.1:5173(?:\/|$)).+/, async (route) => {
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$)).+/, async (route) => {
     await route.abort('blockedbyclient');
   });
   await page.route(frontendApiBaseUrl + '/**', async (route) => {
@@ -253,7 +253,7 @@ async function installMockApi(page: Page) {
     components: Array<{
       id: number;
       name: string;
-      brand?: string;
+      brand?: string | null;
       componentTypeId: number;
       componentTypeName: string;
       archived: boolean;
@@ -829,7 +829,7 @@ async function installMockApi(page: Page) {
       const body = request.postDataJSON() as {
         componentTypeId: number;
         name: string;
-        brand?: string;
+        brand?: string | null;
         description?: string;
         attributes: Array<{ attributeDefinitionId: number; value: string }>;
       };
@@ -870,7 +870,7 @@ async function installMockApi(page: Page) {
     const body = route.request().postDataJSON() as {
       componentTypeId: number;
       name: string;
-      brand?: string;
+      brand?: string | null;
       description?: string;
       attributes?: Array<{ attributeDefinitionId: number; value: string }>;
     };
@@ -926,11 +926,27 @@ interface MockApiFixtures {
   mockApi: void;
 }
 
+function isBrowserResourceError(message: string) {
+  return (
+    message.startsWith('Failed to load resource:') ||
+    message.startsWith('[JavaScript Error: "Cross-Origin Request Blocked:')
+  );
+}
+
 export const test = base.extend<MockApiFixtures>({
   mockApi: [
     async ({ page }, use) => {
+      const browserErrors: Array<string> = [];
+      page.on('pageerror', (error) => browserErrors.push(error.stack ?? error.message));
+      page.on('console', (message) => {
+        if (message.type() === 'error' && !isBrowserResourceError(message.text())) {
+          browserErrors.push(message.text());
+        }
+      });
       await installMockApi(page);
       await use();
+      await page.close();
+      expect(browserErrors, 'browser console/page errors').toEqual([]);
     },
     { auto: true },
   ],
