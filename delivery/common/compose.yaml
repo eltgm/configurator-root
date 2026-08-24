@@ -61,6 +61,7 @@ services:
 
   postgres-maintenance:
     image: ${CONFIGURATOR_POSTGRES_IMAGE}
+    user: "${CONFIGURATOR_MAINTENANCE_USER:-0:0}"
     profiles: [maintenance]
     depends_on:
       postgres:
@@ -80,6 +81,7 @@ services:
 
   minio-maintenance:
     image: ${CONFIGURATOR_MINIO_CLIENT_IMAGE}
+    user: "${CONFIGURATOR_MAINTENANCE_USER:-0:0}"
     profiles: [maintenance]
     depends_on:
       minio:

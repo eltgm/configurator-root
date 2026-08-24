@@ -111,6 +111,7 @@ done < <(find "${WINDOWS_ROOT}" -type f \( -name '*.cmd' -o -name '*.ps1' \) -pr
 bash -n "${MACOS_ROOT}/scripts/configurator.sh" "${MACOS_ROOT}"/*.command
 
 CONFIGURATOR_MAINTENANCE_DIR="${TEMP_DIRECTORY}/maintenance" \
+  CONFIGURATOR_MAINTENANCE_USER="$(id -u):$(id -g)" \
   docker compose --project-directory "${MACOS_ROOT}" \
   --env-file "${MACOS_ROOT}/configurator.env" \
   -f "${MACOS_ROOT}/compose.yaml" --profile maintenance config --quiet

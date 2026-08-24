@@ -29,6 +29,9 @@ cat >"$FAKE_BIN/docker" <<'EOF'
 #!/bin/bash
 set -u
 printf '%s\n' "$*" >>"$FAKE_DOCKER_LOG"
+if [ "${1:-}" = "compose" ] && printf '%s\n' "$*" | grep -Fq -- '--project-directory'; then
+  printf '%s\n' "${CONFIGURATOR_MAINTENANCE_USER:-missing}" >>"$FAKE_DOCKER_USER_LOG"
+fi
 
 if [ "${1:-}" = "info" ]; then
   [ "${FAKE_DAEMON_DOWN:-0}" -eq 0 ]
@@ -91,6 +94,7 @@ chmod +x "$FAKE_BIN/docker" "$FAKE_BIN/curl" "$FAKE_BIN/lsof" "$FAKE_BIN/open"
 
 export PATH="$FAKE_BIN:$PATH"
 export FAKE_DOCKER_LOG
+export FAKE_DOCKER_USER_LOG="$TEMP_ROOT/docker-user.log"
 export CONFIGURATOR_DOCKER_WAIT_SECONDS=0
 export CONFIGURATOR_READINESS_WAIT_SECONDS=2
 
@@ -101,6 +105,9 @@ run_operation() {
 
 run_operation start || fail "start failed"
 grep -Fq 'up -d --remove-orphans' "$FAKE_DOCKER_LOG" || fail "start did not run compose up"
+if grep -Fxv "$(id -u):$(id -g)" "$FAKE_DOCKER_USER_LOG" | grep -q .; then
+  fail "compose did not receive the host UID:GID"
+fi
 
 run_operation stop || fail "stop failed"
 grep -Fq 'stop gateway app minio postgres' "$FAKE_DOCKER_LOG" || fail "stop command is incorrect"

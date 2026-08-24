@@ -23,6 +23,8 @@ test -f "$ENV_FILE" || fail "configurator.env is missing"
 
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config >"$TEMP_DIR/config.yaml"
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config --services >"$TEMP_DIR/core-services.txt"
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" --profile maintenance config \
+  >"$TEMP_DIR/maintenance.yaml"
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" --profile maintenance config --services >"$TEMP_DIR/services.txt"
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config --profiles >"$TEMP_DIR/profiles.txt"
 
@@ -37,6 +39,8 @@ grep -Fq 'published: "8080"' "$TEMP_DIR/config.yaml" || fail "gateway port is mi
 grep -Fxq 'maintenance' "$TEMP_DIR/profiles.txt" || fail "maintenance profile is missing"
 grep -Fq 'read_only: true' "$TEMP_DIR/config.yaml" || fail "read-only hardening is missing"
 grep -Fq 'no-new-privileges:true' "$TEMP_DIR/config.yaml" || fail "no-new-privileges hardening is missing"
+test "$(grep -Fc 'user: "0:0"' "$TEMP_DIR/maintenance.yaml")" -eq 2 ||
+  fail "maintenance services do not use the default container user"
 
 for maintenance_service in postgres-maintenance minio-maintenance; do
   if grep -Fxq "$maintenance_service" "$TEMP_DIR/core-services.txt"; then
@@ -53,6 +57,12 @@ CONFIGURATOR_APP_IMAGE=configurator-app:test \
   docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config >"$TEMP_DIR/overridden.yaml"
 grep -Fq 'image: configurator-app:test' "$TEMP_DIR/overridden.yaml" || fail "app image override failed"
 grep -Fq 'image: configurator-web:test' "$TEMP_DIR/overridden.yaml" || fail "gateway image override failed"
+
+CONFIGURATOR_MAINTENANCE_USER=1234:5678 \
+  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" --profile maintenance config \
+  >"$TEMP_DIR/maintenance-user.yaml"
+test "$(grep -Fc 'user: 1234:5678' "$TEMP_DIR/maintenance-user.yaml")" -eq 2 ||
+  fail "maintenance user override failed"
 
 grep -v '^CONFIGURATOR_APP_IMAGE=' "$ENV_FILE" >"$TEMP_DIR/missing-app-image.env"
 if env -u CONFIGURATOR_APP_IMAGE docker compose --env-file "$TEMP_DIR/missing-app-image.env" \
