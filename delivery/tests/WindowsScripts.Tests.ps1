@@ -35,18 +35,9 @@ try {
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
 echo %*>>"%FAKE_DOCKER_LOG%"
-if "%~1"=="info" (
-  if "%FAKE_DAEMON_DOWN%"=="1" exit /b 1
-  exit /b 0
-)
-if "%~1"=="inspect" (
-  echo sha256:fake-image
-  exit /b 0
-)
-if "%~1"=="compose" if "%~2"=="version" (
-  if "%FAKE_COMPOSE_DOWN%"=="1" exit /b 1
-  exit /b 0
-)
+if "%~1"=="info" goto handle_info
+if "%~1"=="inspect" goto handle_inspect
+if "%~1"=="compose" if "%~2"=="version" goto handle_compose_version
 
 set "FAKE_HAS_PS=0"
 set "FAKE_HAS_PULL=0"
@@ -64,28 +55,48 @@ shift
 goto scan_arguments
 
 :arguments_scanned
-if "%FAKE_HAS_PS%"=="1" (
-  echo container-fake
-  exit /b 0
-)
-if "%FAKE_HAS_PULL%"=="1" (
-  if exist "%FAKE_DOCKER_LOG%.fail-pull" (
-    echo __fake_failure__ pull>>"%FAKE_DOCKER_LOG%"
-    exit /b 1
-  )
-  exit /b 0
-)
-if "%FAKE_HAS_PG_DUMP%"=="1" (
-  if not exist "%CONFIGURATOR_MAINTENANCE_DIR%" mkdir "%CONFIGURATOR_MAINTENANCE_DIR%"
-  echo fake database dump>"%CONFIGURATOR_MAINTENANCE_DIR%\database.dump"
-  exit /b 0
-)
-if "%FAKE_HAS_MIRROR%"=="1" if "%FAKE_HAS_BACKUP_MINIO%"=="1" (
-  if not exist "%CONFIGURATOR_MAINTENANCE_DIR%\minio" mkdir "%CONFIGURATOR_MAINTENANCE_DIR%\minio"
-  echo fake image bytes>"%CONFIGURATOR_MAINTENANCE_DIR%\minio\object.bin"
-  exit /b 0
-)
+if "%FAKE_HAS_PS%"=="1" goto handle_ps
+if "%FAKE_HAS_PULL%"=="1" goto handle_pull
+if "%FAKE_HAS_PG_DUMP%"=="1" goto handle_pg_dump
+if "%FAKE_HAS_MIRROR%"=="1" if "%FAKE_HAS_BACKUP_MINIO%"=="1" goto handle_backup_mirror
 exit /b 0
+
+:handle_info
+if "%FAKE_DAEMON_DOWN%"=="1" goto docker_failure
+exit /b 0
+
+:handle_inspect
+echo sha256:fake-image
+exit /b 0
+
+:handle_compose_version
+if "%FAKE_COMPOSE_DOWN%"=="1" goto docker_failure
+exit /b 0
+
+:handle_ps
+echo container-fake
+exit /b 0
+
+:handle_pull
+if exist "%FAKE_DOCKER_LOG%.fail-pull" goto pull_failure
+exit /b 0
+
+:pull_failure
+echo __fake_failure__ pull>>"%FAKE_DOCKER_LOG%"
+goto docker_failure
+
+:handle_pg_dump
+if not exist "%CONFIGURATOR_MAINTENANCE_DIR%" mkdir "%CONFIGURATOR_MAINTENANCE_DIR%"
+echo fake database dump>"%CONFIGURATOR_MAINTENANCE_DIR%\database.dump"
+exit /b 0
+
+:handle_backup_mirror
+if not exist "%CONFIGURATOR_MAINTENANCE_DIR%\minio" mkdir "%CONFIGURATOR_MAINTENANCE_DIR%\minio"
+echo fake image bytes>"%CONFIGURATOR_MAINTENANCE_DIR%\minio\object.bin"
+exit /b 0
+
+:docker_failure
+exit /b 1
 '@ | Set-Content -LiteralPath (Join-Path $FakeBin 'docker.cmd') -Encoding ASCII
 
     @'
