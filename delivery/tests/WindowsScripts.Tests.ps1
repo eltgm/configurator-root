@@ -6,6 +6,7 @@ $TempRoot = Join-Path ([IO.Path]::GetTempPath()) ("configurator-windows-test-{0}
 $PackageRoot = Join-Path $TempRoot 'Папка с пробелами\Configurator'
 $FakeBin = Join-Path $TempRoot 'fake-bin'
 $FakeDockerLog = Join-Path $TempRoot 'docker.log'
+$FakePullFailureMarker = "$FakeDockerLog.fail-pull"
 $ServerProcess = $null
 
 function Assert-True([bool]$Condition, [string]$Message) {
@@ -32,37 +33,54 @@ try {
 
     @'
 @echo off
+setlocal EnableExtensions DisableDelayedExpansion
 echo %*>>"%FAKE_DOCKER_LOG%"
-if "%1"=="info" (
+if "%~1"=="info" (
   if "%FAKE_DAEMON_DOWN%"=="1" exit /b 1
   exit /b 0
 )
-if "%1"=="inspect" (
+if "%~1"=="inspect" (
   echo sha256:fake-image
   exit /b 0
 )
-if "%1"=="compose" if "%2"=="version" (
+if "%~1"=="compose" if "%~2"=="version" (
   if "%FAKE_COMPOSE_DOWN%"=="1" exit /b 1
   exit /b 0
 )
-echo %* | findstr /C:" ps " >nul
-if not errorlevel 1 (
+
+set "FAKE_HAS_PS=0"
+set "FAKE_HAS_PULL=0"
+set "FAKE_HAS_PG_DUMP=0"
+set "FAKE_HAS_MIRROR=0"
+set "FAKE_HAS_BACKUP_MINIO=0"
+:scan_arguments
+if "%~1"=="" goto arguments_scanned
+if /I "%~1"=="ps" set "FAKE_HAS_PS=1"
+if /I "%~1"=="pull" set "FAKE_HAS_PULL=1"
+if /I "%~1"=="pg_dump" set "FAKE_HAS_PG_DUMP=1"
+if /I "%~1"=="mirror" set "FAKE_HAS_MIRROR=1"
+if /I "%~1"=="/backup/minio" set "FAKE_HAS_BACKUP_MINIO=1"
+shift
+goto scan_arguments
+
+:arguments_scanned
+if "%FAKE_HAS_PS%"=="1" (
   echo container-fake
   exit /b 0
 )
-echo %* | findstr /C:" pull app gateway" >nul
-if not errorlevel 1 (
-  if "%FAKE_FAIL_PULL%"=="1" exit /b 1
+if "%FAKE_HAS_PULL%"=="1" (
+  if exist "%FAKE_DOCKER_LOG%.fail-pull" (
+    echo __fake_failure__ pull>>"%FAKE_DOCKER_LOG%"
+    exit /b 1
+  )
   exit /b 0
 )
-echo %* | findstr /C:" pg_dump " >nul
-if not errorlevel 1 (
+if "%FAKE_HAS_PG_DUMP%"=="1" (
   if not exist "%CONFIGURATOR_MAINTENANCE_DIR%" mkdir "%CONFIGURATOR_MAINTENANCE_DIR%"
   echo fake database dump>"%CONFIGURATOR_MAINTENANCE_DIR%\database.dump"
   exit /b 0
 )
-echo %* | findstr /C:" mirror " | findstr /C:" /backup/minio" >nul
-if not errorlevel 1 (
+if "%FAKE_HAS_MIRROR%"=="1" if "%FAKE_HAS_BACKUP_MINIO%"=="1" (
   if not exist "%CONFIGURATOR_MAINTENANCE_DIR%\minio" mkdir "%CONFIGURATOR_MAINTENANCE_DIR%\minio"
   echo fake image bytes>"%CONFIGURATOR_MAINTENANCE_DIR%\minio\object.bin"
   exit /b 0
@@ -99,7 +117,6 @@ finally { $listener.Stop() }
     $env:FAKE_DOCKER_LOG = $FakeDockerLog
     $env:FAKE_DAEMON_DOWN = '0'
     $env:FAKE_COMPOSE_DOWN = '0'
-    $env:FAKE_FAIL_PULL = '0'
     $env:CONFIGURATOR_DOCKER_WAIT_SECONDS = '0'
     $env:CONFIGURATOR_READINESS_WAIT_SECONDS = '4'
     $env:PROCESSOR_ARCHITECTURE = 'AMD64'
@@ -138,12 +155,22 @@ finally { $listener.Stop() }
     Assert-True ((Get-Content $FakeDockerLog -Raw).Contains('pg_restore --exit-on-error')) 'pg_restore was not invoked'
     Assert-True ((Get-Content $FakeDockerLog -Raw).Contains('mirror --overwrite --remove')) 'MinIO replacement was not invoked'
 
-    $env:FAKE_FAIL_PULL = '1'
-    Assert-True ((Invoke-Operation @('update')) -eq 60) 'failed update returned an unexpected exit code'
+    Set-Content -LiteralPath $FakePullFailureMarker -Value '' -Encoding ASCII
+    try { $updateExitCode = Invoke-Operation @('update') }
+    finally { Remove-Item -LiteralPath $FakePullFailureMarker -Force -ErrorAction SilentlyContinue }
     $updateLog = Get-Content $FakeDockerLog -Raw
+    Assert-True ($updateExitCode -eq 60) `
+        "failed update returned $updateExitCode instead of 60. Docker log: $updateLog"
+    Assert-True ($updateLog.Contains('__fake_failure__ pull')) 'fake Docker did not inject the pull failure'
     Assert-True ($updateLog.Contains('pull app gateway')) 'update did not pull app/gateway'
     Assert-True ($updateLog.Contains('stop gateway app')) 'failed update did not stop app/gateway'
-    $env:FAKE_FAIL_PULL = '0'
+    $preUpdateBackups = @(Get-ChildItem (Join-Path $PackageRoot 'backups') -Directory -Filter 'pre-update-*')
+    Assert-True ($preUpdateBackups.Count -gt 0) 'failed update did not retain its pre-update backup'
+    $updateOperationLog = Get-ChildItem (Join-Path $PackageRoot 'logs') -File -Filter 'update-*.log' |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    Assert-True ($null -ne $updateOperationLog) 'update operation log is missing'
+    Assert-True (-not (Select-String -LiteralPath $updateOperationLog.FullName -SimpleMatch 'Update завершён.' -Quiet)) `
+        'failed update emitted the success message'
 
     New-Item -ItemType Directory -Path (Join-Path $PackageRoot '.configurator-operation.lock') | Out-Null
     Assert-True ((Invoke-Operation @('stop')) -eq 80) 'lock contention returned an unexpected exit code'
@@ -167,5 +194,6 @@ finally { $listener.Stop() }
 }
 finally {
     if ($ServerProcess -and -not $ServerProcess.HasExited) { Stop-Process -Id $ServerProcess.Id -Force }
+    Remove-Item -LiteralPath $FakePullFailureMarker -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $TempRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
