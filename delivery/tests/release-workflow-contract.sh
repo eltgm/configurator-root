@@ -8,6 +8,9 @@ readonly WORKFLOW="${REPOSITORY_ROOT}/.github/workflows/release.yml"
 readonly BACKEND_DOCKERFILE="${REPOSITORY_ROOT}/Dockerfile"
 readonly GATEWAY_DOCKERFILE="${REPOSITORY_ROOT}/configurator-web/Dockerfile"
 readonly PLAYWRIGHT_CONFIG="${REPOSITORY_ROOT}/configurator-web/playwright.config.ts"
+readonly WORK_DIRECTORY="$(mktemp -d "${TMPDIR:-/tmp}/configurator-release-workflow-test.XXXXXX")"
+
+trap 'rm -rf "${WORK_DIRECTORY}"' EXIT
 
 fail() {
   echo "release-workflow-contract: $*" >&2
@@ -21,6 +24,22 @@ require_text() {
 }
 
 [[ -f "${WORKFLOW}" ]] || fail 'release workflow is missing'
+
+readonly DRAFT_RELEASE_SCRIPT="${WORK_DIRECTORY}/draft-release.sh"
+awk '
+  /^      - name: Create or update draft release$/ { in_step = 1; next }
+  in_step && /^        run: \|$/ { in_run = 1; next }
+  in_run {
+    if ($0 ~ /^          /) {
+      sub(/^          /, "")
+      print
+      next
+    }
+    exit
+  }
+' "${WORKFLOW}" >"${DRAFT_RELEASE_SCRIPT}"
+[[ -s "${DRAFT_RELEASE_SCRIPT}" ]] || fail 'draft release shell block is missing'
+bash -n "${DRAFT_RELEASE_SCRIPT}" || fail 'draft release shell block has invalid syntax'
 
 require_text 'tags:' 'tag trigger is missing'
 require_text '^v[0-9]+\.[0-9]+\.[0-9]+$' 'stable workflow must reject pre-release tags'
