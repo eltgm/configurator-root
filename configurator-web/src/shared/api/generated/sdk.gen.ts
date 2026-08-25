@@ -121,6 +121,9 @@ import type {
   PostDomainsByIdConfigurationsData,
   PostDomainsByIdConfigurationsErrors,
   PostDomainsByIdConfigurationsResponses,
+  PostDomainsByIdConfiguratorCandidatesData,
+  PostDomainsByIdConfiguratorCandidatesErrors,
+  PostDomainsByIdConfiguratorCandidatesResponses,
   PostDomainsByIdConfiguratorCompatibleIntersectionData,
   PostDomainsByIdConfiguratorCompatibleIntersectionErrors,
   PostDomainsByIdConfiguratorCompatibleIntersectionResponses,
@@ -1085,6 +1088,37 @@ export const postDomainsByIdConfiguratorCompatibleIntersection = <
   >({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/domains/{id}/configurator/compatible/intersection',
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+
+/**
+ * Classify candidates for the current assembly
+ *
+ * Classifies every other active domain component using direct assembly relationships.
+ * A candidate is AVAILABLE when it has at least one allowed relationship to a selected
+ * component and no denied relationship. Any denied relationship makes it BLOCKED.
+ * Candidates without allowed or denied relationships are UNRELATED. The operation never
+ * uses transitive graph paths because an assembly must be connected by selected components.
+ *
+ */
+export const postDomainsByIdConfiguratorCandidates = <ThrowOnError extends boolean = false>(
+  options: Options<PostDomainsByIdConfiguratorCandidatesData, ThrowOnError>,
+): RequestResult<
+  PostDomainsByIdConfiguratorCandidatesResponses,
+  PostDomainsByIdConfiguratorCandidatesErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).post<
+    PostDomainsByIdConfiguratorCandidatesResponses,
+    PostDomainsByIdConfiguratorCandidatesErrors,
+    ThrowOnError
+  >({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/domains/{id}/configurator/candidates',
     ...options,
     headers: {
       'Content-Type': 'application/json',

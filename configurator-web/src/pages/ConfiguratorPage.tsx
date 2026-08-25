@@ -15,12 +15,12 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
 import { useComponentTypesQuery } from '@/features/component-types/api/component-types';
-import { useBatchCompatibilityQuery } from '@/features/configurator/api/configurator-compatibility';
+import { useAssemblyCandidatesQuery } from '@/features/configurator/api/configurator-compatibility';
 import { configuratorDraftMaxItems } from '@/features/configurator/model/configurator-draft';
 import {
   replacementBaseComponentIds,
   type ConfiguratorComponentSelection,
-  validateConfiguratorAssembly,
+  validationFromAssemblyResponse,
 } from '@/features/configurator/model/configurator-compatibility';
 import { useConfiguratorDraft } from '@/features/configurator/model/use-configurator-draft';
 import { AvailableComponentBrowser } from '@/features/configurator/ui/AvailableComponentBrowser';
@@ -59,31 +59,26 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
     draft.slots.every(
       (slot) => slot.status === 'ready' && slot.component && !slot.component.archived,
     );
-  const batchQuery = useBatchCompatibilityQuery(
+  const assemblyQuery = useAssemblyCandidatesQuery(
     domainId,
     componentIds,
-    includeTransitive,
-    hydratedDraftReady && componentIds.length > 1,
+    hydratedDraftReady && componentIds.length > 0,
   );
-  const validation = batchQuery.data
-    ? validateConfiguratorAssembly(componentIds, batchQuery.data)
+  const validation = assemblyQuery.data
+    ? validationFromAssemblyResponse(assemblyQuery.data)
     : undefined;
   const compatibilityState =
     componentIds.length === 0
       ? ('empty' as const)
       : !hydratedDraftReady
         ? ('blocked' as const)
-        : componentIds.length === 1
-          ? ('valid' as const)
-          : batchQuery.isPending
-            ? ('pending' as const)
-            : batchQuery.error
-              ? ('error' as const)
-              : validation?.compatible
-                ? validation.relation === 'transitive'
-                  ? ('transitive' as const)
-                  : ('valid' as const)
-                : ('conflict' as const);
+        : assemblyQuery.isPending
+          ? ('pending' as const)
+          : assemblyQuery.error
+            ? ('error' as const)
+            : validation?.compatible
+              ? ('valid' as const)
+              : ('conflict' as const);
   const baseComponentIds = replacementBaseComponentIds(componentIds, replacementTarget?.id ?? null);
   const baseComponentNames = new Map(
     draft.slots.map((slot) => [
@@ -97,12 +92,7 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
         .filter((slot) => slot.item.componentId !== replacementTarget.id)
         .every((slot) => slot.status === 'ready' && slot.component && !slot.component.archived)
     : false;
-  const compatibilityBlocked = replacementTarget
-    ? !replacementBasesReady
-    : compatibilityState === 'pending' ||
-      compatibilityState === 'conflict' ||
-      compatibilityState === 'blocked' ||
-      compatibilityState === 'error';
+  const compatibilityBlocked = replacementTarget ? !replacementBasesReady : !hydratedDraftReady;
   const saveEligibility = getConfigurationSaveEligibility(componentIds.length, compatibilityState);
 
   const getSaveUnavailableReason = (
@@ -209,7 +199,7 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
           conflictComponentIds={validation?.conflictComponentIds ?? new Set()}
           conflictCount={validation?.conflictPairs.length ?? 0}
           pairResults={validation?.pairs ?? []}
-          onRetryCompatibility={() => void batchQuery.refetch()}
+          onRetryCompatibility={() => void assemblyQuery.refetch()}
           onReplace={(slot) => {
             if (slot.component) {
               setReplacementTarget(slot.component);

@@ -4,13 +4,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import lombok.experimental.UtilityClass;
 import ru.sultanyarov.configurator.domain.model.CompatibilityExplanation;
 import ru.sultanyarov.configurator.domain.model.CompatibilityExplanationSource;
 import ru.sultanyarov.configurator.domain.model.CompatibilityLink;
 import ru.sultanyarov.configurator.domain.model.CompatibilityRuleSet;
 import ru.sultanyarov.configurator.domain.model.Component;
+import ru.sultanyarov.configurator.domain.model.PairCompatibilityStatus;
 
 @UtilityClass
 class CompatibilityGraphBuilder {
@@ -21,7 +21,9 @@ class CompatibilityGraphBuilder {
       CompatibilityRuleEvaluator ruleEvaluator) {
     IndexedComponents indexedComponents = indexComponents(activeComponents);
     Map<Long, Map<Long, List<CompatibilityExplanation>>> graph = new HashMap<>();
-    addManualEdges(graph, manualLinks, indexedComponents.byId().keySet());
+    CompatibilityDecisionResolver decisionResolver =
+        CompatibilityDecisionResolver.create(manualLinks, automaticRules, ruleEvaluator);
+    addManualEdges(graph, manualLinks, indexedComponents.byId(), decisionResolver);
     addAutomaticEdges(graph, automaticRules, indexedComponents.byType(), ruleEvaluator);
     return new CompatibilityGraphContext(graph, indexedComponents.order());
   }
@@ -44,10 +46,16 @@ class CompatibilityGraphBuilder {
   private static void addManualEdges(
       Map<Long, Map<Long, List<CompatibilityExplanation>>> graph,
       List<CompatibilityLink> links,
-      Set<Long> activeComponentIds) {
+      Map<Long, Component> activeComponentsById,
+      CompatibilityDecisionResolver decisionResolver) {
     for (CompatibilityLink link : links) {
-      if (!activeComponentIds.contains(link.componentAId())
-          || !activeComponentIds.contains(link.componentBId())) {
+      Component componentA = activeComponentsById.get(link.componentAId());
+      Component componentB = activeComponentsById.get(link.componentBId());
+      if (componentA == null || componentB == null) {
+        continue;
+      }
+      if (decisionResolver.resolve(componentA, componentB).status()
+          != PairCompatibilityStatus.ALLOWED) {
         continue;
       }
       addUndirectedEdge(

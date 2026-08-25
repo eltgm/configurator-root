@@ -1,14 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  blockedCandidatesFromAssemblyResponse,
+  candidatesFromAssemblyResponse,
   candidatesFromDirectResponse,
   candidatesFromIntersectionResponse,
   filterConfiguratorCandidates,
   replacementBaseComponentIds,
+  validationFromAssemblyResponse,
   validateConfiguratorAssembly,
 } from '@/features/configurator/model/configurator-compatibility';
 import type {
   ConfiguratorBatchSearchResponse,
+  ConfiguratorCandidatesResponse,
   ConfiguratorIntersectionResponse,
   ConfiguratorResponse,
 } from '@/shared/api';
@@ -33,6 +37,118 @@ const direct: ConfiguratorResponse = {
 };
 
 describe('configurator compatibility model', () => {
+  it('uses assembly decisions for available blocked and connected validation states', () => {
+    const response: ConfiguratorCandidatesResponse = {
+      componentIds: [1, 2, 3],
+      assemblyStatus: 'VALID',
+      assemblyDecisions: [
+        {
+          leftComponentId: 1,
+          rightComponentId: 2,
+          status: 'ALLOWED',
+          explanations: [{ source: 'MANUAL', linkId: 12 }],
+          blockingRules: [],
+        },
+        {
+          leftComponentId: 1,
+          rightComponentId: 3,
+          status: 'UNKNOWN',
+          explanations: [],
+          blockingRules: [],
+        },
+        {
+          leftComponentId: 2,
+          rightComponentId: 3,
+          status: 'ALLOWED',
+          explanations: [{ source: 'AUTOMATIC', ruleSetId: 23 }],
+          blockingRules: [],
+        },
+      ],
+      candidatesByType: [
+        {
+          componentTypeId: 40,
+          componentTypeName: 'GPU',
+          components: [
+            {
+              id: 4,
+              name: 'Available GPU',
+              componentTypeId: 40,
+              status: 'AVAILABLE',
+              compatibilityByBase: [
+                {
+                  baseComponentId: 1,
+                  status: 'ALLOWED',
+                  explanations: [{ source: 'MANUAL', linkId: 14 }],
+                  blockingRules: [],
+                },
+                {
+                  baseComponentId: 2,
+                  status: 'UNKNOWN',
+                  explanations: [],
+                  blockingRules: [],
+                },
+              ],
+            },
+            {
+              id: 5,
+              name: 'Blocked GPU',
+              componentTypeId: 40,
+              status: 'BLOCKED',
+              compatibilityByBase: [
+                {
+                  baseComponentId: 2,
+                  status: 'DENIED',
+                  explanations: [],
+                  blockingRules: [{ ruleSetId: 7, ruleSetName: 'Power limit' }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(candidatesFromAssemblyResponse(response)).toEqual([
+      expect.objectContaining({
+        id: 4,
+        relation: 'direct',
+        compatibilityByBase: [expect.objectContaining({ baseComponentId: 1 })],
+      }),
+    ]);
+    expect(blockedCandidatesFromAssemblyResponse(response)).toEqual([
+      expect.objectContaining({
+        id: 5,
+        blockingByBase: [
+          { baseComponentId: 2, blockingRules: [{ ruleSetId: 7, ruleSetName: 'Power limit' }] },
+        ],
+      }),
+    ]);
+    expect(validationFromAssemblyResponse(response)).toMatchObject({
+      compatible: true,
+      relation: 'direct',
+      conflictPairs: [],
+    });
+
+    const blockedValidation = validationFromAssemblyResponse({
+      ...response,
+      assemblyStatus: 'BLOCKED',
+      assemblyDecisions: [
+        {
+          leftComponentId: 1,
+          rightComponentId: 3,
+          status: 'DENIED',
+          explanations: [],
+          blockingRules: [{ ruleSetId: 9, ruleSetName: 'Socket' }],
+        },
+      ],
+    });
+    expect(blockedValidation.compatible).toBe(false);
+    expect(blockedValidation.conflictPairs).toEqual([{ leftComponentId: 1, rightComponentId: 3 }]);
+    expect(blockedValidation.pairs[0]?.blockingRules).toEqual([
+      { ruleSetId: 9, ruleSetName: 'Socket' },
+    ]);
+  });
+
   it('normalizes direct and intersection candidates without losing explanations', () => {
     const intersection: ConfiguratorIntersectionResponse = {
       componentIds: [1, 3],

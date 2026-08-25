@@ -444,6 +444,88 @@ export type ConfiguratorIntersectionResponse = {
   compatibleByType: Array<ConfiguratorIntersectionTypeGroup>;
 };
 
+export type ConfiguratorCandidatesRequest = {
+  /**
+   * Unique active components currently present in the assembly. When replacing a component, the replaced component must be omitted from this list.
+   */
+  componentIds: Array<number>;
+};
+
+/**
+ * ALLOWED means a direct manual or matching automatic relationship exists; DENIED means applicable enabled automatic rules exist but none matches; UNKNOWN means no relationship knowledge applies to the pair.
+ */
+export type ConfiguratorPairStatus = 'ALLOWED' | 'DENIED' | 'UNKNOWN';
+
+/**
+ * AVAILABLE candidates have at least one ALLOWED relationship and no DENIED relationship; BLOCKED candidates have at least one DENIED relationship; UNRELATED candidates have no ALLOWED or DENIED relationship to the assembly.
+ */
+export type ConfiguratorCandidateStatus = 'AVAILABLE' | 'BLOCKED' | 'UNRELATED';
+
+/**
+ * VALID means the selected components are connected through ALLOWED direct relationships and contain no DENIED pair. BLOCKED means at least one selected pair is DENIED. DISCONNECTED means there is no DENIED pair but the ALLOWED graph has more than one component.
+ */
+export type ConfiguratorAssemblyStatus = 'VALID' | 'BLOCKED' | 'DISCONNECTED';
+
+export type CompatibilityBlockingRule = {
+  ruleSetId: number;
+  ruleSetName: string;
+};
+
+export type ConfiguratorCandidateBaseDecision = {
+  baseComponentId: number;
+  status: ConfiguratorPairStatus;
+  /**
+   * Positive direct relationship evidence; empty for DENIED and UNKNOWN
+   */
+  explanations: Array<CompatibilityExplanation>;
+  /**
+   * Applicable rules that failed; populated only for DENIED
+   */
+  blockingRules: Array<CompatibilityBlockingRule>;
+};
+
+export type ConfiguratorAssemblyPairDecision = {
+  leftComponentId: number;
+  rightComponentId: number;
+  status: ConfiguratorPairStatus;
+  explanations: Array<CompatibilityExplanation>;
+  blockingRules: Array<CompatibilityBlockingRule>;
+};
+
+export type ConfiguratorAssemblyCandidate = {
+  id: number;
+  name: string;
+  brand?: string | null;
+  componentTypeId: number;
+  status: ConfiguratorCandidateStatus;
+  /**
+   * Pair decisions in componentIds request order
+   */
+  compatibilityByBase: Array<ConfiguratorCandidateBaseDecision>;
+};
+
+export type ConfiguratorCandidateTypeGroup = {
+  componentTypeId: number;
+  componentTypeName: string;
+  components: Array<ConfiguratorAssemblyCandidate>;
+};
+
+export type ConfiguratorCandidatesResponse = {
+  /**
+   * Selected assembly component identifiers in request order
+   */
+  componentIds: Array<number>;
+  /**
+   * All other active domain components classified for this assembly
+   */
+  candidatesByType: Array<ConfiguratorCandidateTypeGroup>;
+  assemblyStatus: ConfiguratorAssemblyStatus;
+  /**
+   * Direct pair decisions for selected components in deterministic pair order
+   */
+  assemblyDecisions: Array<ConfiguratorAssemblyPairDecision>;
+};
+
 /**
  * Current component data included in a saved configuration
  */
@@ -1956,6 +2038,39 @@ export type PostDomainsByIdConfiguratorCompatibleIntersectionResponses = {
 
 export type PostDomainsByIdConfiguratorCompatibleIntersectionResponse =
   PostDomainsByIdConfiguratorCompatibleIntersectionResponses[keyof PostDomainsByIdConfiguratorCompatibleIntersectionResponses];
+
+export type PostDomainsByIdConfiguratorCandidatesData = {
+  body: ConfiguratorCandidatesRequest;
+  path: {
+    id: number;
+  };
+  query?: never;
+  url: '/domains/{id}/configurator/candidates';
+};
+
+export type PostDomainsByIdConfiguratorCandidatesErrors = {
+  /**
+   * Invalid, duplicate, archived, or out-of-domain assembly component
+   */
+  400: ErrorResponse;
+  /**
+   * Domain or component not found
+   */
+  404: ErrorResponse;
+};
+
+export type PostDomainsByIdConfiguratorCandidatesError =
+  PostDomainsByIdConfiguratorCandidatesErrors[keyof PostDomainsByIdConfiguratorCandidatesErrors];
+
+export type PostDomainsByIdConfiguratorCandidatesResponses = {
+  /**
+   * Success, including empty candidate groups
+   */
+  200: ConfiguratorCandidatesResponse;
+};
+
+export type PostDomainsByIdConfiguratorCandidatesResponse =
+  PostDomainsByIdConfiguratorCandidatesResponses[keyof PostDomainsByIdConfiguratorCandidatesResponses];
 
 export type GetDomainsByIdConfigurationsData = {
   body?: never;

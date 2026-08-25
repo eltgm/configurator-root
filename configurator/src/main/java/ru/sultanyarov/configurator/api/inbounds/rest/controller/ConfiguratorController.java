@@ -6,6 +6,8 @@ import org.springframework.web.bind.annotation.RestController;
 import ru.sultanyarov.configurator.api.inbounds.rest.ConfiguratorApi;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchRequest;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchResponse;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorCandidatesRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorCandidatesResponse;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorIntersectionRequest;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorIntersectionResponse;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorResponse;
@@ -38,5 +40,12 @@ public class ConfiguratorController implements ConfiguratorApi {
           Long id, ConfiguratorIntersectionRequest configuratorIntersectionRequest) {
     return ResponseEntity.ok(
         configuratorFacade.intersectCompatibleComponents(id, configuratorIntersectionRequest));
+  }
+
+  @Override
+  public ResponseEntity<ConfiguratorCandidatesResponse> postDomainsByIdConfiguratorCandidates(
+      Long id, ConfiguratorCandidatesRequest configuratorCandidatesRequest) {
+    return ResponseEntity.ok(
+        configuratorFacade.classifyCandidates(id, configuratorCandidatesRequest));
   }
 }

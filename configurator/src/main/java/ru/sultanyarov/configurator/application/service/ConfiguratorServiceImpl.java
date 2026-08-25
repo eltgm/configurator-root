@@ -15,10 +15,15 @@ import ru.sultanyarov.configurator.application.port.out.ConfiguratorRepository;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
 import ru.sultanyarov.configurator.domain.model.CompatibleComponent;
 import ru.sultanyarov.configurator.domain.model.Component;
+import ru.sultanyarov.configurator.domain.model.ConfiguratorAssemblyCandidate;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorBatchResult;
+import ru.sultanyarov.configurator.domain.model.ConfiguratorCandidateBaseDecision;
+import ru.sultanyarov.configurator.domain.model.ConfiguratorCandidateStatus;
+import ru.sultanyarov.configurator.domain.model.ConfiguratorCandidatesResult;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorIntersectionResult;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorResult;
 import ru.sultanyarov.configurator.domain.model.Domain;
+import ru.sultanyarov.configurator.domain.model.PairCompatibilityStatus;
 
 @Slf4j
 @Service
@@ -115,6 +120,87 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
                 compatibilityByCandidate,
                 baseComponentIds.size()))
         .build();
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public ConfiguratorCandidatesResult classifyCandidates(Long domainId, List<Long> componentIds) {
+    log.debug("classify candidates in domain {} for assembly {}", domainId, componentIds);
+    validateBatchComponentIds(componentIds);
+    SearchContext searchContext = prepareSearchContext(domainId, componentIds);
+    List<Component> candidates =
+        excludeSelectedComponents(searchContext.activeComponents(), componentIds);
+    CompatibilityDecisionResolver decisionResolver =
+        CompatibilityDecisionResolver.create(
+            configuratorRepository.getAllManualCompatibilityLinks(domainId),
+            compatibilityRuleRepository.getEnabledByDomainId(domainId),
+            compatibilityRuleEvaluator);
+    List<Component> selectedComponents =
+        componentIds.stream().map(searchContext.activeComponentsById()::get).toList();
+    AssemblyCompatibilityEvaluation assemblyEvaluation =
+        AssemblyCompatibilityEvaluator.evaluate(selectedComponents, decisionResolver);
+    List<ConfiguratorAssemblyCandidate> classifiedCandidates =
+        candidates.stream()
+            .map(
+                candidate ->
+                    classifyCandidate(
+                        candidate,
+                        componentIds,
+                        searchContext.activeComponentsById(),
+                        decisionResolver))
+            .toList();
+    return ConfiguratorCandidatesResult.builder()
+        .componentIds(List.copyOf(componentIds))
+        .candidatesByType(
+            ConfiguratorResultAssembler.toOrderedCandidateGroups(
+                searchContext.domain(), classifiedCandidates))
+        .assemblyStatus(assemblyEvaluation.status())
+        .assemblyDecisions(assemblyEvaluation.pairDecisions())
+        .build();
+  }
+
+  private static ConfiguratorAssemblyCandidate classifyCandidate(
+      Component candidate,
+      List<Long> componentIds,
+      Map<Long, Component> activeComponentsById,
+      CompatibilityDecisionResolver decisionResolver) {
+    List<ConfiguratorCandidateBaseDecision> decisions =
+        componentIds.stream()
+            .map(
+                baseComponentId -> {
+                  var decision =
+                      decisionResolver.resolve(
+                          activeComponentsById.get(baseComponentId), candidate);
+                  return ConfiguratorCandidateBaseDecision.builder()
+                      .baseComponentId(baseComponentId)
+                      .status(decision.status())
+                      .explanations(decision.explanations())
+                      .blockingRules(decision.blockingRules())
+                      .build();
+                })
+            .toList();
+    ConfiguratorCandidateStatus status = candidateStatus(decisions);
+    return ConfiguratorAssemblyCandidate.builder()
+        .id(candidate.getId())
+        .name(candidate.getName())
+        .brand(candidate.getBrand())
+        .componentTypeId(candidate.getComponentTypeId())
+        .status(status)
+        .compatibilityByBase(List.copyOf(decisions))
+        .build();
+  }
+
+  private static ConfiguratorCandidateStatus candidateStatus(
+      List<ConfiguratorCandidateBaseDecision> decisions) {
+    if (decisions.stream()
+        .anyMatch(decision -> decision.status() == PairCompatibilityStatus.DENIED)) {
+      return ConfiguratorCandidateStatus.BLOCKED;
+    }
+    if (decisions.stream()
+        .anyMatch(decision -> decision.status() == PairCompatibilityStatus.ALLOWED)) {
+      return ConfiguratorCandidateStatus.AVAILABLE;
+    }
+    return ConfiguratorCandidateStatus.UNRELATED;
   }
 
   private Map<Long, List<CompatibleComponent>> findDirectCompatibility(

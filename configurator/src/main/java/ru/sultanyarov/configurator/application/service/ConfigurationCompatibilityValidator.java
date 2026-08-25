@@ -1,11 +1,14 @@
 package ru.sultanyarov.configurator.application.service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import ru.sultanyarov.configurator.application.port.out.CompatibilityRuleRepository;
 import ru.sultanyarov.configurator.application.port.out.ConfiguratorRepository;
 import ru.sultanyarov.configurator.domain.exception.ConfigurationConflictException;
 import ru.sultanyarov.configurator.domain.model.Component;
+import ru.sultanyarov.configurator.domain.model.ConfiguratorAssemblyStatus;
+import ru.sultanyarov.configurator.domain.model.PairCompatibilityStatus;
 
 @org.springframework.stereotype.Component
 @RequiredArgsConstructor
@@ -14,33 +17,38 @@ class ConfigurationCompatibilityValidator {
   private final CompatibilityRuleRepository compatibilityRuleRepository;
   private final CompatibilityRuleEvaluator compatibilityRuleEvaluator;
 
-  void validatePairwiseDirectCompatibility(Long domainId, List<Component> components) {
+  void validateAssemblyCompatibility(Long domainId, List<Component> components) {
     if (components.size() < 2) {
       return;
     }
-    CompatibilityGraphContext graphContext =
-        CompatibilityGraphBuilder.build(
-            components,
+    CompatibilityDecisionResolver decisionResolver =
+        CompatibilityDecisionResolver.create(
             configuratorRepository.getAllManualCompatibilityLinks(domainId),
             compatibilityRuleRepository.getEnabledByDomainId(domainId),
             compatibilityRuleEvaluator);
-
-    for (int leftIndex = 0; leftIndex < components.size(); leftIndex++) {
-      for (int rightIndex = leftIndex + 1; rightIndex < components.size(); rightIndex++) {
-        Component left = components.get(leftIndex);
-        Component right = components.get(rightIndex);
-        if (!hasDirectEdge(graphContext, left.getId(), right.getId())) {
-          throw new ConfigurationConflictException(
-              "Components with ids {} and {} are not directly compatible",
-              left.getId(),
-              right.getId());
-        }
-      }
+    AssemblyCompatibilityEvaluation evaluation =
+        AssemblyCompatibilityEvaluator.evaluate(components, decisionResolver);
+    if (evaluation.status() == ConfiguratorAssemblyStatus.BLOCKED) {
+      var blockedPair =
+          evaluation.pairDecisions().stream()
+              .filter(decision -> decision.status() == PairCompatibilityStatus.DENIED)
+              .findFirst()
+              .orElseThrow();
+      String blockingRuleNames =
+          blockedPair.blockingRules().stream()
+              .map(rule -> rule.ruleSetName() == null ? "#" + rule.ruleSetId() : rule.ruleSetName())
+              .collect(Collectors.joining(", "));
+      throw new ConfigurationConflictException(
+          "Components with ids {} and {} are blocked by compatibility rules: {}",
+          blockedPair.leftComponentId(),
+          blockedPair.rightComponentId(),
+          blockingRuleNames);
     }
-  }
-
-  private static boolean hasDirectEdge(
-      CompatibilityGraphContext graphContext, Long sourceId, Long targetId) {
-    return graphContext.graph().getOrDefault(sourceId, java.util.Map.of()).containsKey(targetId);
+    if (evaluation.status() == ConfiguratorAssemblyStatus.DISCONNECTED) {
+      throw new ConfigurationConflictException(
+          "Component with id {} is not connected to the assembly containing component with id {}",
+          evaluation.disconnectedComponentId(),
+          components.getFirst().getId());
+    }
   }
 }

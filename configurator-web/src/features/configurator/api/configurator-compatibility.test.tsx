@@ -6,15 +6,18 @@ import { describe, expect, it } from 'vitest';
 
 import {
   configuratorCompatibilityKeys,
+  fetchAssemblyCandidates,
   fetchBatchCompatibility,
   fetchCompatibilityIntersection,
   fetchDirectCompatibility,
   useBatchCompatibilityQuery,
+  useAssemblyCandidatesQuery,
   useCompatibilityIntersectionQuery,
   useDirectCompatibilityQuery,
 } from '@/features/configurator/api/configurator-compatibility';
 import type {
   ConfiguratorBatchSearchResponse,
+  ConfiguratorCandidatesResponse,
   ConfiguratorIntersectionResponse,
   ConfiguratorResponse,
 } from '@/shared/api';
@@ -31,6 +34,12 @@ const intersectionResponse: ConfiguratorIntersectionResponse = {
   componentIds: [1, 2],
   compatibleByType: [],
 };
+const candidatesResponse: ConfiguratorCandidatesResponse = {
+  componentIds: [1, 2],
+  candidatesByType: [],
+  assemblyStatus: 'VALID',
+  assemblyDecisions: [],
+};
 
 function createWrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -40,7 +49,7 @@ function createWrapper() {
 }
 
 describe('configurator compatibility API', () => {
-  it('sends the selected mode for single, batch and intersection requests', async () => {
+  it('sends single, batch, intersection and assembly candidate requests', async () => {
     const requests: Array<{ path: string; payload: unknown }> = [];
     server.use(
       http.get(`${testApiBaseUrl}/domains/:domainId/configurator/compatible`, ({ request }) => {
@@ -59,6 +68,13 @@ describe('configurator compatibility API', () => {
         },
       ),
       http.post(
+        `${testApiBaseUrl}/domains/:domainId/configurator/candidates`,
+        async ({ request }) => {
+          requests.push({ path: new URL(request.url).pathname, payload: await request.json() });
+          return HttpResponse.json(candidatesResponse);
+        },
+      ),
+      http.post(
         `${testApiBaseUrl}/domains/:domainId/configurator/compatible/intersection`,
         async ({ request }) => {
           requests.push({ path: new URL(request.url).pathname, payload: await request.json() });
@@ -72,6 +88,7 @@ describe('configurator compatibility API', () => {
     await expect(fetchCompatibilityIntersection(7, [1, 2], false)).resolves.toEqual(
       intersectionResponse,
     );
+    await expect(fetchAssemblyCandidates(7, [1, 2])).resolves.toEqual(candidatesResponse);
     await expect(fetchDirectCompatibility(7, 1, true)).resolves.toEqual(directResponse);
     await expect(fetchBatchCompatibility(7, [1, 2], true)).resolves.toEqual(batchResponse);
     await expect(fetchCompatibilityIntersection(7, [1, 2], true)).resolves.toEqual(
@@ -89,6 +106,10 @@ describe('configurator compatibility API', () => {
       {
         path: '/api/domains/7/configurator/compatible/intersection',
         payload: { componentIds: [1, 2], includeTransitive: false },
+      },
+      {
+        path: '/api/domains/7/configurator/candidates',
+        payload: { componentIds: [1, 2] },
       },
       {
         path: '/api/domains/7/configurator/compatible',
@@ -118,6 +139,9 @@ describe('configurator compatibility API', () => {
     expect(configuratorCompatibilityKeys.direct(7, 1, false)).not.toEqual(
       configuratorCompatibilityKeys.direct(7, 1, true),
     );
+    expect(configuratorCompatibilityKeys.candidates(7, [1, 2])).not.toEqual(
+      configuratorCompatibilityKeys.candidates(7, [2, 1]),
+    );
   });
 
   it('keeps hooks idle until their required input is available', () => {
@@ -130,10 +154,14 @@ describe('configurator compatibility API', () => {
     const intersection = renderHook(() => useCompatibilityIntersectionQuery(7, [1], false), {
       wrapper: createWrapper(),
     });
+    const candidates = renderHook(() => useAssemblyCandidatesQuery(7, []), {
+      wrapper: createWrapper(),
+    });
 
     expect(direct.result.current.fetchStatus).toBe('idle');
     expect(batch.result.current.fetchStatus).toBe('idle');
     expect(intersection.result.current.fetchStatus).toBe('idle');
+    expect(candidates.result.current.fetchStatus).toBe('idle');
   });
 
   it('exposes successful and failed requests through query hooks', async () => {

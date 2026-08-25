@@ -1,5 +1,10 @@
 package ru.sultanyarov.configurator.application.facade;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -7,77 +12,86 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchRequest;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchResponse;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorCandidatesRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorCandidatesResponse;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorIntersectionRequest;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorIntersectionResponse;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorResponse;
 import ru.sultanyarov.configurator.application.mapper.ConfiguratorMapper;
 import ru.sultanyarov.configurator.application.service.ConfiguratorService;
+import ru.sultanyarov.configurator.domain.model.ConfiguratorAssemblyStatus;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorBatchResult;
+import ru.sultanyarov.configurator.domain.model.ConfiguratorCandidatesResult;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorIntersectionResult;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorResult;
 
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 @ExtendWith(MockitoExtension.class)
 class ConfiguratorFacadeImplTest {
-    @Mock
-    private ConfiguratorService configuratorService;
-    @Mock
-    private ConfiguratorMapper configuratorMapper;
-    @InjectMocks
-    private ConfiguratorFacadeImpl facade;
+  @Mock private ConfiguratorService configuratorService;
+  @Mock private ConfiguratorMapper configuratorMapper;
+  @InjectMocks private ConfiguratorFacadeImpl facade;
 
-    @Test
-    void getCompatibleComponents_shouldMapServiceResult() {
-        ConfiguratorResult result = new ConfiguratorResult(7L, List.of());
-        ConfiguratorResponse response = new ConfiguratorResponse(7L, List.of());
-        when(configuratorService.getCompatibleComponents(1L, 7L, true)).thenReturn(result);
-        when(configuratorMapper.toDto(result)).thenReturn(response);
+  @Test
+  void getCompatibleComponents_shouldMapServiceResult() {
+    ConfiguratorResult result = new ConfiguratorResult(7L, List.of());
+    ConfiguratorResponse response = new ConfiguratorResponse(7L, List.of());
+    when(configuratorService.getCompatibleComponents(1L, 7L, true)).thenReturn(result);
+    when(configuratorMapper.toDto(result)).thenReturn(response);
 
-        assertThat(facade.getCompatibleComponents(1L, 7L, true)).isSameAs(response);
-        verify(configuratorService).getCompatibleComponents(1L, 7L, true);
-        verify(configuratorMapper).toDto(result);
-    }
+    assertThat(facade.getCompatibleComponents(1L, 7L, true)).isSameAs(response);
+    verify(configuratorService).getCompatibleComponents(1L, 7L, true);
+    verify(configuratorMapper).toDto(result);
+  }
 
-    @Test
-    void searchCompatibleComponents_shouldMapBatchServiceResult() {
-        ConfiguratorBatchSearchRequest request = new ConfiguratorBatchSearchRequest(
-                List.of(7L, 8L)
-        ).includeTransitive(true);
-        ConfiguratorBatchResult result = new ConfiguratorBatchResult(List.of());
-        ConfiguratorBatchSearchResponse response = new ConfiguratorBatchSearchResponse(List.of());
-        when(configuratorService.searchCompatibleComponents(1L, List.of(7L, 8L), true))
-                .thenReturn(result);
-        when(configuratorMapper.toDto(result)).thenReturn(response);
+  @Test
+  void searchCompatibleComponents_shouldMapBatchServiceResult() {
+    ConfiguratorBatchSearchRequest request =
+        new ConfiguratorBatchSearchRequest(List.of(7L, 8L)).includeTransitive(true);
+    ConfiguratorBatchResult result = new ConfiguratorBatchResult(List.of());
+    ConfiguratorBatchSearchResponse response = new ConfiguratorBatchSearchResponse(List.of());
+    when(configuratorService.searchCompatibleComponents(1L, List.of(7L, 8L), true))
+        .thenReturn(result);
+    when(configuratorMapper.toDto(result)).thenReturn(response);
 
-        assertThat(facade.searchCompatibleComponents(1L, request)).isSameAs(response);
-        verify(configuratorService).searchCompatibleComponents(1L, List.of(7L, 8L), true);
-        verify(configuratorMapper).toDto(result);
-    }
+    assertThat(facade.searchCompatibleComponents(1L, request)).isSameAs(response);
+    verify(configuratorService).searchCompatibleComponents(1L, List.of(7L, 8L), true);
+    verify(configuratorMapper).toDto(result);
+  }
 
-    @Test
-    void intersectCompatibleComponents_shouldMapServiceResult() {
-        ConfiguratorIntersectionRequest request = new ConfiguratorIntersectionRequest(
-                List.of(7L, 8L)
-        ).includeTransitive(true);
-        ConfiguratorIntersectionResult result = new ConfiguratorIntersectionResult(
-                List.of(7L, 8L),
-                List.of()
-        );
-        ConfiguratorIntersectionResponse response = new ConfiguratorIntersectionResponse(
-                List.of(7L, 8L),
-                List.of()
-        );
-        when(configuratorService.intersectCompatibleComponents(1L, List.of(7L, 8L), true))
-                .thenReturn(result);
-        when(configuratorMapper.toDto(result)).thenReturn(response);
+  @Test
+  void intersectCompatibleComponents_shouldMapServiceResult() {
+    ConfiguratorIntersectionRequest request =
+        new ConfiguratorIntersectionRequest(List.of(7L, 8L)).includeTransitive(true);
+    ConfiguratorIntersectionResult result =
+        new ConfiguratorIntersectionResult(List.of(7L, 8L), List.of());
+    ConfiguratorIntersectionResponse response =
+        new ConfiguratorIntersectionResponse(List.of(7L, 8L), List.of());
+    when(configuratorService.intersectCompatibleComponents(1L, List.of(7L, 8L), true))
+        .thenReturn(result);
+    when(configuratorMapper.toDto(result)).thenReturn(response);
 
-        assertThat(facade.intersectCompatibleComponents(1L, request)).isSameAs(response);
-        verify(configuratorService).intersectCompatibleComponents(1L, List.of(7L, 8L), true);
-        verify(configuratorMapper).toDto(result);
-    }
+    assertThat(facade.intersectCompatibleComponents(1L, request)).isSameAs(response);
+    verify(configuratorService).intersectCompatibleComponents(1L, List.of(7L, 8L), true);
+    verify(configuratorMapper).toDto(result);
+  }
+
+  @Test
+  void classifyCandidates_shouldMapServiceResult() {
+    ConfiguratorCandidatesRequest request = new ConfiguratorCandidatesRequest(List.of(7L, 8L));
+    ConfiguratorCandidatesResult result =
+        new ConfiguratorCandidatesResult(
+            List.of(7L, 8L), List.of(), ConfiguratorAssemblyStatus.VALID, List.of());
+    ConfiguratorCandidatesResponse response =
+        new ConfiguratorCandidatesResponse(
+            List.of(7L, 8L),
+            List.of(),
+            ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorAssemblyStatus.VALID,
+            List.of());
+    when(configuratorService.classifyCandidates(1L, List.of(7L, 8L))).thenReturn(result);
+    when(configuratorMapper.toDto(result)).thenReturn(response);
+
+    assertThat(facade.classifyCandidates(1L, request)).isSameAs(response);
+    verify(configuratorService).classifyCandidates(1L, List.of(7L, 8L));
+    verify(configuratorMapper).toDto(result);
+  }
 }

@@ -90,12 +90,12 @@ export const resources = {
           title: 'Конфигуратор',
           description: 'Соберите конфигурацию для предметной области «{{domain}}».',
           scopeNotice:
-            'Черновик сохраняется в браузере. Транзитивный режим помогает исследовать варианты, но для сохранения все компоненты должны быть совместимы напрямую.',
+            'Черновик сохраняется в браузере. Для сохранения компоненты должны образовывать связную сборку без блокирующих правил.',
         },
         transitiveMode: {
           label: 'Учитывать транзитивную совместимость',
           description:
-            'Показывать компоненты, связанные через цепочку. Такой черновик нельзя сохранить, пока каждая пара не станет совместима напрямую.',
+            'Дополнительно показывать компоненты, достижимые через цепочку. Итоговую сборку сервер проверяет по прямым связям выбранных элементов.',
           enabledAnnouncement: 'Транзитивная совместимость включена',
           disabledAnnouncement: 'Включена строгая проверка прямой совместимости',
         },
@@ -103,7 +103,7 @@ export const resources = {
           title: 'Доступные компоненты',
           description: 'Найдите компонент и добавьте его в текущую сборку.',
           compatibleDescription:
-            'Показаны компоненты, напрямую совместимые со всей текущей сборкой (базовых компонентов: {{count}}).',
+            'Показаны компоненты со связью хотя бы с одной позицией и без блокирующих правил (элементов сборки: {{count}}).',
           transitiveDescription:
             'Показаны компоненты, совместимые со всей сборкой напрямую или через цепочку (базовых компонентов: {{count}}).',
           replacementTitle: 'Выбор замены',
@@ -126,7 +126,12 @@ export const resources = {
           emptyDescription: 'Добавьте активные компоненты в каталог выбранной области.',
           compatibleEmptyTitle: 'Совместимых вариантов нет',
           compatibleEmptyDescription:
-            'Ни один активный компонент не совместим напрямую со всеми выбранными компонентами.',
+            'Нет компонентов с подтверждённой связью со сборкой без блокирующих правил.',
+          unavailableTitle: 'Недоступные варианты: {{count}}',
+          unavailableDescription:
+            'Эти компоненты не предлагаются для добавления, потому что нарушают обязательные правила.',
+          unavailableBadge: 'Заблокирован',
+          blockingReason: 'Конфликт с «{{component}}»: {{rules}}',
           blockedTitle: 'Подбор временно недоступен',
           blockedDescription:
             'Сначала устраните конфликт или недоступную позицию в текущей сборке.',
@@ -164,9 +169,8 @@ export const resources = {
         validation: {
           pending: 'Проверяем совместимость',
           pendingDescription: 'Сервер проверяет каждую пару компонентов текущей сборки.',
-          valid: 'Сборка совместима напрямую',
-          validDescription:
-            'Все выбранные компоненты попарно совместимы по ручным связям или автоматическим правилам.',
+          valid: 'Сборка корректна',
+          validDescription: 'Компоненты связаны через выбранные элементы, блокирующих правил нет.',
           transitive: 'Сборка совместима только с учётом цепочек',
           transitiveDescription:
             'Подбор можно продолжить, но эту сборку нельзя сохранить, пока каждая пара не станет совместима напрямую.',
@@ -192,6 +196,7 @@ export const resources = {
           baseTitle: 'С компонентом «{{name}}»',
           pairTitle: '«{{left}}» ↔ «{{right}}»',
           noEvidence: 'Сервер не вернул подтверждающую причину для этой пары.',
+          blockingTitle: 'Добавление запрещают правила',
           relations: {
             direct: 'Напрямую',
             transitive: 'Через цепочку',
@@ -1204,12 +1209,12 @@ export const resources = {
           title: 'Configurator',
           description: 'Build a configuration for the “{{domain}}” domain.',
           scopeNotice:
-            'The draft is saved in this browser. Transitive mode helps explore options, but every component pair must be directly compatible before saving.',
+            'The draft is saved in this browser. A saved assembly must be connected through selected components and contain no blocking rules.',
         },
         transitiveMode: {
           label: 'Include transitive compatibility',
           description:
-            'Show components connected through a chain. The draft cannot be saved until every pair is directly compatible.',
+            'Also show components reachable through a chain. The server still validates the final assembly using direct links between selected components.',
           enabledAnnouncement: 'Transitive compatibility enabled',
           disabledAnnouncement: 'Strict direct compatibility validation enabled',
         },
@@ -1217,7 +1222,7 @@ export const resources = {
           title: 'Available components',
           description: 'Find a component and add it to the current assembly.',
           compatibleDescription:
-            'Showing components directly compatible with the whole current assembly ({{count}} base components).',
+            'Showing components linked to at least one selected item with no blocking rule ({{count}} assembly components).',
           transitiveDescription:
             'Showing components compatible with the whole assembly directly or through a chain ({{count}} base components).',
           replacementTitle: 'Choose a replacement',
@@ -1238,7 +1243,12 @@ export const resources = {
           emptyDescription: 'Add active components to the selected domain catalog.',
           compatibleEmptyTitle: 'No compatible options',
           compatibleEmptyDescription:
-            'No active component is directly compatible with every selected component.',
+            'No component has a confirmed assembly link without a blocking rule.',
+          unavailableTitle: 'Unavailable options: {{count}}',
+          unavailableDescription:
+            'These components are not offered for selection because they violate required rules.',
+          unavailableBadge: 'Blocked',
+          blockingReason: 'Conflict with “{{component}}”: {{rules}}',
           blockedTitle: 'Selection is temporarily unavailable',
           blockedDescription:
             'Resolve the conflict or unavailable item in the current assembly first.',
@@ -1274,9 +1284,9 @@ export const resources = {
         validation: {
           pending: 'Checking compatibility',
           pendingDescription: 'The server is checking every pair in the current assembly.',
-          valid: 'The assembly is directly compatible',
+          valid: 'The assembly is valid',
           validDescription:
-            'Every selected component pair matches through a manual link or automatic rule.',
+            'The components are connected through selected items and no rule blocks the assembly.',
           transitive: 'The assembly is compatible only through chains',
           transitiveDescription:
             'You can continue selecting components, but this assembly cannot be saved until every pair is directly compatible.',
@@ -1299,6 +1309,7 @@ export const resources = {
           baseTitle: 'With “{{name}}”',
           pairTitle: '“{{left}}” ↔ “{{right}}”',
           noEvidence: 'The server did not return supporting evidence for this pair.',
+          blockingTitle: 'Rules blocking this combination',
           relations: {
             direct: 'Direct',
             transitive: 'Through a chain',

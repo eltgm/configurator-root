@@ -10,6 +10,8 @@ import ru.sultanyarov.configurator.domain.model.CompatibleComponent;
 import ru.sultanyarov.configurator.domain.model.CompatibleComponentGroup;
 import ru.sultanyarov.configurator.domain.model.Component;
 import ru.sultanyarov.configurator.domain.model.ComponentType;
+import ru.sultanyarov.configurator.domain.model.ConfiguratorAssemblyCandidate;
+import ru.sultanyarov.configurator.domain.model.ConfiguratorCandidateTypeGroup;
 import ru.sultanyarov.configurator.domain.model.Domain;
 import ru.sultanyarov.configurator.domain.model.IntersectionCompatibleComponent;
 import ru.sultanyarov.configurator.domain.model.IntersectionCompatibleComponentGroup;
@@ -45,6 +47,26 @@ class ConfiguratorResultAssembler {
                     .componentTypeId(componentType.id())
                     .componentTypeName(componentType.name())
                     .components(List.copyOf(compatibleByType.get(componentType.id())))
+                    .build())
+        .toList();
+  }
+
+  static List<ConfiguratorCandidateTypeGroup> toOrderedCandidateGroups(
+      Domain domain, List<ConfiguratorAssemblyCandidate> candidates) {
+    Map<Long, List<ConfiguratorAssemblyCandidate>> candidatesByType = new HashMap<>();
+    for (ConfiguratorAssemblyCandidate candidate : candidates) {
+      candidatesByType
+          .computeIfAbsent(candidate.componentTypeId(), ignored -> new ArrayList<>())
+          .add(candidate);
+    }
+    return componentTypes(domain).stream()
+        .filter(componentType -> candidatesByType.containsKey(componentType.id()))
+        .map(
+            componentType ->
+                ConfiguratorCandidateTypeGroup.builder()
+                    .componentTypeId(componentType.id())
+                    .componentTypeName(componentType.name())
+                    .components(List.copyOf(candidatesByType.get(componentType.id())))
                     .build())
         .toList();
   }

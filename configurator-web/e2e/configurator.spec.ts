@@ -16,14 +16,11 @@ test('opens the configurator frontend with the selected domain', async ({ page }
   await expect(browser.getByText('B650 Tomahawk')).toBeVisible();
   await browser.getByRole('button', { name: 'Добавить' }).click();
   await expect(assembly.getByText('B650 Tomahawk')).toBeVisible();
-  await expect(assembly.getByText('Сборка совместима напрямую')).toBeVisible();
+  await expect(assembly.getByText('Сборка корректна')).toBeVisible();
 
   const replacementRequest = page.waitForRequest((request) => {
     const url = new URL(request.url());
-    return (
-      url.pathname.endsWith('/configurator/compatible') &&
-      url.searchParams.get('componentId') === '102'
-    );
+    return url.pathname.endsWith('/configurator/candidates') && request.method() === 'POST';
   });
   await assembly.getByRole('button', { name: 'Заменить Ryzen 7 7800X3D' }).click();
   await replacementRequest;
@@ -159,6 +156,29 @@ test('explains a transitive candidate and returns the draft to strict validation
       });
     },
   );
+  await page.route(frontendApiBaseUrl + '/domains/*/configurator/candidates', async (route) => {
+    const body = route.request().postDataJSON() as { componentIds: number[] };
+    const hasTransitiveOnlyPair =
+      body.componentIds.includes(101) && body.componentIds.includes(102);
+    await route.fulfill({
+      json: {
+        componentIds: body.componentIds,
+        assemblyStatus: hasTransitiveOnlyPair ? 'DISCONNECTED' : 'VALID',
+        assemblyDecisions: hasTransitiveOnlyPair
+          ? [
+              {
+                leftComponentId: 101,
+                rightComponentId: 102,
+                status: 'UNKNOWN',
+                explanations: [],
+                blockingRules: [],
+              },
+            ]
+          : [],
+        candidatesByType: [],
+      },
+    });
+  });
 
   await page.goto('/configurator');
 
@@ -177,8 +197,7 @@ test('explains a transitive candidate and returns the draft to strict validation
 
   await browser.getByRole('button', { name: 'Добавить' }).click();
   const assembly = page.getByRole('region', { name: 'Текущая сборка' });
-  await expect(assembly.getByText('Сборка совместима только с учётом цепочек')).toBeVisible();
-  await expect(assembly.getByText(/нельзя сохранить/)).toBeVisible();
+  await expect(assembly.getByText('В сборке есть конфликт')).toBeVisible();
   await expect(assembly.getByRole('button', { name: 'Сохранить конфигурацию' })).toBeDisabled();
   await assembly.getByRole('button', { name: 'Показать проверку' }).click();
   await expect(page.getByRole('dialog', { name: 'Проверка текущей сборки' })).toBeVisible();
@@ -186,7 +205,7 @@ test('explains a transitive candidate and returns the draft to strict validation
 
   await mode.uncheck();
   await expect(assembly.getByText('В сборке есть конфликт')).toBeVisible();
-  await expect(browser.getByText('Подбор временно недоступен')).toBeVisible();
+  await expect(browser.getByText('Подбор временно недоступен')).toHaveCount(0);
 });
 
 test('keeps a conflicting draft and repairs it with a slot-aware replacement', async ({ page }) => {
@@ -217,24 +236,75 @@ test('keeps a conflicting draft and repairs it with a slot-aware replacement', a
       await route.fallback();
     },
   );
+  await page.route(frontendApiBaseUrl + '/domains/*/configurator/candidates', async (route) => {
+    const body = route.request().postDataJSON() as { componentIds: number[] };
+    const hasBlockedPair = body.componentIds.includes(101) && body.componentIds.includes(102);
+    const hasRepairedPair = body.componentIds.includes(104) && body.componentIds.includes(102);
+    const compatibilityByBase = body.componentIds.map((baseComponentId) => ({
+      baseComponentId,
+      status: baseComponentId === 102 ? 'ALLOWED' : 'UNKNOWN',
+      explanations: baseComponentId === 102 ? [{ source: 'MANUAL', linkId: 106 }] : [],
+      blockingRules: [],
+    }));
+    await route.fulfill({
+      json: {
+        componentIds: body.componentIds,
+        assemblyStatus: hasBlockedPair ? 'BLOCKED' : 'VALID',
+        assemblyDecisions: hasBlockedPair
+          ? [
+              {
+                leftComponentId: 101,
+                rightComponentId: 102,
+                status: 'DENIED',
+                explanations: [],
+                blockingRules: [{ ruleSetId: 77, ruleSetName: 'Несовместимый сокет' }],
+              },
+            ]
+          : hasRepairedPair
+            ? [
+                {
+                  leftComponentId: 104,
+                  rightComponentId: 102,
+                  status: 'ALLOWED',
+                  explanations: [{ source: 'MANUAL', linkId: 106 }],
+                  blockingRules: [],
+                },
+              ]
+            : [],
+        candidatesByType: body.componentIds.includes(104)
+          ? []
+          : [
+              {
+                componentTypeId: 11,
+                componentTypeName: 'Процессор',
+                components: [
+                  {
+                    id: 104,
+                    name: 'Core Ultra 9 285K',
+                    brand: 'Intel',
+                    componentTypeId: 11,
+                    status: compatibilityByBase.some((decision) => decision.status === 'ALLOWED')
+                      ? 'AVAILABLE'
+                      : 'UNRELATED',
+                    compatibilityByBase,
+                  },
+                ],
+              },
+            ],
+      },
+    });
+  });
 
   await page.goto('/configurator');
 
   const assembly = page.getByRole('region', { name: 'Текущая сборка' });
   await expect(assembly.getByText('В сборке есть конфликт')).toBeVisible();
   await expect(assembly.getByText('Конфликт', { exact: true })).toHaveCount(2);
-  await expect(
-    page
-      .getByRole('region', { name: 'Доступные компоненты' })
-      .getByText('Подбор временно недоступен'),
-  ).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Доступные компоненты' })).toBeVisible();
 
   const replacementRequest = page.waitForRequest((request) => {
     const url = new URL(request.url());
-    return (
-      url.pathname.endsWith('/configurator/compatible') &&
-      url.searchParams.get('componentId') === '102'
-    );
+    return url.pathname.endsWith('/configurator/candidates') && request.method() === 'POST';
   });
   await assembly.getByRole('button', { name: 'Заменить Ryzen 7 7800X3D' }).click();
   await replacementRequest;
@@ -246,6 +316,6 @@ test('keeps a conflicting draft and repairs it with a slot-aware replacement', a
     .click();
 
   await expect(assembly.getByText('Core Ultra 9 285K')).toBeVisible();
-  await expect(assembly.getByText('Сборка совместима напрямую')).toBeVisible();
+  await expect(assembly.getByText('Сборка корректна')).toBeVisible();
   await expect(assembly.getByText('Ryzen 7 7800X3D')).toHaveCount(0);
 });

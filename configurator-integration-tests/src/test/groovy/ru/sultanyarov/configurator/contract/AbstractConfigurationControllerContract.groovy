@@ -12,7 +12,7 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         prepareData()
 
         when:
-        def result = post("/domains/1/configurations", request("  Manual build  ", "   ", [1L, 3L]))
+        def result = post("/domains/1/configurations", request("  Manual build  ", "   ", [1L, 5L]))
 
         then:
         result.status == 201
@@ -22,8 +22,8 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         body.name == "Manual build"
         body.description == null
         body.createdAt != null
-        body.components*.id == [1L, 3L]
-        body.components*.componentTypeName == ["Processor", "Motherboard"]
+        body.components*.id == [1L, 5L]
+        body.components*.componentTypeName == ["Processor", "Cooler"]
         body.components.every { !it.archived }
     }
 
@@ -60,13 +60,28 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         post("/domains/1/configurations", request("Foreign build", null, [1L, 7L])).status == 400
     }
 
-    def "should reject incompatible and transitive-only component sets"() {
+    def "should accept a connected assembly without all pair links"() {
+        given:
+        prepareData()
+
+        when:
+        def result = post(
+                "/domains/1/configurations",
+                request("Connected chain", null, [1L, 2L, 9L])
+        )
+
+        then:
+        result.status == 201
+        objectMapper.readValue(result.body, SavedConfiguration).components*.id == [1L, 2L, 9L]
+    }
+
+    def "should reject disconnected assembly and blocking rule despite other support"() {
         given:
         prepareData()
 
         expect:
         post("/domains/1/configurations", request("Incompatible", null, [1L, 8L])).status == 409
-        post("/domains/1/configurations", request("Transitive", null, [1L, 3L, 9L])).status == 409
+        post("/domains/1/configurations", request("Blocked", null, [1L, 3L, 5L])).status == 409
         objectMapper.readValue(
                 get("/domains/1/configurations").body,
                 ConfigurationPage
@@ -86,12 +101,12 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
     def "should fully update configuration and preserve immutable metadata"() {
         given:
         prepareData()
-        def original = createConfiguration("Initial", [1L, 3L])
+        def original = createConfiguration("Initial", [1L, 2L])
 
         when:
         def result = put(
                 "/configurations/${original.id}",
-                request("  Updated build  ", "  Updated description  ", [1L, 2L])
+                request("  Updated build  ", "  Updated description  ", [1L, 5L])
         )
 
         then:
@@ -102,7 +117,7 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         body.createdAt == original.createdAt
         body.name == "Updated build"
         body.description == "Updated description"
-        body.components*.id == [1L, 2L]
+        body.components*.id == [1L, 5L]
 
         and: "the complete replacement is visible on a subsequent read"
         def persisted = objectMapper.readValue(
@@ -110,18 +125,18 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
                 SavedConfiguration
         )
         persisted.name == "Updated build"
-        persisted.components*.id == [1L, 2L]
+        persisted.components*.id == [1L, 5L]
     }
 
     def "should normalize blank description during configuration update"() {
         given:
         prepareData()
-        def original = createConfiguration("Initial", [1L, 3L])
+        def original = createConfiguration("Initial", [1L, 2L])
 
         when:
         def result = put(
                 "/configurations/${original.id}",
-                request("Updated", "   ", [1L, 3L])
+                request("Updated", "   ", [1L, 2L])
         )
 
         then:
@@ -132,13 +147,13 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
     def "should strictly reject archived component already present in configuration"() {
         given:
         prepareData()
-        def original = createConfiguration("Initial", [1L, 3L])
-        runSqlScripts("/sql/archive-configurator-component-3.sql")
+        def original = createConfiguration("Initial", [1L, 2L])
+        runSqlScripts("/sql/archive-configurator-component-2.sql")
 
         when:
         def result = put(
                 "/configurations/${original.id}",
-                request("Must not persist", null, [1L, 3L])
+                request("Must not persist", null, [1L, 2L])
         )
 
         then:
@@ -150,14 +165,14 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
                 SavedConfiguration
         )
         persisted.name == "Initial"
-        persisted.components*.id == [1L, 3L]
-        persisted.components.find { it.id == 3L }.archived
+        persisted.components*.id == [1L, 2L]
+        persisted.components.find { it.id == 2L }.archived
     }
 
     def "should reject invalid component sets without partially updating configuration"() {
         given:
         prepareData()
-        def original = createConfiguration("Initial", [1L, 3L])
+        def original = createConfiguration("Initial", [1L, 2L])
 
         expect:
         put("/configurations/${original.id}", request("Foreign", null, [1L, 7L])).status == 400
@@ -175,7 +190,7 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
                 SavedConfiguration
         )
         persisted.name == "Initial"
-        persisted.components*.id == [1L, 3L]
+        persisted.components*.id == [1L, 2L]
     }
 
     def "should hide missing and foreign-owned configuration during update"() {
@@ -192,7 +207,7 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
     def "should permanently delete configuration without affecting catalog or other configurations"() {
         given:
         prepareData()
-        def deleted = createConfiguration("Deleted", [1L, 3L])
+        def deleted = createConfiguration("Deleted", [1L, 5L])
         def retained = createConfiguration("Retained", [1L, 2L])
 
         when:
@@ -218,7 +233,7 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
     def "should return not found for repeated missing or foreign-owned configuration deletion"() {
         given:
         prepareData()
-        def configuration = createConfiguration("Deleted once", [1L, 3L])
+        def configuration = createConfiguration("Deleted once", [1L, 2L])
         runSqlScripts("/sql/insert-foreign-owned-configuration.sql")
 
         expect:
@@ -232,7 +247,7 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
     def "should return newest owned configurations with pagination"() {
         given:
         prepareData()
-        def first = createConfiguration("First", [1L, 3L])
+        def first = createConfiguration("First", [1L, 5L])
         def second = createConfiguration("Second", [1L, 2L])
 
         when:
@@ -251,8 +266,8 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
     def "should keep archived components visible in saved configuration"() {
         given:
         prepareData()
-        def configuration = createConfiguration("Archived later", [1L, 3L])
-        runSqlScripts("/sql/archive-configurator-component-3.sql")
+        def configuration = createConfiguration("Archived later", [1L, 2L])
+        runSqlScripts("/sql/archive-configurator-component-2.sql")
 
         when:
         def result = get("/configurations/${configuration.id}")
@@ -260,13 +275,13 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         then:
         result.status == 200
         def body = objectMapper.readValue(result.body, SavedConfiguration)
-        body.components.find { it.id == 3L }.archived
+        body.components.find { it.id == 2L }.archived
     }
 
     def "should export versioned configuration as JSON attachment"() {
         given:
         prepareData()
-        def configuration = createConfiguration("Exported", [1L, 3L])
+        def configuration = createConfiguration("Exported", [1L, 2L])
 
         when:
         def result = get("/configurations/${configuration.id}/export/json")
@@ -278,7 +293,7 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         body.schemaVersion == 1
         body.exportedAt != null
         body.configuration.id == configuration.id
-        body.configuration.components*.id == [1L, 3L]
+        body.configuration.components*.id == [1L, 2L]
     }
 
     def "should return not found for missing domain component and configuration"() {

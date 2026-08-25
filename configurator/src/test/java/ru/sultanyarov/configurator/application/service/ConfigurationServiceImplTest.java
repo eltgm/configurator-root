@@ -76,7 +76,7 @@ class ConfigurationServiceImplTest {
     assertThat(captor.getValue().components())
         .extracting("componentTypeName")
         .containsExactly("Board", "Switch");
-    verify(compatibilityValidator).validatePairwiseDirectCompatibility(1L, components);
+    verify(compatibilityValidator).validateAssemblyCompatibility(1L, components);
   }
 
   @Test
@@ -119,7 +119,7 @@ class ConfigurationServiceImplTest {
     assertThat(update.createdByUserId()).isEqualTo(42L);
     assertThat(update.createdAt()).isEqualTo(createdAt);
     assertThat(update.components()).extracting("id").containsExactly(1L, 2L);
-    verify(compatibilityValidator).validatePairwiseDirectCompatibility(1L, components);
+    verify(compatibilityValidator).validateAssemblyCompatibility(1L, components);
   }
 
   @Test
@@ -231,7 +231,7 @@ class ConfigurationServiceImplTest {
             () -> service.create(1L, new ConfigurationDraft("Build", null, List.of(1L, 2L))))
         .isInstanceOf(ConfigurationConflictException.class)
         .hasMessageContaining("Only one component");
-    verify(compatibilityValidator, never()).validatePairwiseDirectCompatibility(any(), any());
+    verify(compatibilityValidator, never()).validateAssemblyCompatibility(any(), any());
   }
 
   @Test
