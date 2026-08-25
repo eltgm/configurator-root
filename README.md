@@ -10,7 +10,7 @@ Backend-first конфигуратор компонентов с React-инте�
 атрибутивные правила совместимости, поиск совместимых наборов и сохранение конфигураций.
 
 > [!IMPORTANT]
-> `v1.1.0` — актуальный production-ready локальный продукт для одного доверенного пользователя. Поддерживаемая
+> `v1.1.1` — актуальный production-ready локальный продукт для одного доверенного пользователя. Поддерживаемая
 > поставка — только Windows/macOS пакет с Docker Desktop и loopback-адресом `127.0.0.1`; LAN, публичная сеть и
 > серверное развёртывание не входят в контракт этой версии.
 
@@ -106,7 +106,7 @@ Tag workflow собирает публичные multi-platform app/gateway imag
 `SHA256SUMS` к draft release. Для локальной проверки структуры архивов разработчик может выполнить:
 
 ```bash
-scripts/release/build-delivery-packages.sh 1.1.0
+scripts/release/build-delivery-packages.sh 1.1.1
 ```
 
 Подробности эксплуатации и recovery: [`docs/release/LOCAL_DELIVERY.md`](docs/release/LOCAL_DELIVERY.md).
@@ -249,7 +249,7 @@ production build. После `npx playwright install` функциональны
 ## Релизы
 
 Проект использует Semantic Versioning. `v1.0.0` зафиксировал стабильный контракт локальной Windows/macOS поставки;
-актуальный релиз — `v1.1.0`.
+актуальный релиз — `v1.1.1`.
 
 - рабочая ветка — `develop`;
 - стабильная ветка — `master`;

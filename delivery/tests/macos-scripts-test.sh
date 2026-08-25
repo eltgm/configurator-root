@@ -8,6 +8,7 @@ TEMP_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/configurator-macos-test.XXXXXX")
 PACKAGE_ROOT="$TEMP_ROOT/Папка с пробелами/Configurator"
 FAKE_BIN="$TEMP_ROOT/fake-bin"
 FAKE_DOCKER_LOG="$TEMP_ROOT/docker.log"
+FAKE_DOCKER_VOLUME="$TEMP_ROOT/docker-volume"
 
 cleanup() {
   rm -rf "$TEMP_ROOT"
@@ -19,8 +20,9 @@ fail() {
   exit 1
 }
 
-mkdir -p "$PACKAGE_ROOT/scripts" "$PACKAGE_ROOT/backups" "$PACKAGE_ROOT/logs" "$FAKE_BIN"
+mkdir -p "$PACKAGE_ROOT/scripts" "$PACKAGE_ROOT/backups" "$PACKAGE_ROOT/logs" "$FAKE_BIN" "$FAKE_DOCKER_VOLUME"
 cp "$REPOSITORY_ROOT/delivery/common/compose.yaml" "$PACKAGE_ROOT/compose.yaml"
+cp "$REPOSITORY_ROOT/delivery/macos/compose.override.yaml" "$PACKAGE_ROOT/compose.macos.yaml"
 cp "$REPOSITORY_ROOT/delivery/common/configurator.env" "$PACKAGE_ROOT/configurator.env"
 cp "$REPOSITORY_ROOT/delivery/macos/scripts/configurator.sh" "$PACKAGE_ROOT/scripts/configurator.sh"
 chmod +x "$PACKAGE_ROOT/scripts/configurator.sh"
@@ -29,6 +31,10 @@ cat >"$FAKE_BIN/docker" <<'EOF'
 #!/bin/bash
 set -u
 printf '%s\n' "$*" >>"$FAKE_DOCKER_LOG"
+if [ -n "${CONFIGURATOR_MAINTENANCE_DIR:-}" ]; then
+  echo "unexpected maintenance bind mount: $CONFIGURATOR_MAINTENANCE_DIR" >&2
+  exit 125
+fi
 if [ "${1:-}" = "compose" ] && printf '%s\n' "$*" | grep -Fq -- '--project-directory'; then
   printf '%s\n' "${CONFIGURATOR_MAINTENANCE_USER:-missing}" >>"$FAKE_DOCKER_USER_LOG"
 fi
@@ -61,13 +67,24 @@ case "$args" in
     exit $?
     ;;
   *" pg_dump "*)
-    mkdir -p "$CONFIGURATOR_MAINTENANCE_DIR"
-    printf 'fake database dump\n' >"$CONFIGURATOR_MAINTENANCE_DIR/database.dump"
+    printf 'fake database dump\n' >"$FAKE_DOCKER_VOLUME/database.dump"
     exit 0
     ;;
   *" mirror "*" /backup/minio "*)
-    mkdir -p "$CONFIGURATOR_MAINTENANCE_DIR/minio"
-    printf 'fake image bytes\n' >"$CONFIGURATOR_MAINTENANCE_DIR/minio/object.bin"
+    mkdir -p "$FAKE_DOCKER_VOLUME/minio"
+    printf 'fake image bytes\n' >"$FAKE_DOCKER_VOLUME/minio/object.bin"
+    exit 0
+    ;;
+  *" sh -c "*"find /backup "*)
+    find "$FAKE_DOCKER_VOLUME" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+    exit 0
+    ;;
+  *" tar -C /backup -cf - . "*)
+    tar -C "$FAKE_DOCKER_VOLUME" -cf - .
+    exit $?
+    ;;
+  *" tar -C /backup -xf - "*)
+    tar -C "$FAKE_DOCKER_VOLUME" -xf -
     exit 0
     ;;
 esac
@@ -94,6 +111,7 @@ chmod +x "$FAKE_BIN/docker" "$FAKE_BIN/curl" "$FAKE_BIN/lsof" "$FAKE_BIN/open"
 
 export PATH="$FAKE_BIN:$PATH"
 export FAKE_DOCKER_LOG
+export FAKE_DOCKER_VOLUME
 export FAKE_DOCKER_USER_LOG="$TEMP_ROOT/docker-user.log"
 export CONFIGURATOR_DOCKER_WAIT_SECONDS=0
 export CONFIGURATOR_READINESS_WAIT_SECONDS=2
@@ -113,6 +131,11 @@ run_operation stop || fail "stop failed"
 grep -Fq 'stop gateway app minio postgres' "$FAKE_DOCKER_LOG" || fail "stop command is incorrect"
 
 run_operation backup || fail "backup failed"
+grep -Fq 'compose.macos.yaml' "$FAKE_DOCKER_LOG" ||
+  fail "macOS Compose override was not used"
+if grep -Fq 'CONFIGURATOR_MAINTENANCE_DIR' "$FAKE_DOCKER_LOG"; then
+  fail "host maintenance directory was passed to Docker"
+fi
 backup_dir=$(find "$PACKAGE_ROOT/backups" -mindepth 1 -maxdepth 1 -type d ! -name '*.partial' | sed -n '1p')
 [ -n "$backup_dir" ] || fail "backup directory was not created"
 [ -f "$backup_dir/database.dump" ] || fail "database dump is missing"

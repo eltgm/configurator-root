@@ -103,6 +103,7 @@ stage_macos_package() {
   local tar_file="${WORK_DIRECTORY}/configurator-macos-v${VERSION}.tar"
 
   stage_common_files "${package_root}"
+  cp "${REPOSITORY_ROOT}/delivery/macos/compose.override.yaml" "${package_root}/compose.macos.yaml"
   cp "${REPOSITORY_ROOT}"/delivery/macos/*.command "${package_root}/"
   cp "${REPOSITORY_ROOT}/delivery/macos/scripts/configurator.sh" "${package_root}/scripts/"
   chmod 755 "${package_root}"/*.command "${package_root}/scripts/configurator.sh"

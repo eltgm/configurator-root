@@ -6,6 +6,13 @@
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-08-25
+
+### Fixed
+
+- macOS Backup, Restore и обязательный backup перед Update больше не требуют добавлять каталог пакета в Docker
+  Desktop File Sharing: maintenance-артефакты передаются через внутренний Docker volume без host bind mount.
+
 ## [1.1.0] - 2026-08-25
 
 ### Added
@@ -50,7 +57,8 @@
 - Единственная поддерживаемая точка входа — `http://127.0.0.1:8080`; LAN/public/server deployment не входит в v1.0.0.
 - Совместимость с данными и backup формата до `v1.0.0` не гарантируется; разрешена чистая переустановка.
 
-[Unreleased]: https://github.com/eltgm/configurator-root/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/eltgm/configurator-root/compare/v1.1.1...HEAD
 
+[1.1.1]: https://github.com/eltgm/configurator-root/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/eltgm/configurator-root/releases/tag/v1.1.0
 [1.0.0]: https://github.com/eltgm/configurator-root/releases/tag/v1.0.0

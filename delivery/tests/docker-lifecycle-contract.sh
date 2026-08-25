@@ -11,15 +11,14 @@ readonly PROJECT_NAME="configurator-delivery-contract-${RANDOM}-$$"
 mkdir -p "${REPOSITORY_ROOT}/delivery-output"
 readonly TEMP_DIRECTORY="$(mktemp -d "${REPOSITORY_ROOT}/delivery-output/docker-contract.XXXXXX")"
 readonly PACKAGE_ROOT="${TEMP_DIRECTORY}/package with spaces/Configurator"
-readonly MAINTENANCE_DIRECTORY="${TEMP_DIRECTORY}/maintenance"
-readonly MAINTENANCE_USER="$(id -u):$(id -g)"
 REGISTRY_CONTAINER=""
 
 compose() {
-  CONFIGURATOR_MAINTENANCE_DIR="${MAINTENANCE_DIRECTORY}" \
-    CONFIGURATOR_MAINTENANCE_USER="${MAINTENANCE_USER}" \
+  CONFIGURATOR_MAINTENANCE_DIR="${TEMP_DIRECTORY}/unshared-placeholder" \
+    CONFIGURATOR_MAINTENANCE_USER="$(id -u):$(id -g)" \
     docker compose --project-directory "${PACKAGE_ROOT}" \
-    --env-file "${PACKAGE_ROOT}/configurator.env" -f "${PACKAGE_ROOT}/compose.yaml" "$@"
+    --env-file "${PACKAGE_ROOT}/configurator.env" -f "${PACKAGE_ROOT}/compose.yaml" \
+    -f "${PACKAGE_ROOT}/compose.macos.yaml" "$@"
 }
 
 cleanup() {
@@ -85,8 +84,7 @@ docker push "${GATEWAY_STABLE_IMAGE}" >/dev/null
 
 "${REPOSITORY_ROOT}/scripts/release/build-delivery-packages.sh" \
   "${TEST_VERSION}" "${TEMP_DIRECTORY}/archives" >/dev/null
-mkdir -p "$(dirname "${PACKAGE_ROOT}")" "${MAINTENANCE_DIRECTORY}"
-chmod 755 "${MAINTENANCE_DIRECTORY}"
+mkdir -p "$(dirname "${PACKAGE_ROOT}")"
 tar -xzf "${TEMP_DIRECTORY}/archives/configurator-macos-v${TEST_VERSION}.tar.gz" \
   -C "$(dirname "${PACKAGE_ROOT}")"
 
@@ -108,7 +106,9 @@ domain_json=$(curl --fail --silent --show-error -X POST 'http://127.0.0.1:8080/a
 domain_id=$(printf '%s' "${domain_json}" | sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p')
 [[ -n "${domain_id}" ]] || fail 'created domain id was not returned'
 
-printf '%s' 'delivery-contract-object' >"${MAINTENANCE_DIRECTORY}/marker.txt"
+compose run --rm --no-deps --user 0:0 postgres-maintenance \
+  sh -c "printf '%s' 'delivery-contract-object' > /backup/marker.txt" >/dev/null ||
+  fail 'maintenance marker staging failed'
 compose run --rm --no-deps minio-maintenance \
   mb --ignore-existing configurator/configurator-components >/dev/null ||
   fail 'MinIO bucket creation failed'
