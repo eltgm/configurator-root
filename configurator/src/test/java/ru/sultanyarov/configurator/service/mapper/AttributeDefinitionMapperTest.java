@@ -83,6 +83,7 @@ class AttributeDefinitionMapperTest {
         .satisfies(
             ad -> {
               assertThat(ad.getId()).isEqualTo(attributeDefinition.id());
+              assertThat(ad.getDomainId()).isEqualTo(attributeDefinition.domainId());
               assertThat(ad.getComponentTypeId()).isEqualTo(attributeDefinition.componentTypeId());
               assertThat(ad.getName()).isEqualTo(attributeDefinition.name());
               assertThat(ad.getLabel()).isEqualTo(attributeDefinition.label());

@@ -34,7 +34,9 @@ abstract class AbstractJooqRepositoryTest {
             new ClassPathResource("db/migration/V2__CON1-26-remove-constraint.sql"),
             new ClassPathResource("db/migration/V3__CON1-68-enforce-component-name-uniqueness.sql"),
             new ClassPathResource("db/migration/V4__CON1-75-create-compatibility-rules.sql"),
-            new ClassPathResource("db/migration/V5__CON1-82-create-system-user.sql"));
+            new ClassPathResource("db/migration/V5__CON1-82-create-system-user.sql"),
+            new ClassPathResource("db/migration/V6__CON1-100-store-component-image-object-key.sql"),
+            new ClassPathResource("db/migration/V7__create-domain-attribute-catalog.sql"));
     populator.execute(dataSource);
     return dataSource;
   }

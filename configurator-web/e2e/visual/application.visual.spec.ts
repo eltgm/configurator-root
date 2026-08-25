@@ -50,6 +50,19 @@ test('types and compatibility rules', async ({ page }) => {
   await expect(page).toHaveScreenshot('compatibility-rules.png', { fullPage: true });
 });
 
+test('domain attribute catalog', async ({ page }) => {
+  await page.goto('/settings/attributes');
+  await expect(page.getByRole('heading', { level: 1, name: 'Атрибуты' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Количество ядер' })).toBeVisible();
+  await waitForVisualReady(page);
+
+  await expect(page).toHaveScreenshot('attribute-catalog.png', { fullPage: true });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await waitForVisualReady(page);
+  await expect(page).toHaveScreenshot('attribute-catalog-mobile.png', { fullPage: true });
+});
+
 test('compatibility graph with selected node', async ({ page }) => {
   await page.goto('/settings/compatibility/graph');
   const node = page.getByLabel('Компонент Ryzen 7 7800X3D, тип Процессор');

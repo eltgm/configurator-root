@@ -22,6 +22,16 @@ public interface AttributeService {
    */
   AttributeDefinition create(AttributeDefinition attributeDefinition);
 
+  /** Creates a catalog definition without attaching it to a component type. */
+  AttributeDefinition createInDomain(Long domainId, AttributeDefinition attributeDefinition);
+
+  /** Attaches an existing catalog definition or updates its settings for a component type. */
+  AttributeDefinition attachToComponentType(
+      Long componentTypeId, Long attributeDefinitionId, Boolean isRequired, Integer orderIndex);
+
+  /** Detaches a definition and deletes its values only from components of that type. */
+  void detachFromComponentType(Long componentTypeId, Long attributeDefinitionId);
+
   /**
    * Updates an existing attribute definition.
    *
@@ -55,6 +65,12 @@ public interface AttributeService {
    *     does not exist
    */
   List<AttributeDefinition> getByComponentTypeId(Long componentTypeId);
+
+  /** Retrieves the catalog of a domain. */
+  List<AttributeDefinition> getByDomainId(Long domainId);
+
+  /** Retrieves IDs of component types linked to a catalog definition. */
+  List<Long> getComponentTypeIds(Long attributeDefinitionId);
 
   /**
    * Retrieves an attribute definition by its unique identifier.

@@ -8,6 +8,7 @@ import {
   IconListDetails,
   IconSettings,
   IconAdjustments,
+  IconBraces,
   type TablerIcon,
 } from '@tabler/icons-react';
 
@@ -41,6 +42,11 @@ export const settingsNavigation: NavigationItem[] = [
     path: '/settings/types',
     labelKey: 'navigation.types',
     icon: IconCategory,
+  },
+  {
+    path: '/settings/attributes',
+    labelKey: 'navigation.attributes',
+    icon: IconBraces,
   },
   {
     path: '/settings/compatibility/manual',

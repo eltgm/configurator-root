@@ -127,13 +127,18 @@ export type CreateComponentTypeRequest = {
 
 export type AttributeDefinition = {
   id: number;
-  componentTypeId: number;
+  domainId: number;
+  componentTypeId?: number | null;
   name: string;
   label: string;
   dataType: 'STRING' | 'NUMBER' | 'BOOLEAN' | 'ENUM';
   enumValues?: Array<string> | null;
-  isRequired: boolean;
+  isRequired?: boolean | null;
   orderIndex?: number | null;
+  /**
+   * Component types currently linked to this catalog definition
+   */
+  componentTypeIds?: Array<number>;
 };
 
 export type CreateAttributeDefinitionRequest = {
@@ -141,6 +146,11 @@ export type CreateAttributeDefinitionRequest = {
   label: string;
   dataType: 'STRING' | 'NUMBER' | 'BOOLEAN' | 'ENUM';
   enumValues?: Array<string> | null;
+  isRequired?: boolean;
+  orderIndex?: number | null;
+};
+
+export type ComponentTypeAttributeSettingsRequest = {
   isRequired?: boolean;
   orderIndex?: number | null;
 };
@@ -892,6 +902,68 @@ export type PutComponentTypesByIdResponses = {
 export type PutComponentTypesByIdResponse =
   PutComponentTypesByIdResponses[keyof PutComponentTypesByIdResponses];
 
+export type GetDomainsByDomainIdAttributesData = {
+  body?: never;
+  path: {
+    domainId: number;
+  };
+  query?: never;
+  url: '/domains/{domainId}/attributes';
+};
+
+export type GetDomainsByDomainIdAttributesErrors = {
+  /**
+   * Domain not found
+   */
+  404: ErrorResponse;
+};
+
+export type GetDomainsByDomainIdAttributesError =
+  GetDomainsByDomainIdAttributesErrors[keyof GetDomainsByDomainIdAttributesErrors];
+
+export type GetDomainsByDomainIdAttributesResponses = {
+  /**
+   * Success
+   */
+  200: Array<AttributeDefinition>;
+};
+
+export type GetDomainsByDomainIdAttributesResponse =
+  GetDomainsByDomainIdAttributesResponses[keyof GetDomainsByDomainIdAttributesResponses];
+
+export type PostDomainsByDomainIdAttributesData = {
+  body: CreateAttributeDefinitionRequest;
+  path: {
+    domainId: number;
+  };
+  query?: never;
+  url: '/domains/{domainId}/attributes';
+};
+
+export type PostDomainsByDomainIdAttributesErrors = {
+  /**
+   * Invalid input
+   */
+  400: ErrorResponse;
+  /**
+   * Domain not found
+   */
+  404: ErrorResponse;
+};
+
+export type PostDomainsByDomainIdAttributesError =
+  PostDomainsByDomainIdAttributesErrors[keyof PostDomainsByDomainIdAttributesErrors];
+
+export type PostDomainsByDomainIdAttributesResponses = {
+  /**
+   * Created
+   */
+  201: AttributeDefinition;
+};
+
+export type PostDomainsByDomainIdAttributesResponse =
+  PostDomainsByDomainIdAttributesResponses[keyof PostDomainsByDomainIdAttributesResponses];
+
 export type GetComponentTypesByIdAttributesData = {
   body?: never;
   path: {
@@ -957,6 +1029,107 @@ export type PostComponentTypesByIdAttributesResponses = {
 
 export type PostComponentTypesByIdAttributesResponse =
   PostComponentTypesByIdAttributesResponses[keyof PostComponentTypesByIdAttributesResponses];
+
+export type DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdData = {
+  body?: never;
+  path: {
+    componentTypeId: number;
+    attributeId: number;
+  };
+  query?: never;
+  url: '/component-types/{componentTypeId}/attributes/{attributeId}';
+};
+
+export type DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdErrors = {
+  /**
+   * Component type, attribute or link not found
+   */
+  404: ErrorResponse;
+};
+
+export type DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdError =
+  DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdErrors[keyof DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdErrors];
+
+export type DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdResponses = {
+  /**
+   * Detached and scoped values deleted
+   */
+  204: void;
+};
+
+export type DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdResponse =
+  DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdResponses[keyof DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdResponses];
+
+export type PutComponentTypesByComponentTypeIdAttributesByAttributeIdData = {
+  body: ComponentTypeAttributeSettingsRequest;
+  path: {
+    componentTypeId: number;
+    attributeId: number;
+  };
+  query?: never;
+  url: '/component-types/{componentTypeId}/attributes/{attributeId}';
+};
+
+export type PutComponentTypesByComponentTypeIdAttributesByAttributeIdErrors = {
+  /**
+   * Attribute and component type belong to different domains
+   */
+  400: ErrorResponse;
+  /**
+   * Component type or attribute not found
+   */
+  404: ErrorResponse;
+  /**
+   * Attribute name conflict in component type
+   */
+  409: ErrorResponse;
+};
+
+export type PutComponentTypesByComponentTypeIdAttributesByAttributeIdError =
+  PutComponentTypesByComponentTypeIdAttributesByAttributeIdErrors[keyof PutComponentTypesByComponentTypeIdAttributesByAttributeIdErrors];
+
+export type PutComponentTypesByComponentTypeIdAttributesByAttributeIdResponses = {
+  /**
+   * Attached or updated
+   */
+  200: AttributeDefinition;
+};
+
+export type PutComponentTypesByComponentTypeIdAttributesByAttributeIdResponse =
+  PutComponentTypesByComponentTypeIdAttributesByAttributeIdResponses[keyof PutComponentTypesByComponentTypeIdAttributesByAttributeIdResponses];
+
+export type DeleteAttributesByIdData = {
+  body?: never;
+  path: {
+    id: number;
+  };
+  query?: never;
+  url: '/attributes/{id}';
+};
+
+export type DeleteAttributesByIdErrors = {
+  /**
+   * Not found
+   */
+  404: ErrorResponse;
+  /**
+   * Attribute is used by compatibility rules
+   */
+  409: ErrorResponse;
+};
+
+export type DeleteAttributesByIdError =
+  DeleteAttributesByIdErrors[keyof DeleteAttributesByIdErrors];
+
+export type DeleteAttributesByIdResponses = {
+  /**
+   * Deleted
+   */
+  204: void;
+};
+
+export type DeleteAttributesByIdResponse =
+  DeleteAttributesByIdResponses[keyof DeleteAttributesByIdResponses];
 
 export type PutAttributesByIdData = {
   body: CreateAttributeDefinitionRequest;

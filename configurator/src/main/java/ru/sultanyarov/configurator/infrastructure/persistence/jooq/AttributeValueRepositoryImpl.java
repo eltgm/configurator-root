@@ -68,6 +68,21 @@ public class AttributeValueRepositoryImpl implements AttributeValueRepository {
   }
 
   @Override
+  public void deleteByAttributeDefinitionIdAndComponentTypeId(
+      Long attributeDefinitionId, Long componentTypeId) {
+    dslContext
+        .deleteFrom(AV)
+        .where(AV.ATTRIBUTE_DEFINITION_ID.eq(attributeDefinitionId))
+        .and(
+            AV.COMPONENT_ID.in(
+                dslContext
+                    .select(Tables.COMPONENT.ID)
+                    .from(Tables.COMPONENT)
+                    .where(Tables.COMPONENT.COMPONENT_TYPE_ID.eq(componentTypeId))))
+        .execute();
+  }
+
+  @Override
   public boolean existsByAttributeDefinitionId(Long attributeDefinitionId) {
     return dslContext.fetchExists(
         dslContext.selectFrom(AV).where(AV.ATTRIBUTE_DEFINITION_ID.eq(attributeDefinitionId)));

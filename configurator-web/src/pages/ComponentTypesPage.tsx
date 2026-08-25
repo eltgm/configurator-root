@@ -4,6 +4,7 @@ import {
   Button,
   Divider,
   Group,
+  Menu,
   Modal,
   Paper,
   ScrollArea,
@@ -14,11 +15,23 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconBraces, IconCheck, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
+import {
+  IconBraces,
+  IconCheck,
+  IconLink,
+  IconPencil,
+  IconPlus,
+  IconTrash,
+  IconUnlink,
+} from '@tabler/icons-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useAttributesQuery } from '@/features/attributes/api/attributes';
+import {
+  useAttributesQuery,
+  useDetachAttributeMutation,
+} from '@/features/attributes/api/attributes';
+import { AttachAttributeModal } from '@/features/attributes/ui/AttachAttributeModal';
 import { AttributeFormModal } from '@/features/attributes/ui/AttributeFormModal';
 import {
   useComponentTypesQuery,
@@ -45,10 +58,13 @@ export function ComponentTypesPage() {
   const attributesQuery = useAttributesQuery(selectedDomainId, selectedType?.id ?? null);
   const [typeFormOpened, typeForm] = useDisclosure(false);
   const [attributeFormOpened, attributeForm] = useDisclosure(false);
+  const [attachFormOpened, attachForm] = useDisclosure(false);
   const [editingType, setEditingType] = useState<ComponentType>();
   const [editingAttribute, setEditingAttribute] = useState<AttributeDefinition>();
   const [deletingType, setDeletingType] = useState<ComponentType>();
+  const [detachingAttribute, setDetachingAttribute] = useState<AttributeDefinition>();
   const deleteType = useDeleteComponentTypeMutation();
+  const detachAttribute = useDetachAttributeMutation();
   const title = t('componentTypes.page.title');
   useDocumentTitle(title, t('app.name'));
 
@@ -80,6 +96,23 @@ export function ComponentTypesPage() {
       await deleteType.mutateAsync({ domainId: selectedDomainId, id: deletingType.id });
       showSuccessNotification(t('componentTypes.notifications.deleted'));
       setDeletingType(undefined);
+    } catch {
+      // The global mutation policy presents the structured API error.
+    }
+  };
+
+  const confirmDetach = async () => {
+    if (!detachingAttribute || !selectedType || selectedDomainId === null) {
+      return;
+    }
+    try {
+      await detachAttribute.mutateAsync({
+        domainId: selectedDomainId,
+        componentTypeId: selectedType.id,
+        attributeId: detachingAttribute.id,
+      });
+      showSuccessNotification(t('attributes.notifications.detached'));
+      setDetachingAttribute(undefined);
     } catch {
       // The global mutation policy presents the structured API error.
     }
@@ -217,14 +250,21 @@ export function ComponentTypesPage() {
                     {t('attributes.list.description')}
                   </Text>
                 </Stack>
-                <Button
-                  size="xs"
-                  variant="light"
-                  leftSection={<IconPlus size={16} />}
-                  onClick={openCreateAttribute}
-                >
-                  {t('attributes.actions.create')}
-                </Button>
+                <Menu position="bottom-end" withinPortal>
+                  <Menu.Target>
+                    <Button size="xs" variant="light" leftSection={<IconPlus size={16} />}>
+                      {t('attributes.actions.add')}
+                    </Button>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item leftSection={<IconPlus size={16} />} onClick={openCreateAttribute}>
+                      {t('attributes.actions.createNew')}
+                    </Menu.Item>
+                    <Menu.Item leftSection={<IconLink size={16} />} onClick={attachForm.open}>
+                      {t('attributes.actions.useExisting')}
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
               </Group>
 
               {attributesQuery.isPending ? (
@@ -292,17 +332,31 @@ export function ComponentTypesPage() {
                             </Text>
                           ) : null}
                         </Stack>
-                        <Tooltip label={t('attributes.actions.edit')}>
-                          <ActionIcon
-                            variant="subtle"
-                            aria-label={t('attributes.actions.editNamed', {
-                              name: attribute.label,
-                            })}
-                            onClick={() => openEditAttribute(attribute)}
-                          >
-                            <IconPencil size={18} />
-                          </ActionIcon>
-                        </Tooltip>
+                        <Group gap={4} wrap="nowrap">
+                          <Tooltip label={t('attributes.actions.edit')}>
+                            <ActionIcon
+                              variant="subtle"
+                              aria-label={t('attributes.actions.editNamed', {
+                                name: attribute.label,
+                              })}
+                              onClick={() => openEditAttribute(attribute)}
+                            >
+                              <IconPencil size={18} />
+                            </ActionIcon>
+                          </Tooltip>
+                          <Tooltip label={t('attributes.actions.detach')}>
+                            <ActionIcon
+                              variant="subtle"
+                              color="red"
+                              aria-label={t('attributes.actions.detachNamed', {
+                                name: attribute.label,
+                              })}
+                              onClick={() => setDetachingAttribute(attribute)}
+                            >
+                              <IconUnlink size={18} />
+                            </ActionIcon>
+                          </Tooltip>
+                        </Group>
                       </Group>
                     </Paper>
                   ))}
@@ -330,6 +384,15 @@ export function ComponentTypesPage() {
           attribute={editingAttribute}
           onClose={attributeForm.close}
           onSaved={() => undefined}
+        />
+      ) : null}
+      {selectedDomainId !== null && selectedType ? (
+        <AttachAttributeModal
+          opened={attachFormOpened}
+          domainId={selectedDomainId}
+          componentTypeId={selectedType.id}
+          linkedAttributes={attributesQuery.data ?? []}
+          onClose={attachForm.close}
         />
       ) : null}
 
@@ -360,6 +423,40 @@ export function ComponentTypesPage() {
             </Button>
             <Button color="red" loading={deleteType.isPending} onClick={() => void confirmDelete()}>
               {t('componentTypes.actions.delete')}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={Boolean(detachingAttribute)}
+        onClose={() => !detachAttribute.isPending && setDetachingAttribute(undefined)}
+        title={t('attributes.detach.title')}
+        centered
+        closeOnClickOutside={!detachAttribute.isPending}
+        closeOnEscape={!detachAttribute.isPending}
+      >
+        <Stack gap="md">
+          <Text>
+            {t('attributes.detach.description', { name: detachingAttribute?.label ?? '' })}
+          </Text>
+          <Text size="sm" c="red">
+            {t('attributes.detach.warning')}
+          </Text>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              disabled={detachAttribute.isPending}
+              onClick={() => setDetachingAttribute(undefined)}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              color="red"
+              loading={detachAttribute.isPending}
+              onClick={() => void confirmDetach()}
+            >
+              {t('attributes.actions.detach')}
             </Button>
           </Group>
         </Stack>

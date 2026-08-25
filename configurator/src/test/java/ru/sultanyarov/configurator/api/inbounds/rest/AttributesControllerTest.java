@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 import ru.sultanyarov.configurator.api.inbounds.rest.controller.AttributesController;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.AttributeDefinition;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentTypeAttributeSettingsRequest;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateAttributeDefinitionRequest;
 import ru.sultanyarov.configurator.application.facade.AttributesFacade;
 
@@ -78,5 +79,45 @@ class AttributesControllerTest {
     assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
     assertThat(response.getBody()).isEqualTo(createdAttribute);
     verify(attributesFacade).createAttribute(componentTypeId, request);
+  }
+
+  @Test
+  void catalogAndLinkEndpoints_shouldDelegateAndReturnExpectedStatuses() {
+    CreateAttributeDefinitionRequest createRequest =
+        new CreateAttributeDefinitionRequest()
+            .name("socket")
+            .label("Socket")
+            .dataType(CreateAttributeDefinitionRequest.DataTypeEnum.STRING);
+    ComponentTypeAttributeSettingsRequest settings =
+        new ComponentTypeAttributeSettingsRequest().isRequired(true).orderIndex(1);
+    AttributeDefinition attribute = new AttributeDefinition();
+    when(attributesFacade.getAttributesByDomainId(1L)).thenReturn(List.of(attribute));
+    when(attributesFacade.createCatalogAttribute(1L, createRequest)).thenReturn(attribute);
+    when(attributesFacade.attachAttribute(10L, 101L, settings)).thenReturn(attribute);
+
+    assertThat(attributesController.getDomainsByDomainIdAttributes(1L).getBody())
+        .containsExactly(attribute);
+    assertThat(
+            attributesController
+                .postDomainsByDomainIdAttributes(1L, createRequest)
+                .getStatusCode()
+                .value())
+        .isEqualTo(201);
+    assertThat(
+            attributesController
+                .putComponentTypesByComponentTypeIdAttributesByAttributeId(10L, 101L, settings)
+                .getBody())
+        .isEqualTo(attribute);
+    assertThat(
+            attributesController
+                .deleteComponentTypesByComponentTypeIdAttributesByAttributeId(10L, 101L)
+                .getStatusCode()
+                .value())
+        .isEqualTo(204);
+    assertThat(attributesController.deleteAttributesById(101L).getStatusCode().value())
+        .isEqualTo(204);
+
+    verify(attributesFacade).detachAttribute(10L, 101L);
+    verify(attributesFacade).deleteAttribute(101L);
   }
 }

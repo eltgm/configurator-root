@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   attributeKeys,
+  fetchAttributeCatalog,
   fetchAttributes,
   sortAttributes,
 } from '@/features/attributes/api/attributes';
@@ -12,6 +13,7 @@ import { server, testApiBaseUrl } from '@/test/server';
 const attributes: Array<AttributeDefinition> = [
   {
     id: 3,
+    domainId: 7,
     componentTypeId: 11,
     name: 'brand',
     label: 'Бренд',
@@ -20,6 +22,7 @@ const attributes: Array<AttributeDefinition> = [
   },
   {
     id: 2,
+    domainId: 7,
     componentTypeId: 11,
     name: 'socket',
     label: 'Сокет',
@@ -30,6 +33,7 @@ const attributes: Array<AttributeDefinition> = [
   },
   {
     id: 1,
+    domainId: 7,
     componentTypeId: 11,
     name: 'cores',
     label: 'Количество ядер',
@@ -61,11 +65,27 @@ describe('attributes API', () => {
     expect(attributeKeys.byType(7, 11)).toEqual([
       'domains',
       7,
+      'attributes',
       'component-types',
       11,
-      'attributes',
     ]);
+    expect(attributeKeys.catalog(7)).toEqual(['domains', 7, 'attributes', 'catalog']);
     expect(sortAttributes(source).map((attribute) => attribute.id)).toEqual([1, 2, 3]);
     expect(source).toEqual(attributes);
+  });
+
+  it('loads the attribute catalog for one domain', async () => {
+    let requestedDomainId: string | undefined;
+    server.use(
+      http.get(`${testApiBaseUrl}/domains/:domainId/attributes`, ({ params }) => {
+        requestedDomainId = String(params['domainId']);
+        return HttpResponse.json(attributes);
+      }),
+    );
+
+    const result = await fetchAttributeCatalog(7);
+
+    expect(requestedDomainId).toBe('7');
+    expect(result.map((attribute) => attribute.id)).toEqual([1, 2, 3]);
   });
 });

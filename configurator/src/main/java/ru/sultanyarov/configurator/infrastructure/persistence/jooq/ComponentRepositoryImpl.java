@@ -206,6 +206,7 @@ public class ComponentRepositoryImpl implements ComponentRepository {
   private SelectField<List<AttributeValue>> attributeValuesField() {
     var attributeValue = Tables.ATTRIBUTE_VALUE;
     var attributeDefinition = Tables.ATTRIBUTE_DEFINITION;
+    var componentTypeAttribute = Tables.COMPONENT_TYPE_ATTRIBUTE;
 
     return multiset(
             dslContext
@@ -221,8 +222,11 @@ public class ComponentRepositoryImpl implements ComponentRepository {
                 .from(attributeValue)
                 .join(attributeDefinition)
                 .on(attributeDefinition.ID.eq(attributeValue.ATTRIBUTE_DEFINITION_ID))
+                .join(componentTypeAttribute)
+                .on(componentTypeAttribute.ATTRIBUTE_DEFINITION_ID.eq(attributeDefinition.ID))
+                .and(componentTypeAttribute.COMPONENT_TYPE_ID.eq(COMPONENT.COMPONENT_TYPE_ID))
                 .where(attributeValue.COMPONENT_ID.eq(COMPONENT.ID))
-                .orderBy(attributeDefinition.ORDER_INDEX, attributeValue.ID))
+                .orderBy(componentTypeAttribute.ORDER_INDEX, attributeValue.ID))
         .convertFrom(result -> result.map(this::mapAttributeValue))
         .as("attributes");
   }
