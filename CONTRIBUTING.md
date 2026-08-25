@@ -77,6 +77,15 @@ stable channel, строгий Update/Restore failure contract, line endings и�
 exact/sha/stable tags без `latest`, minimum permissions, full-SHA action pins, SBOM/provenance, OIDC attestations и
 draft-only publication. Не запускайте tag/release публикацию из feature branch.
 
+После merge проверенного release PR в `master` annotated tag создаётся guarded-скриптом, который проверяет чистое
+дерево, совпадение с `origin/master`, changelog, release notes и версии source metadata:
+
+```bash
+scripts/release/start-release-tag.sh X.Y.Z
+```
+
+Существующий tag не перемещайте и не удаляйте без проверки GitHub Release, exact image tags и результатов workflow.
+
 ## Стиль и архитектура
 
 - Цепочка: `controller -> facade -> service -> port -> infrastructure`.
