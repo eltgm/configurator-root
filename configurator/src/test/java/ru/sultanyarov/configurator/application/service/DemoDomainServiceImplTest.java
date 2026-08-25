@@ -131,7 +131,7 @@ class DemoDomainServiceImplTest {
 
     ArgumentCaptor<CompatibilityRuleSet> ruleCaptor =
         ArgumentCaptor.forClass(CompatibilityRuleSet.class);
-    verify(compatibilityRuleService, times(5)).create(ruleCaptor.capture());
+    verify(compatibilityRuleService, times(6)).create(ruleCaptor.capture());
     assertThat(ruleCaptor.getAllValues())
         .extracting(rule -> rule.conditions().getFirst().operator())
         .containsExactly(
@@ -139,11 +139,12 @@ class DemoDomainServiceImplTest {
             CompatibilityRuleOperator.EQUALS,
             CompatibilityRuleOperator.EQUALS,
             CompatibilityRuleOperator.LTE,
+            CompatibilityRuleOperator.LTE,
             CompatibilityRuleOperator.LTE);
     assertThat(ruleCaptor.getAllValues()).allSatisfy(rule -> assertThat(rule.enabled()).isTrue());
 
     ArgumentCaptor<CompatibilityLink> linkCaptor = ArgumentCaptor.forClass(CompatibilityLink.class);
-    verify(compatibilityService, times(10)).create(linkCaptor.capture());
+    verify(compatibilityService, times(2)).create(linkCaptor.capture());
     assertThat(linkCaptor.getAllValues())
         .allSatisfy(
             link -> {
@@ -167,7 +168,7 @@ class DemoDomainServiceImplTest {
     assertThatThrownBy(service::createDemoDomain).isSameAs(failure);
 
     verify(componentService, times(12)).create(any());
-    verify(compatibilityRuleService, times(5)).create(any());
+    verify(compatibilityRuleService, times(6)).create(any());
     verify(configurationService).create(any(), any());
   }
 

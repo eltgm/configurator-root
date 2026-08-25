@@ -240,10 +240,10 @@ public class DemoDomainServiceImpl implements DemoDomainService {
     Component beQuietPsu =
         createComponent(
             types.psu(),
-            "System Power 10 650W",
-            "be quiet!",
-            "Блок питания мощностью 650 Вт",
-            value(attributes.psuPower(), "650"));
+            "PicoPSU-90",
+            "Mini-Box",
+            "Компактный блок питания мощностью 90 Вт для маломощных систем",
+            value(attributes.psuPower(), "90"));
 
     Component fractalCase =
         createComponent(
@@ -334,6 +334,14 @@ public class DemoDomainServiceImpl implements DemoDomainService {
         attributes.psuPower());
     createRule(
         domainId,
+        "Мощность блока питания не ниже TDP процессора",
+        types.cpu(),
+        types.psu(),
+        attributes.cpuTdp(),
+        CompatibilityRuleOperator.LTE,
+        attributes.psuPower());
+    createRule(
+        domainId,
         "Допустимая длина видеокарты",
         types.gpu(),
         types.pcCase(),
@@ -369,17 +377,9 @@ public class DemoDomainServiceImpl implements DemoDomainService {
   }
 
   private void createManualLinks(Long domainId, DemoComponents components) {
-    // Automatic rules cover five type pairs; these links complete the saved build's graph.
-    createLink(domainId, components.ryzen(), components.ddr5Memory());
-    createLink(domainId, components.ryzen(), components.rtx());
-    createLink(domainId, components.ryzen(), components.corsairPsu());
-    createLink(domainId, components.ryzen(), components.fractalCase());
+    // PCI Express support is represented manually; all other demo relations are rule-driven.
     createLink(domainId, components.asusMotherboard(), components.rtx());
-    createLink(domainId, components.asusMotherboard(), components.corsairPsu());
-    createLink(domainId, components.ddr5Memory(), components.rtx());
-    createLink(domainId, components.ddr5Memory(), components.corsairPsu());
-    createLink(domainId, components.ddr5Memory(), components.fractalCase());
-    createLink(domainId, components.corsairPsu(), components.fractalCase());
+    createLink(domainId, components.msiMotherboard(), components.radeon());
   }
 
   private void createLink(Long domainId, Component first, Component second) {
@@ -388,7 +388,7 @@ public class DemoDomainServiceImpl implements DemoDomainService {
             .domainId(domainId)
             .componentAId(first.getId())
             .componentBId(second.getId())
-            .comment("Демонстрационная ручная совместимость")
+            .comment("Совместимость слота PCI Express")
             .build());
   }
 

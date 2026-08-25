@@ -2,6 +2,8 @@ package ru.sultanyarov.configurator.contract
 
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchRequest
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchResponse
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorCandidatesRequest
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorCandidatesResponse
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorIntersectionRequest
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorIntersectionResponse
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorResponse
@@ -23,12 +25,9 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
         responseBody.baseComponentId == 1L
         responseBody.compatibleByType*.componentTypeId == [20L, 30L]
         responseBody.compatibleByType*.componentTypeName == ["Motherboard", "Cooler"]
-        responseBody.compatibleByType[0].components*.id == [2L, 3L]
-        responseBody.compatibleByType[0].components*.name == [
-                "Automatic and manual board",
-                "Manual board"
-        ]
-        responseBody.compatibleByType[0].components*.brand == ["Board Brand", null]
+        responseBody.compatibleByType[0].components*.id == [2L]
+        responseBody.compatibleByType[0].components*.name == ["Automatic and manual board"]
+        responseBody.compatibleByType[0].components*.brand == ["Board Brand"]
         responseBody.compatibleByType[1].components*.id == [5L]
 
         and: "every matching manual and automatic reason is explained"
@@ -54,17 +53,13 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
         }
 
         and: "manual-only components contain their link details"
-        def manualBoard = responseBody.compatibleByType[0].components[1]
-        manualBoard.explanations*.source*.toString() == ["MANUAL"]
-        manualBoard.explanations[0].linkId == 802L
-        manualBoard.explanations[0].comment == "Manual mismatch override"
         def manualCooler = responseBody.compatibleByType[1].components[0]
         manualCooler.explanations*.source*.toString() == ["MANUAL"]
         manualCooler.explanations[0].linkId == 803L
         manualCooler.explanations[0].comment == "Manual cross-type compatibility"
 
-        and: "automatic/manual duplicate, archived candidate and disabled-only match are absent"
-        responseBody.compatibleByType*.components.flatten()*.id == [2L, 3L, 5L]
+        and: "automatic mismatch wins over manual link and unavailable candidates are absent"
+        responseBody.compatibleByType*.components.flatten()*.id == [2L, 5L]
     }
 
     def "should return empty compatibility groups for active component without links or rules"() {
@@ -95,7 +90,7 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
         result.status == 200
         def responseBody = objectMapper.readValue(result.body, ConfiguratorResponse)
         responseBody.compatibleByType*.componentTypeId == [20L, 30L]
-        responseBody.compatibleByType[0].components*.id == [2L, 3L]
+        responseBody.compatibleByType[0].components*.id == [2L]
         responseBody.compatibleByType[1].components*.id == [5L, 9L]
 
         and: "direct components keep their direct explanations"
@@ -106,19 +101,19 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
         def transitive = responseBody.compatibleByType[1].components[1]
         transitive.name == "Transitive cooler"
         transitive.explanations*.source*.toString() == ["TRANSITIVE"]
-        transitive.explanations[0].pathComponentIds == [1L, 3L, 9L]
+        transitive.explanations[0].pathComponentIds == [1L, 2L, 9L]
         transitive.explanations[0].linkId == null
         transitive.explanations[0].ruleSetId == null
         transitive.explanations[0].conditions == null
 
         and: "the base and disconnected active component are not returned"
-        responseBody.compatibleByType*.components.flatten()*.id == [2L, 3L, 5L, 9L]
+        responseBody.compatibleByType*.components.flatten()*.id == [2L, 5L, 9L]
     }
 
     def "should search direct compatibility independently for multiple components in request order"() {
         given:
         prepareConfiguratorData()
-        def request = new ConfiguratorBatchSearchRequest([3L, 1L])
+        def request = new ConfiguratorBatchSearchRequest([2L, 1L])
 
         when:
         def result = post("/domains/1/configurator/compatible/search", request)
@@ -126,19 +121,19 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
         then:
         result.status == 200
         def responseBody = objectMapper.readValue(result.body, ConfiguratorBatchSearchResponse)
-        responseBody.results*.baseComponentId == [3L, 1L]
+        responseBody.results*.baseComponentId == [2L, 1L]
 
         and: "each selected component has its own direct compatibility set"
         responseBody.results[0].compatibleByType*.componentTypeId == [10L, 30L]
         responseBody.results[0].compatibleByType[0].components*.id == [1L]
         responseBody.results[0].compatibleByType[1].components*.id == [9L]
         responseBody.results[1].compatibleByType*.componentTypeId == [20L, 30L]
-        responseBody.results[1].compatibleByType[0].components*.id == [2L, 3L]
+        responseBody.results[1].compatibleByType[0].components*.id == [2L]
         responseBody.results[1].compatibleByType[1].components*.id == [5L]
 
         and: "selected components may appear in each other's independent results"
         responseBody.results[0].compatibleByType*.components.flatten()*.id.contains(1L)
-        responseBody.results[1].compatibleByType*.components.flatten()*.id.contains(3L)
+        responseBody.results[1].compatibleByType*.components.flatten()*.id.contains(2L)
     }
 
     def "should apply transitive mode to every component in batch search"() {
@@ -154,9 +149,9 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
         result.status == 200
         def responseBody = objectMapper.readValue(result.body, ConfiguratorBatchSearchResponse)
         responseBody.results*.baseComponentId == [1L, 8L]
-        responseBody.results[0].compatibleByType*.components.flatten()*.id == [2L, 3L, 5L, 9L]
+        responseBody.results[0].compatibleByType*.components.flatten()*.id == [2L, 5L, 9L]
         responseBody.results[0].compatibleByType[1].components[1]
-                .explanations[0].pathComponentIds == [1L, 3L, 9L]
+                .explanations[0].pathComponentIds == [1L, 2L, 9L]
         responseBody.results[1].compatibleByType == []
     }
 
@@ -206,7 +201,7 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
     def "should intersect direct compatibility and preserve evidence for every base"() {
         given:
         prepareConfiguratorData()
-        def request = new ConfiguratorIntersectionRequest([2L, 3L])
+        def request = new ConfiguratorIntersectionRequest([2L, 5L])
 
         when:
         def result = post("/domains/1/configurator/compatible/intersection", request)
@@ -214,23 +209,23 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
         then:
         result.status == 200
         def responseBody = objectMapper.readValue(result.body, ConfiguratorIntersectionResponse)
-        responseBody.componentIds == [2L, 3L]
+        responseBody.componentIds == [2L, 5L]
         responseBody.compatibleByType*.componentTypeId == [10L]
         responseBody.compatibleByType[0].components*.id == [1L]
 
         and: "compatibility evidence follows the requested base component order"
         def common = responseBody.compatibleByType[0].components[0]
-        common.compatibilityByBase*.baseComponentId == [2L, 3L]
+        common.compatibilityByBase*.baseComponentId == [2L, 5L]
         common.compatibilityByBase[0].explanations*.source*.toString() == [
                 "MANUAL",
                 "AUTOMATIC"
         ]
         common.compatibilityByBase[0].explanations[0].linkId == 801L
         common.compatibilityByBase[0].explanations[1].ruleSetId == 701L
-        common.compatibilityByBase[1].explanations*.linkId == [802L]
+        common.compatibilityByBase[1].explanations*.linkId == [803L]
 
         and: "selected base components are excluded from the intersection"
-        !responseBody.compatibleByType*.components.flatten()*.id.any { it in [2L, 3L] }
+        !responseBody.compatibleByType*.components.flatten()*.id.any { it in [2L, 5L] }
     }
 
     def "should intersect transitive compatibility with paths from every base"() {
@@ -245,8 +240,8 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
         then:
         result.status == 200
         def responseBody = objectMapper.readValue(result.body, ConfiguratorIntersectionResponse)
-        responseBody.compatibleByType*.componentTypeId == [10L, 20L, 30L]
-        responseBody.compatibleByType*.components.flatten()*.id == [1L, 3L, 5L]
+        responseBody.compatibleByType*.componentTypeId == [10L, 30L]
+        responseBody.compatibleByType*.components.flatten()*.id == [1L, 5L]
 
         and: "a candidate can be direct for one base and transitive for another"
         def processor = responseBody.compatibleByType[0].components[0]
@@ -256,7 +251,107 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
                 "AUTOMATIC"
         ]
         processor.compatibilityByBase[1].explanations*.source*.toString() == ["TRANSITIVE"]
-        processor.compatibilityByBase[1].explanations[0].pathComponentIds == [9L, 3L, 1L]
+        processor.compatibilityByBase[1].explanations[0].pathComponentIds == [9L, 2L, 1L]
+    }
+
+    def "should classify assembly candidates with support unknown and deny evidence"() {
+        given:
+        prepareConfiguratorData()
+        def request = new ConfiguratorCandidatesRequest([1L, 5L])
+
+        when:
+        def result = post("/domains/1/configurator/candidates", request)
+
+        then:
+        result.status == 200
+        def responseBody = objectMapper.readValue(result.body, ConfiguratorCandidatesResponse)
+        responseBody.componentIds == [1L, 5L]
+        responseBody.candidatesByType*.componentTypeId == [20L, 30L]
+        responseBody.assemblyStatus.toString() == "VALID"
+        responseBody.assemblyDecisions*.status*.toString() == ["ALLOWED"]
+
+        and: "one direct relationship is enough when no pair is denied"
+        def available = responseBody.candidatesByType[0].components.find { it.id == 2L }
+        available.status.toString() == "AVAILABLE"
+        available.compatibilityByBase*.baseComponentId == [1L, 5L]
+        available.compatibilityByBase*.status*.toString() == ["ALLOWED", "UNKNOWN"]
+
+        and: "failed automatic rules block even when a manual link exists"
+        def blocked = responseBody.candidatesByType[0].components.find { it.id == 3L }
+        blocked.status.toString() == "BLOCKED"
+        blocked.compatibilityByBase*.status*.toString() == ["DENIED", "UNKNOWN"]
+        blocked.compatibilityByBase[0].blockingRules*.ruleSetId == [701L]
+        blocked.compatibilityByBase[0].blockingRules*.ruleSetName == ["Socket and power"]
+
+        and: "components without relationship knowledge remain distinguishable"
+        def unrelated = responseBody.candidatesByType[1].components.find { it.id == 8L }
+        unrelated.status.toString() == "UNRELATED"
+        unrelated.compatibilityByBase*.status*.toString() == ["UNKNOWN", "UNKNOWN"]
+
+        and: "selected components are not returned as candidates"
+        !responseBody.candidatesByType*.components.flatten()*.id.any { it in [1L, 5L] }
+    }
+
+    def "should report disconnected and blocked current assembly through candidates endpoint"() {
+        given:
+        prepareConfiguratorData()
+
+        when: "the selected components have no supporting relationship"
+        def disconnectedResult = post(
+                "/domains/1/configurator/candidates",
+                new ConfiguratorCandidatesRequest([1L, 8L])
+        )
+
+        then:
+        disconnectedResult.status == 200
+        def disconnected = objectMapper.readValue(
+                disconnectedResult.body,
+                ConfiguratorCandidatesResponse
+        )
+        disconnected.assemblyStatus.toString() == "DISCONNECTED"
+        disconnected.assemblyDecisions*.status*.toString() == ["UNKNOWN"]
+
+        when: "one selected pair is explicitly denied by an automatic rule"
+        def blockedResult = post(
+                "/domains/1/configurator/candidates",
+                new ConfiguratorCandidatesRequest([1L, 3L, 5L])
+        )
+
+        then:
+        blockedResult.status == 200
+        def blocked = objectMapper.readValue(blockedResult.body, ConfiguratorCandidatesResponse)
+        blocked.assemblyStatus.toString() == "BLOCKED"
+        def deniedPair = blocked.assemblyDecisions.find { it.status.toString() == "DENIED" }
+        deniedPair.leftComponentId == 1L
+        deniedPair.rightComponentId == 3L
+        deniedPair.blockingRules*.ruleSetId == [701L]
+    }
+
+    def "should validate assembly candidate component collection"() {
+        given:
+        prepareConfiguratorData()
+
+        expect:
+        post(
+                "/domains/1/configurator/candidates",
+                [componentIds: []]
+        ).status == 400
+        post(
+                "/domains/1/configurator/candidates",
+                [componentIds: [1L, 1L]]
+        ).status == 400
+        post(
+                "/domains/1/configurator/candidates",
+                [componentIds: [1L, 999999L]]
+        ).status == 404
+        post(
+                "/domains/1/configurator/candidates",
+                [componentIds: [1L, 4L]]
+        ).status == 400
+        post(
+                "/domains/1/configurator/candidates",
+                [componentIds: [1L, 7L]]
+        ).status == 400
     }
 
     def "should return an empty successful intersection when no candidate matches every base"() {

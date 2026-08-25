@@ -1,6 +1,8 @@
 import type {
   CompatibilityExplanation,
+  CompatibilityBlockingRule,
   ConfiguratorBatchSearchResponse,
+  ConfiguratorCandidatesResponse,
   ConfiguratorIntersectionResponse,
   ConfiguratorResponse,
 } from '@/shared/api';
@@ -19,6 +21,14 @@ export interface ConfiguratorCandidate extends ConfiguratorComponentSelection {
   explanations: ReadonlyArray<CompatibilityExplanation>;
 }
 
+export interface ConfiguratorBlockedCandidate extends ConfiguratorComponentSelection {
+  componentTypeName: string;
+  blockingByBase: ReadonlyArray<{
+    baseComponentId: number;
+    blockingRules: ReadonlyArray<CompatibilityBlockingRule>;
+  }>;
+}
+
 export type CompatibilityRelation = 'direct' | 'transitive' | 'incompatible';
 
 export interface ConfiguratorBaseEvidence {
@@ -35,6 +45,7 @@ export interface ConfiguratorConflictPair {
 export interface ConfiguratorPairResult extends ConfiguratorConflictPair {
   relation: CompatibilityRelation;
   explanations: ReadonlyArray<CompatibilityExplanation>;
+  blockingRules?: ReadonlyArray<CompatibilityBlockingRule>;
 }
 
 export interface ConfiguratorValidationResult {
@@ -107,6 +118,81 @@ export function candidatesFromIntersectionResponse(response: ConfiguratorInterse
       };
     }),
   );
+}
+
+export function candidatesFromAssemblyResponse(response: ConfiguratorCandidatesResponse) {
+  return response.candidatesByType.flatMap((group) =>
+    group.components
+      .filter((component) => component.status === 'AVAILABLE')
+      .map<ConfiguratorCandidate>((component) => {
+        const compatibilityByBase = component.compatibilityByBase
+          .filter((entry) => entry.status === 'ALLOWED')
+          .map((entry) => toBaseEvidence(entry.baseComponentId, entry.explanations));
+        return {
+          id: component.id,
+          name: component.name,
+          ...(component.brand === undefined ? {} : { brand: component.brand }),
+          componentTypeId: component.componentTypeId,
+          componentTypeName: group.componentTypeName,
+          relation: 'direct',
+          compatibilityByBase,
+          explanations: compatibilityByBase.flatMap((entry) => entry.explanations),
+        };
+      }),
+  );
+}
+
+export function blockedCandidatesFromAssemblyResponse(response: ConfiguratorCandidatesResponse) {
+  return response.candidatesByType.flatMap((group) =>
+    group.components
+      .filter((component) => component.status === 'BLOCKED')
+      .map<ConfiguratorBlockedCandidate>((component) => ({
+        id: component.id,
+        name: component.name,
+        ...(component.brand === undefined ? {} : { brand: component.brand }),
+        componentTypeId: component.componentTypeId,
+        componentTypeName: group.componentTypeName,
+        blockingByBase: component.compatibilityByBase
+          .filter((entry) => entry.status === 'DENIED')
+          .map((entry) => ({
+            baseComponentId: entry.baseComponentId,
+            blockingRules: entry.blockingRules,
+          })),
+      })),
+  );
+}
+
+export function validationFromAssemblyResponse(
+  response: ConfiguratorCandidatesResponse,
+): ConfiguratorValidationResult {
+  const pairs: ConfiguratorPairResult[] = response.assemblyDecisions.map((decision) => ({
+    leftComponentId: decision.leftComponentId,
+    rightComponentId: decision.rightComponentId,
+    relation: decision.status === 'ALLOWED' ? 'direct' : 'incompatible',
+    explanations: decision.explanations,
+    ...(decision.blockingRules.length > 0 ? { blockingRules: decision.blockingRules } : {}),
+  }));
+  const conflictingPairs =
+    response.assemblyStatus === 'BLOCKED'
+      ? response.assemblyDecisions.filter((decision) => decision.status === 'DENIED')
+      : response.assemblyStatus === 'DISCONNECTED'
+        ? response.assemblyDecisions.filter((decision) => decision.status === 'UNKNOWN')
+        : [];
+  const conflictPairs = conflictingPairs.map(({ leftComponentId, rightComponentId }) => ({
+    leftComponentId,
+    rightComponentId,
+  }));
+  const conflictComponentIds = new Set(
+    conflictPairs.flatMap((pair) => [pair.leftComponentId, pair.rightComponentId]),
+  );
+  return {
+    compatible: response.assemblyStatus === 'VALID',
+    directlyCompatible: response.assemblyStatus === 'VALID',
+    relation: response.assemblyStatus === 'VALID' ? 'direct' : 'incompatible',
+    pairs,
+    conflictPairs,
+    conflictComponentIds,
+  };
 }
 
 export function filterConfiguratorCandidates(

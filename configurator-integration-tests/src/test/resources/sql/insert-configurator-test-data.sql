@@ -102,6 +102,6 @@ INSERT INTO compatibility_link (
     created_at
 )
 VALUES (801, 1, 1, 2, 'Duplicate automatic source', NOW()),
-       (802, 1, 1, 3, 'Manual mismatch override', NOW()),
+       (802, 1, 1, 3, 'Manual link blocked by automatic mismatch', NOW()),
        (803, 1, 1, 5, 'Manual cross-type compatibility', NOW()),
-       (804, 1, 3, 9, 'Second transitive hop', NOW());
+       (804, 1, 2, 9, 'Second transitive hop', NOW());

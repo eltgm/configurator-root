@@ -5,6 +5,7 @@ import type {
   CompatibilityRuleSet,
   Component,
   ComponentType,
+  ConfiguratorCandidatesResponse,
   Domain,
   GraphResponse,
   SaveCompatibilityRuleSetRequest,
@@ -161,6 +162,84 @@ function configuratorResponse(
         componentTypeId,
         explanations: [{ source: 'MANUAL' as const, linkId: component.id + baseComponentId }],
       })),
+    })),
+  };
+}
+
+function configuratorCandidatesResponse(
+  componentIds: number[],
+  components: ReadonlyArray<Component> = componentPage.items,
+  types: ReadonlyArray<ComponentType> = componentTypes,
+): ConfiguratorCandidatesResponse {
+  const isAllowed = (leftId: number, rightId: number) =>
+    directlyCompatibleComponents(leftId, components).some((component) => component.id === rightId);
+  const assemblyDecisions = componentIds.flatMap((leftId, leftIndex) =>
+    componentIds.slice(leftIndex + 1).map((rightId) => ({
+      leftComponentId: leftId,
+      rightComponentId: rightId,
+      status: isAllowed(leftId, rightId) ? ('ALLOWED' as const) : ('UNKNOWN' as const),
+      explanations: isAllowed(leftId, rightId)
+        ? [{ source: 'MANUAL' as const, linkId: leftId + rightId }]
+        : [],
+      blockingRules: [],
+    })),
+  );
+  const adjacency = new Map(componentIds.map((componentId) => [componentId, new Set<number>()]));
+  for (const decision of assemblyDecisions) {
+    if (decision.status !== 'ALLOWED') continue;
+    adjacency.get(decision.leftComponentId)?.add(decision.rightComponentId);
+    adjacency.get(decision.rightComponentId)?.add(decision.leftComponentId);
+  }
+  const visited = new Set<number>();
+  const pending = componentIds.length > 0 ? [componentIds[0]] : [];
+  while (pending.length > 0) {
+    const componentId = pending.pop()!;
+    if (visited.has(componentId)) continue;
+    visited.add(componentId);
+    pending.push(...(adjacency.get(componentId) ?? []));
+  }
+
+  const candidates = components
+    .filter((component) => !componentIds.includes(component.id))
+    .map((component) => {
+      const compatibilityByBase = componentIds.map((baseComponentId) => ({
+        baseComponentId,
+        status: isAllowed(baseComponentId, component.id)
+          ? ('ALLOWED' as const)
+          : ('UNKNOWN' as const),
+        explanations: isAllowed(baseComponentId, component.id)
+          ? [{ source: 'MANUAL' as const, linkId: baseComponentId + component.id }]
+          : [],
+        blockingRules: [],
+      }));
+      return {
+        id: component.id,
+        name: component.name,
+        brand: component.brand,
+        componentTypeId: component.componentTypeId,
+        status: compatibilityByBase.some((decision) => decision.status === 'ALLOWED')
+          ? ('AVAILABLE' as const)
+          : ('UNRELATED' as const),
+        compatibilityByBase,
+      };
+    });
+  const groups = new Map<number, typeof candidates>();
+  for (const candidate of candidates) {
+    groups.set(candidate.componentTypeId, [
+      ...(groups.get(candidate.componentTypeId) ?? []),
+      candidate,
+    ]);
+  }
+  return {
+    componentIds,
+    assemblyStatus:
+      componentIds.length < 2 || visited.size === componentIds.length ? 'VALID' : 'DISCONNECTED',
+    assemblyDecisions,
+    candidatesByType: [...groups].map(([componentTypeId, groupedCandidates]) => ({
+      componentTypeId,
+      componentTypeName:
+        types.find((componentType) => componentType.id === componentTypeId)?.name ?? 'Unknown',
+      components: groupedCandidates,
     })),
   };
 }
@@ -664,6 +743,12 @@ async function installMockApi(page: Page) {
     const componentId = Number(new URL(route.request().url()).searchParams.get('componentId'));
     await route.fulfill({
       json: configuratorResponse(componentId, componentState, componentTypeState),
+    });
+  });
+  await page.route(frontendApiBaseUrl + '/domains/*/configurator/candidates', async (route) => {
+    const body = route.request().postDataJSON() as { componentIds: number[] };
+    await route.fulfill({
+      json: configuratorCandidatesResponse(body.componentIds, componentState, componentTypeState),
     });
   });
   await page.route(

@@ -8,7 +8,7 @@ test('saves the current assembly and shows it in the configurations list', async
   const browser = page.getByRole('region', { name: 'Доступные компоненты' });
   const assembly = page.getByRole('region', { name: 'Текущая сборка' });
   await browser.getByRole('button', { name: 'Добавить' }).first().click();
-  await expect(assembly.getByText('Сборка совместима напрямую')).toBeVisible();
+  await expect(assembly.getByText('Сборка корректна')).toBeVisible();
   await expect(assembly.getByRole('button', { name: 'Сохранить конфигурацию' })).toBeEnabled();
   await assembly.getByRole('button', { name: 'Сохранить конфигурацию' }).click();
 

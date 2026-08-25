@@ -6,7 +6,7 @@ import { createMemoryRouter } from 'react-router-dom';
 
 import { App } from '@/app/App';
 import { appRoutes } from '@/app/router/routes';
-import type { Component, ComponentType } from '@/shared/api';
+import type { Component, ComponentType, ConfiguratorCandidatesResponse } from '@/shared/api';
 import { configuratorDraftStorageKey } from '@/shared/config/preferences';
 import { server, testApiBaseUrl } from '@/test/server';
 
@@ -50,8 +50,8 @@ const motherboard: Component = {
 };
 const components = [ryzen, intel, radeon, motherboard];
 
-function groupComponentsByType(entries: ReadonlyArray<Component>) {
-  const groups = new Map<number, Component[]>();
+function groupComponentsByType<T extends Component>(entries: ReadonlyArray<T>) {
+  const groups = new Map<number, T[]>();
   for (const component of entries) {
     groups.set(component.componentTypeId, [
       ...(groups.get(component.componentTypeId) ?? []),
@@ -85,6 +85,57 @@ function toCompatibilityResponse(baseComponentId: number) {
         componentTypeId: component.componentTypeId,
         explanations: [{ source: 'MANUAL' as const, linkId: component.id + baseComponentId }],
       })),
+    })),
+  };
+}
+
+function toAssemblyCandidatesResponse(componentIds: number[]): ConfiguratorCandidatesResponse {
+  const pairAllowed = (leftId: number, rightId: number) =>
+    compatibleComponents(leftId).some((candidate) => candidate.id === rightId);
+  const assemblyDecisions = componentIds.flatMap((leftId, leftIndex) =>
+    componentIds.slice(leftIndex + 1).map((rightId) => ({
+      leftComponentId: leftId,
+      rightComponentId: rightId,
+      status: pairAllowed(leftId, rightId) ? ('ALLOWED' as const) : ('UNKNOWN' as const),
+      explanations: pairAllowed(leftId, rightId)
+        ? [{ source: 'MANUAL' as const, linkId: leftId + rightId }]
+        : [],
+      blockingRules: [],
+    })),
+  );
+  const candidates = components
+    .filter((component) => !componentIds.includes(component.id))
+    .map((component) => {
+      const compatibilityByBase = componentIds.map((baseComponentId) => ({
+        baseComponentId,
+        status: pairAllowed(baseComponentId, component.id)
+          ? ('ALLOWED' as const)
+          : ('UNKNOWN' as const),
+        explanations: pairAllowed(baseComponentId, component.id)
+          ? [{ source: 'MANUAL' as const, linkId: baseComponentId + component.id }]
+          : [],
+        blockingRules: [],
+      }));
+      return {
+        ...component,
+        status: compatibilityByBase.some((decision) => decision.status === 'ALLOWED')
+          ? ('AVAILABLE' as const)
+          : ('UNRELATED' as const),
+        compatibilityByBase,
+      };
+    });
+  const groups = groupComponentsByType(candidates);
+  const connected =
+    componentIds.length < 2 || assemblyDecisions.every((decision) => decision.status === 'ALLOWED');
+  return {
+    componentIds,
+    assemblyStatus: connected ? ('VALID' as const) : ('DISCONNECTED' as const),
+    assemblyDecisions,
+    candidatesByType: [...groups].map(([componentTypeId, entries]) => ({
+      componentTypeId,
+      componentTypeName:
+        componentTypes.find((type) => type.id === componentTypeId)?.name ?? 'Unknown',
+      components: entries,
     })),
   };
 }
@@ -174,6 +225,13 @@ function useHandlers() {
         });
       },
     ),
+    http.post(
+      `${testApiBaseUrl}/domains/:domainId/configurator/candidates`,
+      async ({ request }) => {
+        const body = (await request.json()) as { componentIds: number[] };
+        return HttpResponse.json(toAssemblyCandidatesResponse(body.componentIds));
+      },
+    ),
   );
 }
 
@@ -242,7 +300,7 @@ describe('configurator workspace', () => {
       (await within(browser).findAllByRole('button', { name: 'Добавить' }, { timeout: 5000 }))[0]!,
     );
     const assembly = screen.getByRole('region', { name: 'Текущая сборка' });
-    await within(assembly).findByText('Сборка совместима напрямую', {}, { timeout: 5000 });
+    await within(assembly).findByText('Сборка корректна', {}, { timeout: 5000 });
     await user.click(within(assembly).getByRole('button', { name: 'Сохранить конфигурацию' }));
     const dialog = await screen.findByRole('dialog', { name: 'Сохранение конфигурации' });
     await user.type(within(dialog).getByRole('textbox', { name: /Название/ }), '  Домашний ПК  ');
@@ -286,7 +344,7 @@ describe('configurator workspace', () => {
       items: [{ componentId: ryzen.id, componentTypeId: ryzen.componentTypeId }],
     });
 
-    expect(await within(assembly).findByText('Сборка совместима напрямую')).toBeInTheDocument();
+    expect(await within(assembly).findByText('Сборка корректна')).toBeInTheDocument();
     browser = screen.getByRole('region', { name: 'Доступные компоненты' });
     expect(await within(browser).findByText(radeon.name)).toBeInTheDocument();
     await user.click(within(browser).getAllByRole('button', { name: 'Добавить' })[0]!);
@@ -326,6 +384,57 @@ describe('configurator workspace', () => {
     expect(
       await within(assembly).findByRole('heading', { name: 'Сборка пока пуста' }),
     ).toBeInTheDocument();
+  });
+
+  it('keeps blocked candidates out of suggestions and explains the blocking rule', async () => {
+    const user = userEvent.setup();
+    useHandlers();
+    server.use(
+      http.post(
+        `${testApiBaseUrl}/domains/:domainId/configurator/candidates`,
+        async ({ request }) => {
+          const body = (await request.json()) as { componentIds: number[] };
+          const response = toAssemblyCandidatesResponse(body.componentIds);
+          if (body.componentIds.length === 1 && body.componentIds[0] === ryzen.id) {
+            const board = response.candidatesByType
+              .flatMap((group) => group.components)
+              .find((component) => component.id === motherboard.id);
+            if (board) {
+              board.status = 'BLOCKED';
+              board.compatibilityByBase = [
+                {
+                  baseComponentId: ryzen.id,
+                  status: 'DENIED',
+                  explanations: [],
+                  blockingRules: [{ ruleSetId: 77, ruleSetName: 'Недостаточная мощность' }],
+                },
+              ];
+            }
+          }
+          return HttpResponse.json(response);
+        },
+      ),
+    );
+    renderPage();
+
+    let browser = await screen.findByRole('region', { name: 'Доступные компоненты' });
+    await user.click((await within(browser).findAllByRole('button', { name: 'Добавить' }))[0]!);
+    browser = screen.getByRole('region', { name: 'Доступные компоненты' });
+    const unavailableControl = await within(browser).findByRole('button', {
+      name: 'Недоступные варианты: 1',
+    });
+    const collapsedCandidate = within(browser).queryByText(motherboard.name);
+    if (collapsedCandidate) expect(collapsedCandidate).not.toBeVisible();
+
+    await user.click(unavailableControl);
+    const blockedCandidate = await within(browser).findByText(motherboard.name);
+    const blockedCard = blockedCandidate.closest('[data-with-border="true"]');
+    expect(blockedCard).not.toBeNull();
+    expect(
+      within(blockedCard as HTMLElement).queryByRole('button', { name: 'Добавить' }),
+    ).not.toBeInTheDocument();
+    expect(within(browser).getByText(/Недостаточная мощность/)).toBeInTheDocument();
+    expect(within(browser).getByText('Заблокирован')).toBeInTheDocument();
   });
 
   it('restores the ordered domain draft and keeps an unavailable item visible', async () => {
@@ -371,20 +480,26 @@ describe('configurator workspace', () => {
     useHandlers();
     server.use(
       http.post(
-        `${testApiBaseUrl}/domains/:domainId/configurator/compatible/search`,
+        `${testApiBaseUrl}/domains/:domainId/configurator/candidates`,
         async ({ request }) => {
           const body = (await request.json()) as { componentIds: number[] };
-          if (body.componentIds.includes(ryzen.id)) {
+          const response = toAssemblyCandidatesResponse(body.componentIds);
+          if (body.componentIds.includes(ryzen.id) && body.componentIds.includes(radeon.id)) {
             return HttpResponse.json({
-              results: body.componentIds.map((baseComponentId) => ({
-                baseComponentId,
-                compatibleByType: [],
-              })),
+              ...response,
+              assemblyStatus: 'BLOCKED',
+              assemblyDecisions: [
+                {
+                  leftComponentId: ryzen.id,
+                  rightComponentId: radeon.id,
+                  status: 'DENIED',
+                  explanations: [],
+                  blockingRules: [{ ruleSetId: 77, ruleSetName: 'Недостаточная мощность' }],
+                },
+              ],
             });
           }
-          return HttpResponse.json({
-            results: body.componentIds.map(toCompatibilityResponse),
-          });
+          return HttpResponse.json(response);
         },
       ),
     );
@@ -394,7 +509,7 @@ describe('configurator workspace', () => {
     const browser = screen.getByRole('region', { name: 'Доступные компоненты' });
     expect(await within(assembly).findByText('В сборке есть конфликт')).toBeInTheDocument();
     expect(within(assembly).getAllByText('Конфликт')).toHaveLength(2);
-    expect(within(browser).getByText('Подбор временно недоступен')).toBeInTheDocument();
+    expect(within(browser).queryByText('Подбор временно недоступен')).not.toBeInTheDocument();
 
     await user.click(within(assembly).getByRole('button', { name: `Заменить ${ryzen.name}` }));
     const replacementBrowser = screen.getByRole('region', { name: 'Выбор замены' });
@@ -409,7 +524,7 @@ describe('configurator workspace', () => {
     );
 
     expect(await within(assembly).findByText(intel.name)).toBeInTheDocument();
-    expect(await within(assembly).findByText('Сборка совместима напрямую')).toBeInTheDocument();
+    expect(await within(assembly).findByText('Сборка корректна')).toBeInTheDocument();
     expect(within(assembly).queryByText(ryzen.name)).not.toBeInTheDocument();
   });
 
@@ -469,7 +584,7 @@ describe('configurator workspace', () => {
     }
   });
 
-  it('shows direct evidence, enables a transitive path and returns to strict conflict validation', async () => {
+  it('shows direct evidence and keeps transitive-only additions invalid for saving', async () => {
     const user = userEvent.setup();
     useHandlers();
     server.use(
@@ -536,48 +651,53 @@ describe('configurator workspace', () => {
         });
       }),
       http.post(
-        `${testApiBaseUrl}/domains/:domainId/configurator/compatible/search`,
+        `${testApiBaseUrl}/domains/:domainId/configurator/candidates`,
         async ({ request }) => {
-          const body = (await request.json()) as {
-            componentIds: number[];
-            includeTransitive: boolean;
-          };
-          return HttpResponse.json({
-            results: body.componentIds.map((baseComponentId) => ({
-              baseComponentId,
-              compatibleByType: body.includeTransitive
-                ? [
+          const body = (await request.json()) as { componentIds: number[] };
+          const response = toAssemblyCandidatesResponse(body.componentIds);
+          if (body.componentIds.length === 1 && body.componentIds[0] === ryzen.id) {
+            const gpuGroup = response.candidatesByType.find(
+              (group) => group.componentTypeId === radeon.componentTypeId,
+            );
+            const gpu = gpuGroup?.components.find((component) => component.id === radeon.id);
+            if (gpu) {
+              gpu.compatibilityByBase[0]!.explanations = [
+                { source: 'MANUAL', linkId: 501, comment: 'Проверено производителем' },
+                {
+                  source: 'AUTOMATIC',
+                  ruleSetId: 601,
+                  ruleSetName: 'Совпадающий интерфейс',
+                  conditions: [
                     {
-                      componentTypeId:
-                        baseComponentId === ryzen.id
-                          ? motherboard.componentTypeId
-                          : ryzen.componentTypeId,
-                      componentTypeName:
-                        baseComponentId === ryzen.id ? 'Материнская плата' : 'Процессор',
-                      components: [
-                        {
-                          id: baseComponentId === ryzen.id ? motherboard.id : ryzen.id,
-                          name: baseComponentId === ryzen.id ? motherboard.name : ryzen.name,
-                          componentTypeId:
-                            baseComponentId === ryzen.id
-                              ? motherboard.componentTypeId
-                              : ryzen.componentTypeId,
-                          explanations: [
-                            {
-                              source: 'TRANSITIVE',
-                              pathComponentIds:
-                                baseComponentId === ryzen.id
-                                  ? [ryzen.id, radeon.id, motherboard.id]
-                                  : [motherboard.id, radeon.id, ryzen.id],
-                            },
-                          ],
-                        },
-                      ],
+                      leftAttributeDefinitionId: 11,
+                      leftAttributeName: 'Интерфейс',
+                      leftValue: 'PCIe 4.0',
+                      operator: 'EQUALS',
+                      rightAttributeDefinitionId: 12,
+                      rightAttributeName: 'Интерфейс',
+                      rightValue: 'PCIe 4.0',
                     },
-                  ]
-                : [],
-            })),
-          });
+                  ],
+                },
+              ];
+            }
+          }
+          if (body.componentIds.includes(ryzen.id) && body.componentIds.includes(motherboard.id)) {
+            return HttpResponse.json({
+              ...response,
+              assemblyStatus: 'DISCONNECTED',
+              assemblyDecisions: [
+                {
+                  leftComponentId: ryzen.id,
+                  rightComponentId: motherboard.id,
+                  status: 'UNKNOWN',
+                  explanations: [],
+                  blockingRules: [],
+                },
+              ],
+            });
+          }
+          return HttpResponse.json(response);
         },
       ),
     );
@@ -587,7 +707,9 @@ describe('configurator workspace', () => {
     await user.click((await within(browser).findAllByRole('button', { name: 'Добавить' }))[0]!);
     browser = screen.getByRole('region', { name: 'Доступные компоненты' });
 
-    await user.click(await within(browser).findByRole('button', { name: 'Почему совместим' }));
+    await user.click(
+      (await within(browser).findAllByRole('button', { name: 'Почему совместим' }))[0]!,
+    );
     let drawer = await screen.findByRole('dialog', { name: `Почему совместим «${radeon.name}»` });
     expect(within(drawer).getByText('Проверено производителем')).toBeInTheDocument();
     expect(within(drawer).getByText('Совпадающий интерфейс')).toBeInTheDocument();
@@ -610,10 +732,7 @@ describe('configurator workspace', () => {
     browser = screen.getByRole('region', { name: 'Доступные компоненты' });
     await user.click(within(browser).getAllByRole('button', { name: 'Добавить' }).at(-1)!);
     const assembly = screen.getByRole('region', { name: 'Текущая сборка' });
-    expect(
-      await within(assembly).findByText('Сборка совместима только с учётом цепочек'),
-    ).toBeInTheDocument();
-    expect(within(assembly).getByText(/нельзя сохранить/)).toBeInTheDocument();
+    expect(await within(assembly).findByText('В сборке есть конфликт')).toBeInTheDocument();
 
     await user.click(within(assembly).getByRole('button', { name: 'Показать проверку' }));
     expect(
@@ -623,10 +742,5 @@ describe('configurator workspace', () => {
 
     await user.click(screen.getByRole('switch', { name: /^Учитывать транзитивную совместимость/ }));
     expect(await within(assembly).findByText('В сборке есть конфликт')).toBeInTheDocument();
-    expect(
-      within(screen.getByRole('region', { name: 'Доступные компоненты' })).getByText(
-        'Подбор временно недоступен',
-      ),
-    ).toBeInTheDocument();
   });
 });
