@@ -117,7 +117,7 @@ function AttributeField({
               onBlur={field.onBlur}
               clearable={!attribute.isRequired}
               allowDeselect={!attribute.isRequired}
-              withAsterisk={attribute.isRequired}
+              withAsterisk={attribute.isRequired ?? false}
               error={fieldState.error?.message}
             />
           );
@@ -134,7 +134,7 @@ function AttributeField({
               searchable
               clearable={!attribute.isRequired}
               allowDeselect={!attribute.isRequired}
-              withAsterisk={attribute.isRequired}
+              withAsterisk={attribute.isRequired ?? false}
               error={fieldState.error?.message}
             />
           );
@@ -144,7 +144,7 @@ function AttributeField({
             label={label}
             description={attribute.name}
             inputMode={attribute.dataType === 'NUMBER' ? 'decimal' : 'text'}
-            withAsterisk={attribute.isRequired}
+            withAsterisk={attribute.isRequired ?? false}
             error={fieldState.error?.message}
             {...field}
           />

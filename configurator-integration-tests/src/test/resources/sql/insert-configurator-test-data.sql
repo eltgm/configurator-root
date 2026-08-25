@@ -10,20 +10,26 @@ VALUES (10, 1, 'Processor', 'CPU', 'Processor type', 1, NOW()),
 
 INSERT INTO attribute_definition (
     id,
-    component_type_id,
+    domain_id,
     name,
     label,
     data_type,
-    is_required,
-    order_index,
     created_at
 )
-VALUES (101, 10, 'socket', 'Socket', 'STRING', true, 1, NOW()),
-       (102, 10, 'power', 'Power', 'NUMBER', true, 2, NOW()),
-       (103, 10, 'feature', 'Feature', 'BOOLEAN', false, 3, NOW()),
-       (201, 20, 'socket', 'Socket', 'STRING', true, 1, NOW()),
-       (202, 20, 'power_limit', 'Power limit', 'NUMBER', true, 2, NOW()),
-       (203, 20, 'feature', 'Feature', 'BOOLEAN', false, 3, NOW());
+VALUES (101, 1, 'socket', 'Socket', 'STRING', NOW()),
+       (102, 1, 'power', 'Power', 'NUMBER', NOW()),
+       (103, 1, 'feature', 'Feature', 'BOOLEAN', NOW()),
+       (201, 1, 'socket', 'Socket', 'STRING', NOW()),
+       (202, 1, 'power_limit', 'Power limit', 'NUMBER', NOW()),
+       (203, 1, 'feature', 'Feature', 'BOOLEAN', NOW());
+
+INSERT INTO component_type_attribute (component_type_id, attribute_definition_id, is_required, order_index, created_at)
+VALUES (10, 101, true, 1, NOW()),
+       (10, 102, true, 2, NOW()),
+       (10, 103, false, 3, NOW()),
+       (20, 201, true, 1, NOW()),
+       (20, 202, true, 2, NOW()),
+       (20, 203, false, 3, NOW());
 
 INSERT INTO component (
     id,

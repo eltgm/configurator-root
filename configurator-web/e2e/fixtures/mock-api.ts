@@ -53,6 +53,7 @@ const attributesByType = {
   11: [
     {
       id: 1011,
+      domainId: 101,
       componentTypeId: 11,
       name: 'cores',
       label: 'Количество ядер',
@@ -64,6 +65,7 @@ const attributesByType = {
   12: [
     {
       id: 2011,
+      domainId: 101,
       componentTypeId: 12,
       name: 'pcie_lanes',
       label: 'Линии PCIe',
@@ -222,6 +224,21 @@ async function installMockApi(page: Page) {
       attributes.map((attribute) => ({ ...attribute })),
     ]),
   );
+  let attributeCatalog: Array<AttributeDefinition> = [...attributeState.values()]
+    .flat()
+    .map((attribute) => ({
+      id: attribute.id,
+      domainId: attribute.domainId,
+      name: attribute.name,
+      label: attribute.label,
+      dataType: attribute.dataType,
+      ...(attribute.enumValues ? { enumValues: attribute.enumValues } : {}),
+      componentTypeIds: [...attributeState]
+        .filter(([, definitions]) =>
+          definitions.some((definition) => definition.id === attribute.id),
+        )
+        .map(([typeId]) => typeId),
+    }));
   let nextAttributeId = 3001;
   const toAttributeValues = (
     inputs: ReadonlyArray<{ attributeDefinitionId: number; value: string }> = [],
@@ -432,6 +449,29 @@ async function installMockApi(page: Page) {
     }
     await route.fallback();
   });
+  await page.route(frontendApiBaseUrl + '/domains/*/attributes', async (route) => {
+    const request = route.request();
+    const domainId = Number(new URL(request.url()).pathname.split('/').at(-2));
+    if (request.method() === 'GET') {
+      await route.fulfill({
+        json: attributeCatalog.filter((attribute) => attribute.domainId === domainId),
+      });
+      return;
+    }
+    if (request.method() === 'POST') {
+      const body = request.postDataJSON() as Omit<AttributeDefinition, 'id' | 'domainId'>;
+      const created: AttributeDefinition = {
+        id: nextAttributeId++,
+        domainId,
+        componentTypeIds: [],
+        ...body,
+      };
+      attributeCatalog = [...attributeCatalog, created];
+      await route.fulfill({ status: 201, json: created });
+      return;
+    }
+    await route.fallback();
+  });
   await page.route(frontendApiBaseUrl + '/component-types/*/attributes', async (route) => {
     const request = route.request();
     const typeId = Number(new URL(route.request().url()).pathname.split('/').at(-2));
@@ -440,13 +480,28 @@ async function installMockApi(page: Page) {
       return;
     }
     if (request.method() === 'POST') {
-      const body = request.postDataJSON() as Omit<AttributeDefinition, 'id' | 'componentTypeId'>;
+      const body = request.postDataJSON() as Omit<
+        AttributeDefinition,
+        'id' | 'domainId' | 'componentTypeId'
+      >;
+      const domainId = componentTypeState.find((type) => type.id === typeId)?.domainId ?? 0;
       const created: AttributeDefinition = {
         id: nextAttributeId++,
+        domainId,
         componentTypeId: typeId,
         ...body,
       };
       attributeState.set(typeId, [...(attributeState.get(typeId) ?? []), created]);
+      attributeCatalog = [
+        ...attributeCatalog,
+        {
+          ...created,
+          componentTypeId: null,
+          isRequired: null,
+          orderIndex: null,
+          componentTypeIds: [typeId],
+        },
+      ];
       await route.fulfill({ status: 201, json: created });
       return;
     }
@@ -478,18 +533,89 @@ async function installMockApi(page: Page) {
     }
     await route.fallback();
   });
+  await page.route(frontendApiBaseUrl + '/component-types/*/attributes/*', async (route) => {
+    const request = route.request();
+    const parts = new URL(request.url()).pathname.split('/');
+    const componentTypeId = Number(parts.at(-3));
+    const attributeId = Number(parts.at(-1));
+    const catalogAttribute = attributeCatalog.find((attribute) => attribute.id === attributeId);
+    if (!catalogAttribute) {
+      await route.fulfill({ status: 404, body: '' });
+      return;
+    }
+    if (request.method() === 'PUT') {
+      const body = request.postDataJSON() as {
+        isRequired?: boolean;
+        orderIndex?: number | null;
+      };
+      const linked: AttributeDefinition = {
+        ...catalogAttribute,
+        componentTypeId,
+        isRequired: body.isRequired ?? false,
+        orderIndex: body.orderIndex ?? null,
+      };
+      const current = attributeState.get(componentTypeId) ?? [];
+      attributeState.set(componentTypeId, [
+        ...current.filter((attribute) => attribute.id !== attributeId),
+        linked,
+      ]);
+      catalogAttribute.componentTypeIds = [
+        ...new Set([...(catalogAttribute.componentTypeIds ?? []), componentTypeId]),
+      ];
+      await route.fulfill({ json: linked });
+      return;
+    }
+    if (request.method() === 'DELETE') {
+      attributeState.set(
+        componentTypeId,
+        (attributeState.get(componentTypeId) ?? []).filter(
+          (attribute) => attribute.id !== attributeId,
+        ),
+      );
+      catalogAttribute.componentTypeIds = (catalogAttribute.componentTypeIds ?? []).filter(
+        (typeId) => typeId !== componentTypeId,
+      );
+      await route.fulfill({ status: 204, body: '' });
+      return;
+    }
+    await route.fallback();
+  });
   await page.route(frontendApiBaseUrl + '/attributes/*', async (route) => {
     const request = route.request();
     const attributeId = Number(new URL(request.url()).pathname.split('/').at(-1));
-    const entry = [...attributeState].find(([, attributes]) =>
-      attributes.some((attribute) => attribute.id === attributeId),
-    );
-    const index = entry?.[1].findIndex((attribute) => attribute.id === attributeId) ?? -1;
-    if (entry && index >= 0 && request.method() === 'PUT') {
+    const catalogIndex = attributeCatalog.findIndex((attribute) => attribute.id === attributeId);
+    if (catalogIndex >= 0 && request.method() === 'PUT') {
       const body = request.postDataJSON() as Omit<AttributeDefinition, 'id' | 'componentTypeId'>;
-      const updated: AttributeDefinition = { ...entry[1][index], ...body };
-      entry[1][index] = updated;
+      const updated: AttributeDefinition = { ...attributeCatalog[catalogIndex], ...body };
+      attributeCatalog[catalogIndex] = updated;
+      for (const [typeId, attributes] of attributeState) {
+        attributeState.set(
+          typeId,
+          attributes.map((attribute) =>
+            attribute.id === attributeId
+              ? {
+                  ...attribute,
+                  name: updated.name,
+                  label: updated.label,
+                  dataType: updated.dataType,
+                  enumValues: updated.enumValues,
+                }
+              : attribute,
+          ),
+        );
+      }
       await route.fulfill({ json: updated });
+      return;
+    }
+    if (catalogIndex >= 0 && request.method() === 'DELETE') {
+      attributeCatalog.splice(catalogIndex, 1);
+      for (const [typeId, attributes] of attributeState) {
+        attributeState.set(
+          typeId,
+          attributes.filter((attribute) => attribute.id !== attributeId),
+        );
+      }
+      await route.fulfill({ status: 204, body: '' });
       return;
     }
     await route.fallback();

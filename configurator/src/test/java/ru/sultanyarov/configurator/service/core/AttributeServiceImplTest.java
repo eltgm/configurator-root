@@ -4,12 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -20,235 +20,186 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.sultanyarov.configurator.application.port.out.AttributeRepository;
 import ru.sultanyarov.configurator.application.port.out.AttributeValueRepository;
+import ru.sultanyarov.configurator.application.port.out.CompatibilityRuleRepository;
+import ru.sultanyarov.configurator.application.port.out.ComponentTypeAttributeRepository;
 import ru.sultanyarov.configurator.application.port.out.ComponentTypeRepository;
+import ru.sultanyarov.configurator.application.port.out.DomainRepository;
 import ru.sultanyarov.configurator.application.service.AttributeServiceImpl;
 import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
+import ru.sultanyarov.configurator.domain.exception.EntityHasRelatedEntitiesException;
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
 import ru.sultanyarov.configurator.domain.model.AttributeDefinition;
+import ru.sultanyarov.configurator.domain.model.ComponentType;
+import ru.sultanyarov.configurator.domain.model.ComponentTypeAttribute;
 import ru.sultanyarov.configurator.domain.model.DataType;
-import ru.sultanyarov.configurator.test.data.AttributeDefinitionTestData;
 
 @ExtendWith(MockitoExtension.class)
 class AttributeServiceImplTest {
   @Mock private AttributeRepository attributeRepository;
-
   @Mock private AttributeValueRepository attributeValueRepository;
-
   @Mock private ComponentTypeRepository componentTypeRepository;
-
+  @Mock private ComponentTypeAttributeRepository componentTypeAttributeRepository;
+  @Mock private DomainRepository domainRepository;
+  @Mock private CompatibilityRuleRepository compatibilityRuleRepository;
   @InjectMocks private AttributeServiceImpl attributeService;
 
   @Test
-  void create_shouldCreateAttributeDefinitionWhenValid() {
-    // Arrange
-    AttributeDefinition attributeDefinition = AttributeDefinitionTestData.attributeDefinition();
+  void create_shouldCreateCatalogDefinitionAndAttachIt() {
+    AttributeDefinition request = linkedRequest(10L, "socket", DataType.STRING, Set.of());
+    AttributeDefinition stored = catalogDefinition(101L, 1L, "socket", DataType.STRING);
+    when(componentTypeRepository.getComponentTypeById(10L)).thenReturn(Optional.of(type(10L, 1L)));
+    when(domainRepository.existsById(1L)).thenReturn(true);
+    when(attributeRepository.createAttributeDefinition(any())).thenReturn(Optional.of(stored));
+    when(componentTypeAttributeRepository.save(any()))
+        .thenReturn(Optional.of(link(10L, 101L, true, 2)));
 
-    when(componentTypeRepository.existsById(attributeDefinition.componentTypeId()))
-        .thenReturn(true);
-    when(attributeRepository.hasByComponentTypeIdAndName(
-            attributeDefinition.componentTypeId(), attributeDefinition.name()))
-        .thenReturn(false);
-    when(attributeRepository.createAttributeDefinition(attributeDefinition))
-        .thenReturn(Optional.of(attributeDefinition));
+    AttributeDefinition result = attributeService.create(request);
 
-    // Act
-    AttributeDefinition result = attributeService.create(attributeDefinition);
-
-    // Assert
-    assertThat(result).isEqualTo(attributeDefinition);
-    verify(componentTypeRepository).existsById(attributeDefinition.componentTypeId());
-    verify(attributeRepository)
-        .hasByComponentTypeIdAndName(
-            attributeDefinition.componentTypeId(), attributeDefinition.name());
-    verify(attributeRepository).createAttributeDefinition(attributeDefinition);
+    assertThat(result.id()).isEqualTo(101L);
+    assertThat(result.domainId()).isEqualTo(1L);
+    assertThat(result.componentTypeId()).isEqualTo(10L);
+    assertThat(result.isRequired()).isTrue();
+    assertThat(result.orderIndex()).isEqualTo(2);
+    verify(attributeRepository).hasByComponentTypeIdAndName(10L, "socket");
   }
 
   @Test
-  void create_shouldCreateEnumAttributeDefinitionWhenValid() {
-    // Arrange
-    AttributeDefinition attributeDefinition = AttributeDefinitionTestData.enumAttributeDefinition();
+  void create_shouldRejectMissingComponentTypeBeforePersisting() {
+    when(componentTypeRepository.getComponentTypeById(10L)).thenReturn(Optional.empty());
 
-    when(componentTypeRepository.existsById(attributeDefinition.componentTypeId()))
-        .thenReturn(true);
-    when(attributeRepository.hasByComponentTypeIdAndName(
-            attributeDefinition.componentTypeId(), attributeDefinition.name()))
-        .thenReturn(false);
-    when(attributeRepository.createAttributeDefinition(attributeDefinition))
-        .thenReturn(Optional.of(attributeDefinition));
-
-    // Act
-    AttributeDefinition result = attributeService.create(attributeDefinition);
-
-    // Assert
-    assertThat(result).isEqualTo(attributeDefinition);
-    verify(componentTypeRepository).existsById(attributeDefinition.componentTypeId());
-    verify(attributeRepository)
-        .hasByComponentTypeIdAndName(
-            attributeDefinition.componentTypeId(), attributeDefinition.name());
-    verify(attributeRepository).createAttributeDefinition(attributeDefinition);
-  }
-
-  @Test
-  void create_shouldThrowNotFoundExceptionWhenComponentTypeDoesNotExist() {
-    // Arrange
-    AttributeDefinition attributeDefinition = AttributeDefinitionTestData.attributeDefinition();
-
-    when(componentTypeRepository.existsById(attributeDefinition.componentTypeId()))
-        .thenReturn(false);
-
-    // Act & Assert
-    assertThatThrownBy(() -> attributeService.create(attributeDefinition))
+    assertThatThrownBy(
+            () -> attributeService.create(linkedRequest(10L, "socket", DataType.STRING, Set.of())))
         .isInstanceOf(NotFoundException.class);
 
-    verify(componentTypeRepository).existsById(attributeDefinition.componentTypeId());
-    verify(attributeRepository, never()).hasByComponentTypeIdAndName(anyLong(), anyString());
     verify(attributeRepository, never()).createAttributeDefinition(any());
   }
 
   @Test
-  void
-      create_shouldThrowEntityAlreadyExistsExceptionWhenAttributeDefinitionWithSameNameAndComponentTypeExists() {
-    // Arrange
-    AttributeDefinition attributeDefinition = AttributeDefinitionTestData.attributeDefinition();
+  void create_shouldRejectDuplicateNameInComponentType() {
+    when(componentTypeRepository.getComponentTypeById(10L)).thenReturn(Optional.of(type(10L, 1L)));
+    when(attributeRepository.hasByComponentTypeIdAndName(10L, "socket")).thenReturn(true);
 
-    when(componentTypeRepository.existsById(attributeDefinition.componentTypeId()))
-        .thenReturn(true);
-    when(attributeRepository.hasByComponentTypeIdAndName(
-            attributeDefinition.componentTypeId(), attributeDefinition.name()))
-        .thenReturn(true);
-
-    // Act & Assert
-    assertThatThrownBy(() -> attributeService.create(attributeDefinition))
+    assertThatThrownBy(
+            () -> attributeService.create(linkedRequest(10L, "socket", DataType.STRING, Set.of())))
         .isInstanceOf(EntityAlreadyExistsException.class);
 
-    verify(componentTypeRepository).existsById(attributeDefinition.componentTypeId());
-    verify(attributeRepository)
-        .hasByComponentTypeIdAndName(
-            attributeDefinition.componentTypeId(), attributeDefinition.name());
     verify(attributeRepository, never()).createAttributeDefinition(any());
   }
 
   @Test
-  void create_shouldThrowValidationExceptionWhenEnumAttributeDefinitionHasNoEnumValues() {
-    // Arrange
-    AttributeDefinition attributeDefinition =
-        AttributeDefinitionTestData.enumAttributeDefinitionWithoutValues();
+  void createInDomain_shouldValidateEnumValues() {
+    when(domainRepository.existsById(1L)).thenReturn(true);
 
-    when(componentTypeRepository.existsById(attributeDefinition.componentTypeId()))
-        .thenReturn(true);
-    when(attributeRepository.hasByComponentTypeIdAndName(
-            attributeDefinition.componentTypeId(), attributeDefinition.name()))
-        .thenReturn(false);
-
-    // Act & Assert
-    assertThatThrownBy(() -> attributeService.create(attributeDefinition))
-        .isInstanceOf(ValidationException.class);
-
-    verify(componentTypeRepository).existsById(attributeDefinition.componentTypeId());
-    verify(attributeRepository)
-        .hasByComponentTypeIdAndName(
-            attributeDefinition.componentTypeId(), attributeDefinition.name());
-    verify(attributeRepository, never()).createAttributeDefinition(any());
+    assertThatThrownBy(
+            () ->
+                attributeService.createInDomain(
+                    1L,
+                    AttributeDefinition.builder()
+                        .name("layout")
+                        .label("Layout")
+                        .dataType(DataType.ENUM)
+                        .enumValues(Set.of())
+                        .build()))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Enum values");
   }
 
   @Test
-  void update_shouldUpdateAttributeDefinitionWhenValid() {
-    // Arrange
-    Long id = 1L;
-    AttributeDefinition existingAttributeDefinition =
-        AttributeDefinitionTestData.attributeDefinitionWithId(id);
-    AttributeDefinition updatedAttributeDefinition =
-        AttributeDefinitionTestData.attributeDefinitionWithIdAndName(id, "updated_attribute");
+  void attach_shouldReuseDefinitionWithIndependentSettings() {
+    AttributeDefinition definition = catalogDefinition(101L, 1L, "socket", DataType.STRING);
+    when(componentTypeRepository.getComponentTypeById(20L)).thenReturn(Optional.of(type(20L, 1L)));
+    when(attributeRepository.getById(101L)).thenReturn(Optional.of(definition));
+    when(componentTypeAttributeRepository.save(any()))
+        .thenReturn(Optional.of(link(20L, 101L, false, 4)));
 
-    when(attributeRepository.getById(id)).thenReturn(Optional.of(existingAttributeDefinition));
-    when(attributeRepository.hasByComponentTypeIdAndName(
-            updatedAttributeDefinition.componentTypeId(), updatedAttributeDefinition.name()))
-        .thenReturn(false);
-    when(attributeRepository.updateAttribute(eq(id), any(AttributeDefinition.class)))
-        .thenAnswer(invocation -> Optional.of(invocation.getArgument(1)));
+    AttributeDefinition result = attributeService.attachToComponentType(20L, 101L, false, 4);
 
-    // Act
-    AttributeDefinition result = attributeService.update(id, updatedAttributeDefinition);
-
-    // Assert
-    assertThat(result.name()).isEqualTo(updatedAttributeDefinition.name());
-    assertThat(result.id()).isEqualTo(existingAttributeDefinition.id());
-    assertThat(result.createdAt()).isEqualTo(existingAttributeDefinition.createdAt());
-    verify(attributeRepository)
-        .hasByComponentTypeIdAndName(
-            updatedAttributeDefinition.componentTypeId(), updatedAttributeDefinition.name());
-    verify(attributeRepository).updateAttribute(eq(id), any(AttributeDefinition.class));
+    assertThat(result.componentTypeId()).isEqualTo(20L);
+    assertThat(result.isRequired()).isFalse();
+    assertThat(result.orderIndex()).isEqualTo(4);
+    verify(attributeRepository).hasByComponentTypeIdAndName(20L, "socket");
   }
 
   @Test
-  void update_shouldThrowNotFoundExceptionWhenAttributeDefinitionDoesNotExist() {
-    // Arrange
-    Long id = 1L;
-    AttributeDefinition updatedAttributeDefinition =
-        AttributeDefinitionTestData.attributeDefinitionWithId(id);
+  void attach_shouldRejectDefinitionFromAnotherDomain() {
+    when(componentTypeRepository.getComponentTypeById(20L)).thenReturn(Optional.of(type(20L, 1L)));
+    when(attributeRepository.getById(301L))
+        .thenReturn(Optional.of(catalogDefinition(301L, 2L, "socket", DataType.STRING)));
 
-    when(attributeRepository.getById(id)).thenReturn(Optional.empty());
+    assertThatThrownBy(() -> attributeService.attachToComponentType(20L, 301L, false, null))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("does not belong");
 
-    // Act & Assert
-    assertThatThrownBy(() -> attributeService.update(id, updatedAttributeDefinition))
+    verify(componentTypeAttributeRepository, never()).save(any());
+  }
+
+  @Test
+  void detach_shouldDeleteScopedValuesBeforeLink() {
+    when(componentTypeRepository.getComponentTypeById(20L)).thenReturn(Optional.of(type(20L, 1L)));
+    when(attributeRepository.getById(101L))
+        .thenReturn(Optional.of(catalogDefinition(101L, 1L, "socket", DataType.STRING)));
+    when(componentTypeAttributeRepository.exists(20L, 101L)).thenReturn(true);
+
+    attributeService.detachFromComponentType(20L, 101L);
+
+    verify(attributeValueRepository).deleteByAttributeDefinitionIdAndComponentTypeId(101L, 20L);
+    verify(componentTypeAttributeRepository).delete(20L, 101L);
+  }
+
+  @Test
+  void detach_shouldRejectMissingLink() {
+    when(componentTypeRepository.getComponentTypeById(20L)).thenReturn(Optional.of(type(20L, 1L)));
+    when(attributeRepository.getById(101L))
+        .thenReturn(Optional.of(catalogDefinition(101L, 1L, "socket", DataType.STRING)));
+
+    assertThatThrownBy(() -> attributeService.detachFromComponentType(20L, 101L))
         .isInstanceOf(NotFoundException.class);
 
-    verify(attributeRepository, never()).hasByComponentTypeIdAndName(anyLong(), anyString());
-    verify(attributeRepository, never()).updateAttribute(anyLong(), any());
+    verify(attributeValueRepository, never())
+        .deleteByAttributeDefinitionIdAndComponentTypeId(anyLong(), anyLong());
   }
 
   @Test
-  void
-      update_shouldThrowEntityAlreadyExistsExceptionWhenAnotherAttributeDefinitionWithSameNameAndComponentTypeExists() {
-    // Arrange
-    Long id = 1L;
-    AttributeDefinition existingAttributeDefinition =
-        AttributeDefinitionTestData.attributeDefinitionWithId(id);
-    AttributeDefinition updatedAttributeDefinition =
-        AttributeDefinitionTestData.attributeDefinitionWithIdAndName(id, "updated_attribute");
-
-    when(attributeRepository.getById(id)).thenReturn(Optional.of(existingAttributeDefinition));
-    when(attributeRepository.hasByComponentTypeIdAndName(
-            updatedAttributeDefinition.componentTypeId(), updatedAttributeDefinition.name()))
-        .thenReturn(true);
-
-    // Act & Assert
-    assertThatThrownBy(() -> attributeService.update(id, updatedAttributeDefinition))
-        .isInstanceOf(EntityAlreadyExistsException.class);
-
-    verify(attributeRepository)
-        .hasByComponentTypeIdAndName(
-            updatedAttributeDefinition.componentTypeId(), updatedAttributeDefinition.name());
-    verify(attributeRepository, never()).updateAttribute(anyLong(), any());
-  }
-
-  @Test
-  void update_shouldAllowKeepingTheSameNameWithoutDuplicateLookup() {
-    Long id = 1L;
-    AttributeDefinition existing = AttributeDefinitionTestData.attributeDefinitionWithId(id);
-    AttributeDefinition replacement = replacement(existing, existing.name(), existing.dataType());
-
-    when(attributeRepository.getById(id)).thenReturn(Optional.of(existing));
-    when(attributeRepository.updateAttribute(eq(id), any(AttributeDefinition.class)))
+  void update_shouldPropagateGlobalFieldsAndPreserveIdentity() {
+    AttributeDefinition existing = catalogDefinition(101L, 1L, "socket", DataType.STRING);
+    AttributeDefinition replacement =
+        AttributeDefinition.builder()
+            .name("connector")
+            .label("Connector")
+            .dataType(DataType.STRING)
+            .enumValues(Set.of())
+            .build();
+    when(attributeRepository.getById(101L)).thenReturn(Optional.of(existing));
+    when(componentTypeAttributeRepository.getComponentTypeIdsByAttributeDefinitionId(101L))
+        .thenReturn(List.of(10L, 20L));
+    when(attributeRepository.updateAttribute(eq(101L), any()))
         .thenAnswer(invocation -> Optional.of(invocation.getArgument(1)));
 
-    AttributeDefinition result = attributeService.update(id, replacement);
+    AttributeDefinition result = attributeService.update(101L, replacement);
 
-    assertThat(result.name()).isEqualTo(existing.name());
-    verify(attributeRepository, never()).hasByComponentTypeIdAndName(anyLong(), anyString());
+    assertThat(result.id()).isEqualTo(101L);
+    assertThat(result.domainId()).isEqualTo(1L);
+    assertThat(result.name()).isEqualTo("connector");
+    verify(attributeRepository).hasByComponentTypeIdAndName(10L, "connector");
+    verify(attributeRepository).hasByComponentTypeIdAndName(20L, "connector");
   }
 
   @Test
-  void update_shouldRejectDataTypeChangeWhenPersistedValuesExist() {
-    Long id = 1L;
-    AttributeDefinition existing = AttributeDefinitionTestData.attributeDefinitionWithId(id);
-    AttributeDefinition replacement = replacement(existing, existing.name(), DataType.NUMBER);
+  void update_shouldRejectDataTypeChangeWithPersistedValues() {
+    AttributeDefinition existing = catalogDefinition(101L, 1L, "socket", DataType.STRING);
+    when(attributeRepository.getById(101L)).thenReturn(Optional.of(existing));
+    when(attributeValueRepository.existsByAttributeDefinitionId(101L)).thenReturn(true);
 
-    when(attributeRepository.getById(id)).thenReturn(Optional.of(existing));
-    when(attributeValueRepository.existsByAttributeDefinitionId(id)).thenReturn(true);
-
-    assertThatThrownBy(() -> attributeService.update(id, replacement))
+    assertThatThrownBy(
+            () ->
+                attributeService.update(
+                    101L,
+                    AttributeDefinition.builder()
+                        .name("socket")
+                        .label("Socket")
+                        .dataType(DataType.NUMBER)
+                        .build()))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("persisted values");
 
@@ -256,103 +207,84 @@ class AttributeServiceImplTest {
   }
 
   @Test
-  void update_shouldValidateEnumValues() {
-    Long id = 1L;
-    AttributeDefinition existing = AttributeDefinitionTestData.attributeDefinitionWithId(id);
-    AttributeDefinition replacement =
-        AttributeDefinition.builder()
-            .name(existing.name())
-            .label(existing.label())
-            .dataType(DataType.ENUM)
-            .enumValues(Set.of())
-            .isRequired(existing.isRequired())
-            .orderIndex(existing.orderIndex())
-            .build();
+  void delete_shouldCascadeWhenDefinitionIsNotUsedByRules() {
+    when(attributeRepository.existsById(101L)).thenReturn(true);
 
-    when(attributeRepository.getById(id)).thenReturn(Optional.of(existing));
+    attributeService.deleteById(101L);
 
-    assertThatThrownBy(() -> attributeService.update(id, replacement))
-        .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("Enum values");
-
-    verify(attributeRepository, never()).updateAttribute(anyLong(), any());
+    verify(attributeRepository).deleteById(101L);
   }
 
   @Test
-  void deleteById_shouldDeleteAttributeDefinitionWhenValid() {
-    // Arrange
-    Long id = 1L;
+  void delete_shouldReturnConflictWhenDefinitionIsUsedByRule() {
+    when(attributeRepository.existsById(101L)).thenReturn(true);
+    when(compatibilityRuleRepository.hasByAttributeDefinitionId(101L)).thenReturn(true);
 
-    when(attributeRepository.existsById(id)).thenReturn(true);
+    assertThatThrownBy(() -> attributeService.deleteById(101L))
+        .isInstanceOf(EntityHasRelatedEntitiesException.class)
+        .hasMessageContaining("compatibility rules");
 
-    // Act
-    attributeService.deleteById(id);
-
-    // Assert
-    verify(attributeRepository).existsById(id);
-    verify(attributeRepository).deleteById(id);
-  }
-
-  @Test
-  void deleteById_shouldThrowNotFoundExceptionWhenAttributeDefinitionDoesNotExist() {
-    // Arrange
-    Long id = 1L;
-
-    when(attributeRepository.existsById(id)).thenReturn(false);
-
-    // Act & Assert
-    assertThatThrownBy(() -> attributeService.deleteById(id)).isInstanceOf(NotFoundException.class);
-
-    verify(attributeRepository).existsById(id);
     verify(attributeRepository, never()).deleteById(anyLong());
   }
 
   @Test
-  void getByComponentTypeId_shouldReturnAttributeDefinitionsWhenComponentTypeExists() {
-    // Arrange
-    Long componentTypeId = 1L;
-    List<AttributeDefinition> expectedAttributeDefinitions =
-        List.of(
-            AttributeDefinitionTestData.attributeDefinitionWithId(1L),
-            AttributeDefinitionTestData.attributeDefinitionWithId(2L));
+  void getByDomainAndType_shouldValidateScopeAndReturnDefinitions() {
+    AttributeDefinition definition = catalogDefinition(101L, 1L, "socket", DataType.STRING);
+    when(domainRepository.existsById(1L)).thenReturn(true);
+    when(attributeRepository.getByDomainId(1L)).thenReturn(List.of(definition));
+    when(componentTypeRepository.getComponentTypeById(10L)).thenReturn(Optional.of(type(10L, 1L)));
+    when(attributeRepository.getByComponentTypeId(10L)).thenReturn(List.of(definition));
 
-    when(componentTypeRepository.existsById(componentTypeId)).thenReturn(true);
-    when(attributeRepository.getByComponentTypeId(componentTypeId))
-        .thenReturn(expectedAttributeDefinitions);
-
-    // Act
-    List<AttributeDefinition> result = attributeService.getByComponentTypeId(componentTypeId);
-
-    // Assert
-    assertThat(result).isEqualTo(expectedAttributeDefinitions);
-    verify(componentTypeRepository).existsById(componentTypeId);
-    verify(attributeRepository).getByComponentTypeId(componentTypeId);
+    assertThat(attributeService.getByDomainId(1L)).containsExactly(definition);
+    assertThat(attributeService.getByComponentTypeId(10L)).containsExactly(definition);
   }
 
   @Test
-  void getByComponentTypeId_shouldThrowNotFoundExceptionWhenComponentTypeDoesNotExist() {
-    // Arrange
-    Long componentTypeId = 1L;
+  void getComponentTypeIds_shouldRequireExistingDefinition() {
+    when(attributeRepository.existsById(101L)).thenReturn(true);
+    when(componentTypeAttributeRepository.getComponentTypeIdsByAttributeDefinitionId(101L))
+        .thenReturn(List.of(10L, 20L));
 
-    when(componentTypeRepository.existsById(componentTypeId)).thenReturn(false);
-
-    // Act & Assert
-    assertThatThrownBy(() -> attributeService.getByComponentTypeId(componentTypeId))
-        .isInstanceOf(NotFoundException.class);
-
-    verify(componentTypeRepository).existsById(componentTypeId);
-    verify(attributeRepository, never()).getByComponentTypeId(anyLong());
+    assertThat(attributeService.getComponentTypeIds(101L)).containsExactly(10L, 20L);
   }
 
-  private static AttributeDefinition replacement(
-      AttributeDefinition existing, String name, DataType dataType) {
+  private static AttributeDefinition linkedRequest(
+      Long componentTypeId, String name, DataType dataType, Set<String> enumValues) {
     return AttributeDefinition.builder()
+        .componentTypeId(componentTypeId)
         .name(name)
-        .label(existing.label())
+        .label("Socket")
         .dataType(dataType)
-        .enumValues(existing.enumValues())
-        .isRequired(existing.isRequired())
-        .orderIndex(existing.orderIndex())
+        .enumValues(enumValues)
+        .isRequired(true)
+        .orderIndex(2)
+        .build();
+  }
+
+  private static AttributeDefinition catalogDefinition(
+      Long id, Long domainId, String name, DataType dataType) {
+    return AttributeDefinition.builder()
+        .id(id)
+        .domainId(domainId)
+        .name(name)
+        .label("Socket")
+        .dataType(dataType)
+        .enumValues(Set.of())
+        .createdAt(LocalDateTime.of(2026, 8, 25, 12, 0))
+        .build();
+  }
+
+  private static ComponentType type(Long id, Long domainId) {
+    return ComponentType.builder().id(id).domainId(domainId).name("Type " + id).build();
+  }
+
+  private static ComponentTypeAttribute link(
+      Long componentTypeId, Long attributeDefinitionId, Boolean isRequired, Integer orderIndex) {
+    return ComponentTypeAttribute.builder()
+        .componentTypeId(componentTypeId)
+        .attributeDefinitionId(attributeDefinitionId)
+        .isRequired(isRequired)
+        .orderIndex(orderIndex)
         .build();
   }
 }

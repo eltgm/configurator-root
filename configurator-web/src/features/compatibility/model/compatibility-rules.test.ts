@@ -27,6 +27,7 @@ const types: ComponentType[] = [
 const attributes: AttributeDefinition[] = [
   {
     id: 101,
+    domainId: 7,
     componentTypeId: 11,
     name: 'socket',
     label: 'Socket',
@@ -35,6 +36,7 @@ const attributes: AttributeDefinition[] = [
   },
   {
     id: 102,
+    domainId: 7,
     componentTypeId: 11,
     name: 'cores',
     label: 'Cores',

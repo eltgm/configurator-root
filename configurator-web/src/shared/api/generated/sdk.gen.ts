@@ -11,12 +11,18 @@ import {
 } from './client';
 import { client } from './client.gen';
 import type {
+  DeleteAttributesByIdData,
+  DeleteAttributesByIdErrors,
+  DeleteAttributesByIdResponses,
   DeleteComponentImagesByIdData,
   DeleteComponentImagesByIdErrors,
   DeleteComponentImagesByIdResponses,
   DeleteComponentsByIdData,
   DeleteComponentsByIdErrors,
   DeleteComponentsByIdResponses,
+  DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdData,
+  DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdErrors,
+  DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdResponses,
   DeleteComponentTypesByIdData,
   DeleteComponentTypesByIdErrors,
   DeleteComponentTypesByIdResponses,
@@ -53,6 +59,9 @@ import type {
   GetConfigurationsByIdExportJsonErrors,
   GetConfigurationsByIdExportJsonResponses,
   GetConfigurationsByIdResponses,
+  GetDomainsByDomainIdAttributesData,
+  GetDomainsByDomainIdAttributesErrors,
+  GetDomainsByDomainIdAttributesResponses,
   GetDomainsByDomainIdComponentsData,
   GetDomainsByDomainIdComponentsErrors,
   GetDomainsByDomainIdComponentsResponses,
@@ -97,6 +106,9 @@ import type {
   PostComponentTypesByIdAttributesData,
   PostComponentTypesByIdAttributesErrors,
   PostComponentTypesByIdAttributesResponses,
+  PostDomainsByDomainIdAttributesData,
+  PostDomainsByDomainIdAttributesErrors,
+  PostDomainsByDomainIdAttributesResponses,
   PostDomainsByIdCompatibilityData,
   PostDomainsByIdCompatibilityErrors,
   PostDomainsByIdCompatibilityResponses,
@@ -130,6 +142,9 @@ import type {
   PutComponentsByIdImagesOrderErrors,
   PutComponentsByIdImagesOrderResponses,
   PutComponentsByIdResponses,
+  PutComponentTypesByComponentTypeIdAttributesByAttributeIdData,
+  PutComponentTypesByComponentTypeIdAttributesByAttributeIdErrors,
+  PutComponentTypesByComponentTypeIdAttributesByAttributeIdResponses,
   PutComponentTypesByIdData,
   PutComponentTypesByIdErrors,
   PutComponentTypesByIdResponses,
@@ -377,6 +392,50 @@ export const putComponentTypesById = <ThrowOnError extends boolean = false>(
   });
 
 /**
+ * List catalog attribute definitions of a domain
+ */
+export const getDomainsByDomainIdAttributes = <ThrowOnError extends boolean = false>(
+  options: Options<GetDomainsByDomainIdAttributesData, ThrowOnError>,
+): RequestResult<
+  GetDomainsByDomainIdAttributesResponses,
+  GetDomainsByDomainIdAttributesErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).get<
+    GetDomainsByDomainIdAttributesResponses,
+    GetDomainsByDomainIdAttributesErrors,
+    ThrowOnError
+  >({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/domains/{domainId}/attributes',
+    ...options,
+  });
+
+/**
+ * Create a catalog attribute definition in a domain
+ */
+export const postDomainsByDomainIdAttributes = <ThrowOnError extends boolean = false>(
+  options: Options<PostDomainsByDomainIdAttributesData, ThrowOnError>,
+): RequestResult<
+  PostDomainsByDomainIdAttributesResponses,
+  PostDomainsByDomainIdAttributesErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).post<
+    PostDomainsByDomainIdAttributesResponses,
+    PostDomainsByDomainIdAttributesErrors,
+    ThrowOnError
+  >({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/domains/{domainId}/attributes',
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+
+/**
  * List attribute definitions of a component type
  */
 export const getComponentTypesByIdAttributes = <ThrowOnError extends boolean = false>(
@@ -418,6 +477,70 @@ export const postComponentTypesByIdAttributes = <ThrowOnError extends boolean = 
       'Content-Type': 'application/json',
       ...options.headers,
     },
+  });
+
+/**
+ * Detach an attribute from a component type and delete values of that type
+ */
+export const deleteComponentTypesByComponentTypeIdAttributesByAttributeId = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdData, ThrowOnError>,
+): RequestResult<
+  DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdResponses,
+  DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).delete<
+    DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdResponses,
+    DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdErrors,
+    ThrowOnError
+  >({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/component-types/{componentTypeId}/attributes/{attributeId}',
+    ...options,
+  });
+
+/**
+ * Attach a catalog attribute to a component type or update link settings
+ */
+export const putComponentTypesByComponentTypeIdAttributesByAttributeId = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<PutComponentTypesByComponentTypeIdAttributesByAttributeIdData, ThrowOnError>,
+): RequestResult<
+  PutComponentTypesByComponentTypeIdAttributesByAttributeIdResponses,
+  PutComponentTypesByComponentTypeIdAttributesByAttributeIdErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).put<
+    PutComponentTypesByComponentTypeIdAttributesByAttributeIdResponses,
+    PutComponentTypesByComponentTypeIdAttributesByAttributeIdErrors,
+    ThrowOnError
+  >({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/component-types/{componentTypeId}/attributes/{attributeId}',
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+
+/**
+ * Delete a catalog attribute definition, all links and all values
+ */
+export const deleteAttributesById = <ThrowOnError extends boolean = false>(
+  options: Options<DeleteAttributesByIdData, ThrowOnError>,
+): RequestResult<DeleteAttributesByIdResponses, DeleteAttributesByIdErrors, ThrowOnError> =>
+  (options.client ?? client).delete<
+    DeleteAttributesByIdResponses,
+    DeleteAttributesByIdErrors,
+    ThrowOnError
+  >({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/attributes/{id}',
+    ...options,
   });
 
 /**

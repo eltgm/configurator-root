@@ -919,6 +919,14 @@ export const resources = {
         },
       },
       attributes: {
+        catalog: {
+          title: 'Атрибуты',
+          description: 'Общий каталог атрибутов предметной области «{{domain}}».',
+          emptyTitle: 'Каталог атрибутов пуст',
+          emptyDescription:
+            'Создайте атрибут, чтобы затем использовать его в одном или нескольких типах.',
+          notUsed: 'Пока не используется в типах',
+        },
         states: {
           loading: 'Загрузка атрибутов',
           emptyTitle: 'Атрибутов пока нет',
@@ -934,6 +942,15 @@ export const resources = {
         },
         actions: {
           create: 'Добавить атрибут',
+          createCatalog: 'Новый атрибут',
+          add: 'Добавить',
+          createNew: 'Создать новый',
+          useExisting: 'Использовать существующий',
+          attach: 'Подключить',
+          detach: 'Убрать из типа',
+          detachNamed: 'Убрать атрибут {{name}} из типа',
+          delete: 'Удалить атрибут',
+          deleteNamed: 'Удалить атрибут {{name}}',
           edit: 'Редактировать атрибут',
           editNamed: 'Редактировать атрибут {{name}}',
         },
@@ -970,6 +987,26 @@ export const resources = {
         notifications: {
           created: 'Атрибут создан',
           updated: 'Атрибут обновлён',
+          attached: 'Атрибут подключён к типу',
+          detached: 'Атрибут убран из типа',
+          deleted: 'Атрибут удалён',
+        },
+        attach: {
+          title: 'Использовать существующий атрибут',
+          attribute: 'Атрибут из каталога',
+          placeholder: 'Выберите атрибут',
+          empty: 'Подходящих атрибутов нет',
+        },
+        detach: {
+          title: 'Убрать атрибут из типа?',
+          description: 'Атрибут «{{name}}» останется в каталоге и других типах.',
+          warning: 'Значения этого атрибута у компонентов выбранного типа будут удалены.',
+        },
+        delete: {
+          title: 'Удалить атрибут из каталога?',
+          description: 'Атрибут «{{name}}» будет удалён из всей предметной области.',
+          warning:
+            'Все связи и значения будут удалены. Атрибуты из правил совместимости удалить нельзя.',
         },
       },
       navigation: {
@@ -981,6 +1018,7 @@ export const resources = {
         configurations: 'Конфигурации',
         settings: 'Настройка',
         types: 'Типы и атрибуты',
+        attributes: 'Атрибуты',
         manualCompatibility: 'Ручная совместимость',
         compatibilityRules: 'Автоматические правила',
         compatibilityGraph: 'Граф совместимости',
@@ -1955,6 +1993,13 @@ export const resources = {
         },
       },
       attributes: {
+        catalog: {
+          title: 'Attributes',
+          description: 'Shared attribute catalog for the “{{domain}}” domain.',
+          emptyTitle: 'The attribute catalog is empty',
+          emptyDescription: 'Create an attribute to reuse it in one or more component types.',
+          notUsed: 'Not used by any component type yet',
+        },
         states: {
           loading: 'Loading attributes',
           emptyTitle: 'There are no attributes yet',
@@ -1969,6 +2014,15 @@ export const resources = {
         },
         actions: {
           create: 'Add attribute',
+          createCatalog: 'New attribute',
+          add: 'Add',
+          createNew: 'Create new',
+          useExisting: 'Use existing',
+          attach: 'Attach',
+          detach: 'Remove from type',
+          detachNamed: 'Remove attribute {{name}} from type',
+          delete: 'Delete attribute',
+          deleteNamed: 'Delete attribute {{name}}',
           edit: 'Edit attribute',
           editNamed: 'Edit attribute {{name}}',
         },
@@ -2005,6 +2059,26 @@ export const resources = {
         notifications: {
           created: 'Attribute created',
           updated: 'Attribute updated',
+          attached: 'Attribute attached to the type',
+          detached: 'Attribute removed from the type',
+          deleted: 'Attribute deleted',
+        },
+        attach: {
+          title: 'Use an existing attribute',
+          attribute: 'Catalog attribute',
+          placeholder: 'Select an attribute',
+          empty: 'No suitable attributes',
+        },
+        detach: {
+          title: 'Remove attribute from this type?',
+          description: 'The “{{name}}” attribute will remain in the catalog and other types.',
+          warning: 'Values of this attribute for components of the selected type will be deleted.',
+        },
+        delete: {
+          title: 'Delete attribute from the catalog?',
+          description: 'The “{{name}}” attribute will be deleted from the entire domain.',
+          warning:
+            'All links and values will be deleted. Attributes used by compatibility rules cannot be deleted.',
         },
       },
       navigation: {
@@ -2016,6 +2090,7 @@ export const resources = {
         configurations: 'Configurations',
         settings: 'Settings',
         types: 'Types and attributes',
+        attributes: 'Attributes',
         manualCompatibility: 'Manual compatibility',
         compatibilityRules: 'Automatic rules',
         compatibilityGraph: 'Compatibility graph',

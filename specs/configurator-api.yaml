@@ -284,9 +284,13 @@ components:
         id:
           type: integer
           format: int64
+        domainId:
+          type: integer
+          format: int64
         componentTypeId:
           type: integer
           format: int64
+          nullable: true
         name:
           type: string
         label:
@@ -301,16 +305,22 @@ components:
           nullable: true
         isRequired:
           type: boolean
+          nullable: true
         orderIndex:
           type: integer
           nullable: true
+        componentTypeIds:
+          type: array
+          description: Component types currently linked to this catalog definition
+          items:
+            type: integer
+            format: int64
       required:
         - id
-        - componentTypeId
+        - domainId
         - name
         - label
         - dataType
-        - isRequired
 
     CreateAttributeDefinitionRequest:
       type: object
@@ -337,6 +347,16 @@ components:
         - name
         - label
         - dataType
+
+    ComponentTypeAttributeSettingsRequest:
+      type: object
+      properties:
+        isRequired:
+          type: boolean
+          default: false
+        orderIndex:
+          type: integer
+          nullable: true
 
     ### ATTRIBUTE VALUE ###
     AttributeValueInput:
@@ -1561,6 +1581,71 @@ paths:
   # ATTRIBUTE DEFINITIONS
   ###################################
 
+  /domains/{domainId}/attributes:
+    get:
+      tags: [ Attributes ]
+      summary: List catalog attribute definitions of a domain
+      operationId: getDomainsByDomainIdAttributes
+      parameters:
+        - name: domainId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AttributeDefinition'
+        '404':
+          description: Domain not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags: [ Attributes ]
+      summary: Create a catalog attribute definition in a domain
+      operationId: postDomainsByDomainIdAttributes
+      parameters:
+        - name: domainId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAttributeDefinitionRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttributeDefinition'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Domain not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /component-types/{id}/attributes:
     get:
       tags: [ Attributes ]
@@ -1632,6 +1717,83 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /component-types/{componentTypeId}/attributes/{attributeId}:
+    put:
+      tags: [ Attributes ]
+      summary: Attach a catalog attribute to a component type or update link settings
+      operationId: putComponentTypesByComponentTypeIdAttributesByAttributeId
+      parameters:
+        - name: componentTypeId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: attributeId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComponentTypeAttributeSettingsRequest'
+      responses:
+        '200':
+          description: Attached or updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttributeDefinition'
+        '400':
+          description: Attribute and component type belong to different domains
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Component type or attribute not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Attribute name conflict in component type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags: [ Attributes ]
+      summary: Detach an attribute from a component type and delete values of that type
+      operationId: deleteComponentTypesByComponentTypeIdAttributesByAttributeId
+      parameters:
+        - name: componentTypeId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: attributeId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Detached and scoped values deleted
+        '404':
+          description: Component type, attribute or link not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /attributes/{id}:
     put:
       tags: [ Attributes ]
@@ -1665,6 +1827,33 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags: [ Attributes ]
+      summary: Delete a catalog attribute definition, all links and all values
+      operationId: deleteAttributesById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Attribute is used by compatibility rules
           content:
             application/json:
               schema:

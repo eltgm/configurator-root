@@ -16,6 +16,8 @@ import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 
 import {
+  useAttachAttributeMutation,
+  useCreateCatalogAttributeMutation,
   useCreateAttributeMutation,
   useUpdateAttributeMutation,
 } from '@/features/attributes/api/attributes';
@@ -40,7 +42,8 @@ interface AttributeFormValues {
 interface AttributeFormModalProps {
   opened: boolean;
   domainId: number;
-  componentTypeId: number;
+  componentTypeId?: number;
+  catalogOnly?: boolean;
   attribute?: AttributeDefinition | undefined;
   onClose: () => void;
   onSaved: (attribute: AttributeDefinition) => void;
@@ -50,14 +53,19 @@ function normalizeEnumValues(values: ReadonlyArray<string>): Array<string> {
   return values.map((value) => value.trim()).filter(Boolean);
 }
 
-function toRequest(values: AttributeFormValues): CreateAttributeDefinitionRequest {
+function toRequest(
+  values: AttributeFormValues,
+  includeLinkSettings: boolean,
+): CreateAttributeDefinitionRequest {
   return {
     name: values.name.trim(),
     label: values.label.trim(),
     dataType: values.dataType,
     ...(values.dataType === 'ENUM' ? { enumValues: normalizeEnumValues(values.enumValues) } : {}),
-    isRequired: values.isRequired,
-    ...(typeof values.orderIndex === 'number' ? { orderIndex: values.orderIndex } : {}),
+    ...(includeLinkSettings ? { isRequired: values.isRequired } : {}),
+    ...(includeLinkSettings && typeof values.orderIndex === 'number'
+      ? { orderIndex: values.orderIndex }
+      : {}),
   };
 }
 
@@ -65,15 +73,22 @@ export function AttributeFormModal({
   opened,
   domainId,
   componentTypeId,
+  catalogOnly = false,
   attribute,
   onClose,
   onSaved,
 }: AttributeFormModalProps) {
   const { t } = useTranslation();
   const createAttribute = useCreateAttributeMutation();
+  const createCatalogAttribute = useCreateCatalogAttributeMutation();
   const updateAttribute = useUpdateAttributeMutation();
+  const attachAttribute = useAttachAttributeMutation();
   const isEditing = Boolean(attribute);
-  const isPending = createAttribute.isPending || updateAttribute.isPending;
+  const isPending =
+    createAttribute.isPending ||
+    createCatalogAttribute.isPending ||
+    updateAttribute.isPending ||
+    attachAttribute.isPending;
   const schema = useMemo(
     () =>
       z
@@ -154,15 +169,32 @@ export function AttributeFormModal({
 
   const submit = form.handleSubmit(async (values) => {
     try {
-      const body = toRequest(values);
-      const savedAttribute = attribute
-        ? await updateAttribute.mutateAsync({
+      const body = toRequest(values, !catalogOnly);
+      let savedAttribute: AttributeDefinition;
+      if (attribute) {
+        savedAttribute = await updateAttribute.mutateAsync({
+          domainId,
+          id: attribute.id,
+          body,
+        });
+        if (!catalogOnly && componentTypeId !== undefined) {
+          savedAttribute = await attachAttribute.mutateAsync({
             domainId,
             componentTypeId,
-            id: attribute.id,
-            body,
-          })
-        : await createAttribute.mutateAsync({ domainId, componentTypeId, body });
+            attributeId: attribute.id,
+            body: {
+              isRequired: values.isRequired,
+              ...(typeof values.orderIndex === 'number' ? { orderIndex: values.orderIndex } : {}),
+            },
+          });
+        }
+      } else if (catalogOnly) {
+        savedAttribute = await createCatalogAttribute.mutateAsync({ domainId, body });
+      } else if (componentTypeId !== undefined) {
+        savedAttribute = await createAttribute.mutateAsync({ domainId, componentTypeId, body });
+      } else {
+        return;
+      }
       showSuccessNotification(
         isEditing ? t('attributes.notifications.updated') : t('attributes.notifications.created'),
       );
@@ -258,35 +290,39 @@ export function AttributeFormModal({
               )}
             />
           ) : null}
-          <Controller
-            name="isRequired"
-            control={form.control}
-            render={({ field }) => (
-              <Switch
-                label={t('attributes.form.isRequired')}
-                checked={field.value}
-                onChange={(event) => field.onChange(event.currentTarget.checked)}
+          {!catalogOnly ? (
+            <>
+              <Controller
+                name="isRequired"
+                control={form.control}
+                render={({ field }) => (
+                  <Switch
+                    label={t('attributes.form.isRequired')}
+                    checked={field.value}
+                    onChange={(event) => field.onChange(event.currentTarget.checked)}
+                  />
+                )}
               />
-            )}
-          />
-          <Controller
-            name="orderIndex"
-            control={form.control}
-            render={({ field, fieldState }) => (
-              <NumberInput
-                label={t('attributes.form.orderIndex')}
-                description={t('attributes.form.orderIndexHint')}
-                min={0}
-                allowDecimal={false}
-                allowNegative={false}
-                clampBehavior="strict"
-                value={field.value}
-                onBlur={field.onBlur}
-                onChange={field.onChange}
-                error={fieldState.error?.message}
+              <Controller
+                name="orderIndex"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <NumberInput
+                    label={t('attributes.form.orderIndex')}
+                    description={t('attributes.form.orderIndexHint')}
+                    min={0}
+                    allowDecimal={false}
+                    allowNegative={false}
+                    clampBehavior="strict"
+                    value={field.value}
+                    onBlur={field.onBlur}
+                    onChange={field.onChange}
+                    error={fieldState.error?.message}
+                  />
+                )}
               />
-            )}
-          />
+            </>
+          ) : null}
           <Group justify="flex-end">
             <Button variant="default" onClick={close} disabled={isPending}>
               {t('common.cancel')}

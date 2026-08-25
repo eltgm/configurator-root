@@ -10,16 +10,19 @@ import ru.sultanyarov.configurator.domain.model.DataType;
 @Mapper(componentModel = "spring")
 public interface AttributeDefinitionMapper {
   @Mapping(target = "id", ignore = true)
+  @Mapping(target = "domainId", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
   ru.sultanyarov.configurator.domain.model.AttributeDefinition toModel(
       Long componentTypeId, CreateAttributeDefinitionRequest createAttributeDefinitionRequest);
 
   @Mapping(target = "componentTypeId", ignore = true)
+  @Mapping(target = "domainId", ignore = true)
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
   ru.sultanyarov.configurator.domain.model.AttributeDefinition toModel(
       CreateAttributeDefinitionRequest createAttributeDefinitionRequest);
 
+  @Mapping(target = "componentTypeIds", ignore = true)
   AttributeDefinition toDto(ru.sultanyarov.configurator.domain.model.AttributeDefinition update);
 
   List<AttributeDefinition> toDtoList(

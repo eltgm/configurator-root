@@ -25,6 +25,10 @@ public interface AttributeValueRepository {
    */
   void deleteByComponentId(Long componentId);
 
+  /** Deletes values of one definition only for components of the specified type. */
+  void deleteByAttributeDefinitionIdAndComponentTypeId(
+      Long attributeDefinitionId, Long componentTypeId);
+
   /**
    * Checks whether an attribute definition is already used by at least one component.
    *

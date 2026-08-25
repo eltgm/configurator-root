@@ -6,6 +6,7 @@ const routes = [
   ['/components', 'Компоненты'],
   ['/configurations', 'Конфигурации'],
   ['/settings/types', 'Типы и атрибуты'],
+  ['/settings/attributes', 'Атрибуты'],
   ['/settings/compatibility/manual', 'Ручная совместимость'],
   ['/settings/compatibility/rules', 'Автоматические правила'],
   ['/settings/compatibility/graph', 'Граф совместимости'],

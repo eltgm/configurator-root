@@ -82,11 +82,16 @@ class ComponentRepositoryImplTest extends AbstractJooqRepositoryTest {
     dslContext
         .insertInto(Tables.ATTRIBUTE_DEFINITION)
         .set(Tables.ATTRIBUTE_DEFINITION.ID, 11L)
-        .set(Tables.ATTRIBUTE_DEFINITION.COMPONENT_TYPE_ID, 1L)
+        .set(Tables.ATTRIBUTE_DEFINITION.DOMAIN_ID, 1L)
         .set(Tables.ATTRIBUTE_DEFINITION.NAME, "force")
         .set(Tables.ATTRIBUTE_DEFINITION.LABEL, "Force")
         .set(Tables.ATTRIBUTE_DEFINITION.DATA_TYPE, DataType.NUMBER.name())
-        .set(Tables.ATTRIBUTE_DEFINITION.ORDER_INDEX, 1)
+        .execute();
+    dslContext
+        .insertInto(Tables.COMPONENT_TYPE_ATTRIBUTE)
+        .set(Tables.COMPONENT_TYPE_ATTRIBUTE.COMPONENT_TYPE_ID, 1L)
+        .set(Tables.COMPONENT_TYPE_ATTRIBUTE.ATTRIBUTE_DEFINITION_ID, 11L)
+        .set(Tables.COMPONENT_TYPE_ATTRIBUTE.ORDER_INDEX, 1)
         .execute();
     dslContext
         .insertInto(Tables.ATTRIBUTE_VALUE)
@@ -265,10 +270,15 @@ class ComponentRepositoryImplTest extends AbstractJooqRepositoryTest {
     dslContext
         .insertInto(Tables.ATTRIBUTE_DEFINITION)
         .set(Tables.ATTRIBUTE_DEFINITION.ID, 11L)
-        .set(Tables.ATTRIBUTE_DEFINITION.COMPONENT_TYPE_ID, 1L)
+        .set(Tables.ATTRIBUTE_DEFINITION.DOMAIN_ID, 1L)
         .set(Tables.ATTRIBUTE_DEFINITION.NAME, "force")
         .set(Tables.ATTRIBUTE_DEFINITION.LABEL, "Force")
         .set(Tables.ATTRIBUTE_DEFINITION.DATA_TYPE, DataType.NUMBER.name())
+        .execute();
+    dslContext
+        .insertInto(Tables.COMPONENT_TYPE_ATTRIBUTE)
+        .set(Tables.COMPONENT_TYPE_ATTRIBUTE.COMPONENT_TYPE_ID, 1L)
+        .set(Tables.COMPONENT_TYPE_ATTRIBUTE.ATTRIBUTE_DEFINITION_ID, 11L)
         .execute();
     dslContext
         .insertInto(Tables.ATTRIBUTE_VALUE)
