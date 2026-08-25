@@ -3,35 +3,34 @@
 Команды выполняются из корня репозитория. Они намеренно добавляют release-файлы явным списком и не затрагивают
 пользовательское изменение `configurator-integration-tests/src/test/resources/testcontainers.properties`.
 
-## 1. Подготовить release commit
+## 1. Влить исправление visual baseline
 
-В примере CON1-134 — отдельная задача подготовки релиза. Если в трекере назначен другой номер, замените его в имени
-ветки и commit message.
+Tag workflow на commit `6b032888` подтвердил 72 functional E2E и 36 accessibility checks, но обнаружил устаревший
+`configurator-light.png`. Исправление подготовлено в `bugfix/CON1-134`; если в трекере назначен другой номер,
+замените его в имени ветки и commit message.
 
 ```bash
-git switch -c feature/CON1-134 origin/develop
+git switch bugfix/CON1-134
 
 git add \
-  build.gradle Dockerfile docker-compose.yml specs/configurator-api.yaml \
-  configurator-web/package.json configurator-web/package-lock.json \
-  CHANGELOG.md README.md SECURITY.md SUPPORT.md \
-  docs/release/LOCAL_DELIVERY.md docs/release/RELEASE_CHECKLIST.md \
-  docs/release/RELEASE_NOTES_v1.1.0.md docs/release/RELEASE_AUDIT_v1.1.0.md \
-  docs/release/GIT_RELEASE_v1.1.0.md scripts/release/start-release-tag.sh
+  configurator-web/e2e/__screenshots__/linux-chromium/application.visual.spec.ts/configurator-light.png \
+  docs/release/RELEASE_CHECKLIST.md docs/release/RELEASE_AUDIT_v1.1.0.md \
+  docs/release/GIT_RELEASE_v1.1.0.md
 
 git diff --cached --check
 git diff --cached --stat
-git commit -m "CON1-134 Prepared repository for v1.1.0 release"
-git push -u origin feature/CON1-134
+git commit -m "CON1-134 Updated configurator visual baseline"
+git push -u origin bugfix/CON1-134
 ```
 
-Откройте PR `feature/CON1-134` → `develop`, дождитесь CI и merge. Затем откройте и влейте release PR
-`develop` → `master`. Не переносите release commit прямым push или прямым commit в `master`.
+Откройте PR `bugfix/CON1-134` → `develop`, дождитесь CI и merge. Затем откройте и влейте release PR
+`develop` → `master`. Так release metadata и visual fix попадут в обе постоянные ветки; direct push не используется.
 
 ## 2. Разобраться с уже существующим tag
 
-Локально обнаружен annotated tag `v1.1.0` на commit `ce6c4a6`, где ещё нет release metadata. Сначала проверьте GitHub
-Actions, Releases и packages `configurator-app:1.1.0`/`configurator-web:1.1.0`.
+Annotated tag `v1.1.0` указывает на commit `6b032888`. Workflow остановился в `Verify release candidate` на visual
+gate, а downstream publish jobs не запускались. Перед удалением всё равно проверьте отсутствие draft Release и exact
+packages `configurator-app:1.1.0`/`configurator-web:1.1.0`.
 
 Read-only проверка remote tag:
 
@@ -39,8 +38,8 @@ Read-only проверка remote tag:
 git ls-remote --tags origin refs/tags/v1.1.0 refs/tags/v1.1.0^{}
 ```
 
-Если workflow остановился до публикации, draft release отсутствует и exact image tags не созданы, владелец может
-удалить прежний tag перед повторным запуском. Это destructive действие и оно недопустимо без проверки перечисленных
+После merge visual fix в `master`, если draft release отсутствует и exact image tags не созданы, владелец может
+удалить failed tag перед повторным запуском. Это destructive действие и оно недопустимо без проверки перечисленных
 условий:
 
 ```bash

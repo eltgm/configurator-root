@@ -22,24 +22,25 @@
 
 - [x] README, CHANGELOG, SECURITY, SUPPORT и local delivery guide соответствуют `v1.1.0`.
 - [x] Release notes содержат два изменения из CON1-132 и CON1-133.
-- [x] Release audit фиксирует фактические проверки и premature-tag blocker.
+- [x] Release audit фиксирует фактические проверки и failed-tag recovery.
 - [x] Git runbook и guarded tag script не включают unrelated `testcontainers.properties` в release commit.
 
 ## Проверки release candidate
 
-- [ ] `./gradlew --no-daemon clean build -PreleaseVersion=1.1.0 -PspotlessRatchetFrom=origin/develop`.
-- [ ] `npm ci`, `npm run check`, `npm run test:coverage`.
-- [ ] Full Playwright E2E, accessibility и pinned-container visual regression.
+- [x] `./gradlew --no-daemon clean build -PreleaseVersion=1.1.0 -PspotlessRatchetFrom=origin/develop`.
+- [x] `npm ci`, `npm run check`, `npm run test:coverage`.
+- [x] Full Playwright E2E, accessibility и pinned-container visual regression.
 - [ ] External integration contract через production Compose и `npm run test:delivery`.
-- [ ] Все шесть delivery contracts, включая real Docker lifecycle.
+- [x] Пять delivery contracts без real Docker lifecycle.
+- [ ] Real Docker lifecycle contract.
 - [ ] Native Windows PowerShell 5.1 test и clean-machine Windows smoke.
 - [ ] Clean-machine macOS Intel/Apple Silicon smoke.
 
 ## GitHub и публикация владельцем
 
-- [ ] Release-preparation PR в `develop` одобрен, CI зелёный и затем влит release PR `develop` → `master`.
-- [ ] Существующий premature tag `v1.1.0` проверен в GitHub; подтверждено отсутствие опубликованного release и immutable
-  image tag `1.1.0` либо выбрана новая версия.
+- [ ] Visual-baseline fix влит через `develop`, затем release PR `develop` → `master` одобрен и CI зелёный.
+- [ ] Failed tag `v1.1.0` проверен в GitHub; подтверждено отсутствие опубликованного release и immutable
+      image tag `1.1.0` либо выбрана новая версия.
 - [ ] Annotated tag `v1.1.0` создан на окончательном release commit из `master` guarded-скриптом.
 - [ ] Tag workflow завершён; exact/sha/stable images, checksums, attestations и anonymous pulls проверены.
 - [ ] Draft release просмотрен, clean-machine smoke завершён и draft опубликован вручную.
