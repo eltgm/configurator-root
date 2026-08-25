@@ -20,6 +20,7 @@ const componentType: ComponentType = {
 const attributes: Array<AttributeDefinition> = [
   {
     id: 1001,
+    domainId,
     componentTypeId: 11,
     name: 'socket',
     label: 'Сокет',
@@ -29,6 +30,7 @@ const attributes: Array<AttributeDefinition> = [
   },
   {
     id: 1002,
+    domainId,
     componentTypeId: 11,
     name: 'tdp',
     label: 'TDP',
@@ -38,6 +40,7 @@ const attributes: Array<AttributeDefinition> = [
   },
   {
     id: 1003,
+    domainId,
     componentTypeId: 11,
     name: 'unlocked',
     label: 'Разгон',
@@ -47,6 +50,7 @@ const attributes: Array<AttributeDefinition> = [
   },
   {
     id: 1004,
+    domainId,
     componentTypeId: 11,
     name: 'segment',
     label: 'Сегмент',

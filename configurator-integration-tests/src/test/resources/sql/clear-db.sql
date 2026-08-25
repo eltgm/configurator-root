@@ -6,6 +6,7 @@ DELETE FROM compatibility_link;
 DELETE FROM component_image;
 DELETE FROM attribute_value;
 DELETE FROM component;
+DELETE FROM component_type_attribute;
 DELETE FROM component_type;
 DELETE FROM attribute_definition;
 DELETE FROM domain;

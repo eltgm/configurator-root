@@ -25,6 +25,7 @@ const attributesByType: Record<number, AttributeDefinition[]> = {
   11: [
     {
       id: 1011,
+      domainId,
       componentTypeId: 11,
       name: 'socket',
       label: 'Сокет процессора',
@@ -34,6 +35,7 @@ const attributesByType: Record<number, AttributeDefinition[]> = {
     },
     {
       id: 1012,
+      domainId,
       componentTypeId: 11,
       name: 'cores',
       label: 'Количество ядер',
@@ -45,6 +47,7 @@ const attributesByType: Record<number, AttributeDefinition[]> = {
   12: [
     {
       id: 2011,
+      domainId,
       componentTypeId: 12,
       name: 'socket',
       label: 'Сокет платы',
@@ -54,6 +57,7 @@ const attributesByType: Record<number, AttributeDefinition[]> = {
     },
     {
       id: 2012,
+      domainId,
       componentTypeId: 12,
       name: 'lanes',
       label: 'Линии PCIe',

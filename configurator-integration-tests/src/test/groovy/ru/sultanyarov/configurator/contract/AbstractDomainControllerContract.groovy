@@ -61,19 +61,19 @@ abstract class AbstractDomainControllerContract extends Specification implements
         ])
         componentPage.items.every { !it.archived }
 
-        and: "five automatic rules and ten manual graph edges are available"
+        and: "six natural automatic rules and two manual PCIe edges are available"
         def rulesResult = get("/domains/${domain.id}/compatibility/rules")
         rulesResult.status == 200
         def rules = objectMapper.readerForListOf(CompatibilityRuleSet).readValue(rulesResult.body)
-        rules.size() == 5
+        rules.size() == 6
         rules.every { it.enabled && it.conditions.size() == 1 }
         rules*.conditions*.operator.flatten().count(CompatibilityRuleOperator.EQUALS) == 3
-        rules*.conditions*.operator.flatten().count(CompatibilityRuleOperator.LTE) == 2
+        rules*.conditions*.operator.flatten().count(CompatibilityRuleOperator.LTE) == 3
         def graphResult = get("/domains/${domain.id}/compatibility/graph")
         graphResult.status == 200
         def graph = objectMapper.readValue(graphResult.body, GraphResponse)
         graph.nodes.size() == 12
-        graph.edges.size() == 10
+        graph.edges.size() == 2
 
         and: "the validated six-component saved build can be opened by the UI"
         def configurationsResult = get("/domains/${domain.id}/configurations", [page: 0, size: 10])

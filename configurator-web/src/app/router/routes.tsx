@@ -3,6 +3,7 @@ import { Navigate, type RouteObject } from 'react-router-dom';
 
 import { AppLayout } from '@/app/layout/AppLayout';
 import {
+  AttributesPage,
   CompatibilityGraphPage,
   CompatibilityRuleFormPage,
   CompatibilityRulesPage,
@@ -98,6 +99,14 @@ export const appRoutes: RouteObject[] = [
         element: (
           <RequireDomain>
             <ComponentTypesPage />
+          </RequireDomain>
+        ),
+      },
+      {
+        path: 'settings/attributes',
+        element: (
+          <RequireDomain>
+            <AttributesPage />
           </RequireDomain>
         ),
       },

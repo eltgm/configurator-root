@@ -16,13 +16,14 @@ import { useTranslation } from 'react-i18next';
 
 import { useCompatibilityGraphQuery } from '@/features/compatibility/api/compatibility-graph';
 import type { CompatibilityRelation } from '@/features/configurator/model/configurator-compatibility';
-import type { CompatibilityExplanation } from '@/shared/api';
+import type { CompatibilityBlockingRule, CompatibilityExplanation } from '@/shared/api';
 
 export interface CompatibilityExplanationGroup {
   key: string;
   title: string;
   relation: CompatibilityRelation;
   explanations: ReadonlyArray<CompatibilityExplanation>;
+  blockingRules?: ReadonlyArray<CompatibilityBlockingRule>;
 }
 
 interface CompatibilityExplanationDrawerProps {
@@ -76,6 +77,20 @@ export function CompatibilityExplanationDrawer({
                   {t(`configurator.explanations.relations.${group.relation}`)}
                 </Badge>
               </Group>
+              {group.blockingRules && group.blockingRules.length > 0 ? (
+                <Alert color="red" icon={<IconAlertTriangle aria-hidden="true" />}>
+                  <Stack gap="xs">
+                    <Text size="sm" fw={600}>
+                      {t('configurator.explanations.blockingTitle')}
+                    </Text>
+                    <List size="sm" spacing={4}>
+                      {group.blockingRules.map((rule) => (
+                        <List.Item key={rule.ruleSetId}>{rule.ruleSetName}</List.Item>
+                      ))}
+                    </List>
+                  </Stack>
+                </Alert>
+              ) : null}
               {group.explanations.length === 0 ? (
                 <Text size="sm" c="dimmed">
                   {t('configurator.explanations.noEvidence')}

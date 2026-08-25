@@ -14,6 +14,8 @@ import org.springframework.http.HttpStatus;
 import ru.sultanyarov.configurator.api.inbounds.rest.controller.ConfiguratorController;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchRequest;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorBatchSearchResponse;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorCandidatesRequest;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorCandidatesResponse;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorIntersectionRequest;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorIntersectionResponse;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorResponse;
@@ -72,5 +74,23 @@ class ConfiguratorControllerTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isSameAs(responseBody);
     verify(configuratorFacade).intersectCompatibleComponents(1L, request);
+  }
+
+  @Test
+  void postDomainsByIdConfiguratorCandidates_shouldDelegateToFacade() {
+    ConfiguratorCandidatesRequest request = new ConfiguratorCandidatesRequest(List.of(7L, 8L));
+    ConfiguratorCandidatesResponse responseBody =
+        new ConfiguratorCandidatesResponse(
+            List.of(7L, 8L),
+            List.of(),
+            ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfiguratorAssemblyStatus.VALID,
+            List.of());
+    when(configuratorFacade.classifyCandidates(1L, request)).thenReturn(responseBody);
+
+    var response = controller.postDomainsByIdConfiguratorCandidates(1L, request);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).isSameAs(responseBody);
+    verify(configuratorFacade).classifyCandidates(1L, request);
   }
 }

@@ -1,6 +1,7 @@
 package ru.sultanyarov.configurator.contract
 
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.AttributeDefinition
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentTypeAttributeSettingsRequest
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateAttributeDefinitionRequest
 import spock.lang.Specification
 
@@ -23,6 +24,7 @@ abstract class AbstractAttributesControllerContract extends Specification implem
         result.status == 201
         def responseBody = objectMapper.readValue(result.body, AttributeDefinition)
         responseBody.getId() != null
+        responseBody.getDomainId() == 1L
         responseBody.getComponentTypeId() == 1L
         responseBody.getName() == "test_attribute"
         responseBody.getLabel() == "Test Attribute"
@@ -176,12 +178,19 @@ abstract class AbstractAttributesControllerContract extends Specification implem
         updateResult.status == 200
         def responseBody = objectMapper.readValue(updateResult.body, AttributeDefinition)
         responseBody.getId() == 1L
-        responseBody.getComponentTypeId() == 1L
+        responseBody.getDomainId() == 1L
+        responseBody.getComponentTypeId() == null
+        responseBody.getComponentTypeIds() == [1L]
         responseBody.getName() == "updated_attribute"
         responseBody.getLabel() == "Updated Attribute"
         responseBody.getDataType() == AttributeDefinition.DataTypeEnum.NUMBER
-        !responseBody.getIsRequired()
-        responseBody.getOrderIndex() == 2
+        responseBody.getIsRequired() == null
+        responseBody.getOrderIndex() == null
+
+        and: "type-specific settings remain unchanged by a shared definition update"
+        def linkedDefinition = objectMapper.readValue(get("/component-types/1/attributes").body, AttributeDefinition[].class)[0]
+        linkedDefinition.getIsRequired()
+        linkedDefinition.getOrderIndex() == 1
     }
 
     def "should update attribute definition while keeping its current name"() {
@@ -203,8 +212,9 @@ abstract class AbstractAttributesControllerContract extends Specification implem
         responseBody.getId() == 1L
         responseBody.getName() == "original_attribute"
         responseBody.getLabel() == "Relabeled Attribute"
-        !responseBody.getIsRequired()
-        responseBody.getOrderIndex() == 7
+        responseBody.getIsRequired() == null
+        responseBody.getOrderIndex() == null
+        responseBody.getComponentTypeIds() == [1L]
     }
 
     def "should reject attribute data type change when persisted values exist"() {
@@ -253,12 +263,13 @@ abstract class AbstractAttributesControllerContract extends Specification implem
         updateResult.status == 200
         def responseBody = objectMapper.readValue(updateResult.body, AttributeDefinition)
         responseBody.getId() == createdAttribute.getId()
-        responseBody.getComponentTypeId() == 1L
+        responseBody.getComponentTypeId() == null
+        responseBody.getComponentTypeIds() == [1L]
         responseBody.getName() == "updated_enum_attribute"
         responseBody.getLabel() == "Updated Enum Attribute"
         responseBody.getDataType() == AttributeDefinition.DataTypeEnum.ENUM
-        !responseBody.getIsRequired()
-        responseBody.getOrderIndex() == 3
+        responseBody.getIsRequired() == null
+        responseBody.getOrderIndex() == null
         responseBody.getEnumValues() != null
         responseBody.getEnumValues().size() == 3
         responseBody.getEnumValues().containsAll(["OPTION_A", "OPTION_B", "OPTION_C"])
@@ -304,5 +315,88 @@ abstract class AbstractAttributesControllerContract extends Specification implem
 
         expect:
         put("/attributes/3", updateRequest).status == 409
+    }
+
+    def "should manage a reusable domain attribute catalog and independent type settings"() {
+        given:
+        runSqlScripts(
+                "/sql/clear-db.sql",
+                "/sql/insert-test-domain.sql",
+                "/sql/insert-test-component-type.sql",
+                "/sql/insert-second-test-component-type.sql"
+        )
+        def createRequest = new CreateAttributeDefinitionRequest()
+                .name("shared_voltage")
+                .label("Voltage")
+                .dataType(CreateAttributeDefinitionRequest.DataTypeEnum.NUMBER)
+
+        when: "a definition is created in the domain catalog"
+        def createResult = post("/domains/1/attributes", createRequest)
+        def created = objectMapper.readValue(createResult.body, AttributeDefinition)
+
+        then:
+        createResult.status == 201
+        created.getDomainId() == 1L
+        created.getComponentTypeId() == null
+        created.getComponentTypeIds().isEmpty()
+
+        when: "the same definition is attached to two component types"
+        def firstAttach = put(
+                "/component-types/1/attributes/${created.getId()}",
+                new ComponentTypeAttributeSettingsRequest().isRequired(true).orderIndex(4)
+        )
+        def secondAttach = put(
+                "/component-types/2/attributes/${created.getId()}",
+                new ComponentTypeAttributeSettingsRequest().isRequired(false).orderIndex(9)
+        )
+
+        then:
+        firstAttach.status == 200
+        secondAttach.status == 200
+        def firstTypeAttribute = objectMapper.readValue(get("/component-types/1/attributes").body, AttributeDefinition[].class)[0]
+        def secondTypeAttribute = objectMapper.readValue(get("/component-types/2/attributes").body, AttributeDefinition[].class)[0]
+        firstTypeAttribute.getId() == created.getId()
+        firstTypeAttribute.getIsRequired()
+        firstTypeAttribute.getOrderIndex() == 4
+        !secondTypeAttribute.getIsRequired()
+        secondTypeAttribute.getOrderIndex() == 9
+
+        and: "the catalog reports both usages"
+        def catalog = objectMapper.readValue(get("/domains/1/attributes").body, AttributeDefinition[].class)
+        catalog.length == 1
+        catalog[0].getComponentTypeIds().sort() == [1L, 2L]
+
+        when: "the definition is detached from one component type"
+        def detachResult = delete("/component-types/2/attributes/${created.getId()}")
+
+        then:
+        detachResult.status == 204
+        objectMapper.readValue(get("/component-types/2/attributes").body, AttributeDefinition[].class).length == 0
+        objectMapper.readValue(get("/domains/1/attributes").body, AttributeDefinition[].class)[0]
+                .getComponentTypeIds() == [1L]
+    }
+
+    def "should cascade catalog attribute deletion and reject deletion used by compatibility rules"() {
+        given: "an unused catalog attribute linked to a component type"
+        runSqlScripts(
+                "/sql/clear-db.sql",
+                "/sql/insert-test-domain.sql",
+                "/sql/insert-test-component-type.sql",
+                "/sql/insert-test-attribute-definition.sql"
+        )
+
+        when:
+        def deleteResult = delete("/attributes/1")
+
+        then:
+        deleteResult.status == 204
+        objectMapper.readValue(get("/domains/1/attributes").body, AttributeDefinition[].class)*.id == [2L, 3L]
+        objectMapper.readValue(get("/component-types/1/attributes").body, AttributeDefinition[].class)*.id == [2L, 3L]
+
+        when: "the attribute participates in an automatic compatibility rule"
+        runSqlScripts("/sql/clear-db.sql", "/sql/insert-configurator-test-data.sql")
+
+        then:
+        delete("/attributes/101").status == 409
     }
 }

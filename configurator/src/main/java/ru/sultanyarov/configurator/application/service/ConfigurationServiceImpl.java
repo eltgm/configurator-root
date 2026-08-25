@@ -133,7 +133,7 @@ public class ConfigurationServiceImpl implements ConfigurationService {
     List<Component> selectedComponents =
         resolveActiveDomainComponents(domain, normalizedDraft.componentIds());
     validateDistinctComponentTypes(selectedComponents);
-    compatibilityValidator.validatePairwiseDirectCompatibility(domainId, selectedComponents);
+    compatibilityValidator.validateAssemblyCompatibility(domainId, selectedComponents);
     return new ValidatedConfiguration(
         normalizedDraft.name(),
         normalizedDraft.description(),

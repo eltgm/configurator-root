@@ -34,6 +34,7 @@ const graphicsType: ComponentType = {
 };
 const coresAttribute: AttributeDefinition = {
   id: 1011,
+  domainId,
   componentTypeId: 11,
   name: 'cores',
   label: 'Количество ядер',
@@ -43,6 +44,7 @@ const coresAttribute: AttributeDefinition = {
 };
 const memoryAttribute: AttributeDefinition = {
   id: 1012,
+  domainId,
   componentTypeId: 12,
   name: 'memory_type',
   label: 'Тип памяти',
@@ -113,6 +115,7 @@ function useHandlers(
           const body = (await request.json()) as CreateAttributeDefinitionRequest;
           const created: AttributeDefinition = {
             id: 2021,
+            domainId,
             componentTypeId,
             isRequired: false,
             ...body,
@@ -134,7 +137,8 @@ function useHandlers(
             if (current) {
               const updated: AttributeDefinition = {
                 id,
-                componentTypeId: current.componentTypeId,
+                domainId,
+                componentTypeId: current.componentTypeId ?? null,
                 isRequired: false,
                 ...body,
               };
@@ -277,6 +281,7 @@ describe('component types and attributes management', () => {
         submitted = (await request.json()) as CreateAttributeDefinitionRequest;
         const created: AttributeDefinition = {
           id: 2021,
+          domainId,
           componentTypeId: Number(params['id']),
           isRequired: false,
           ...submitted,

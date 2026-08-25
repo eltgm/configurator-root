@@ -92,6 +92,7 @@ export function CurrentAssembly({
     }),
     relation: pair.relation,
     explanations: pair.explanations,
+    ...(pair.blockingRules ? { blockingRules: pair.blockingRules } : {}),
   }));
 
   return (

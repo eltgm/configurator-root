@@ -127,13 +127,18 @@ export type CreateComponentTypeRequest = {
 
 export type AttributeDefinition = {
   id: number;
-  componentTypeId: number;
+  domainId: number;
+  componentTypeId?: number | null;
   name: string;
   label: string;
   dataType: 'STRING' | 'NUMBER' | 'BOOLEAN' | 'ENUM';
   enumValues?: Array<string> | null;
-  isRequired: boolean;
+  isRequired?: boolean | null;
   orderIndex?: number | null;
+  /**
+   * Component types currently linked to this catalog definition
+   */
+  componentTypeIds?: Array<number>;
 };
 
 export type CreateAttributeDefinitionRequest = {
@@ -141,6 +146,11 @@ export type CreateAttributeDefinitionRequest = {
   label: string;
   dataType: 'STRING' | 'NUMBER' | 'BOOLEAN' | 'ENUM';
   enumValues?: Array<string> | null;
+  isRequired?: boolean;
+  orderIndex?: number | null;
+};
+
+export type ComponentTypeAttributeSettingsRequest = {
   isRequired?: boolean;
   orderIndex?: number | null;
 };
@@ -432,6 +442,88 @@ export type ConfiguratorIntersectionResponse = {
    * Components compatible with every selected base component
    */
   compatibleByType: Array<ConfiguratorIntersectionTypeGroup>;
+};
+
+export type ConfiguratorCandidatesRequest = {
+  /**
+   * Unique active components currently present in the assembly. When replacing a component, the replaced component must be omitted from this list.
+   */
+  componentIds: Array<number>;
+};
+
+/**
+ * ALLOWED means a direct manual or matching automatic relationship exists; DENIED means applicable enabled automatic rules exist but none matches; UNKNOWN means no relationship knowledge applies to the pair.
+ */
+export type ConfiguratorPairStatus = 'ALLOWED' | 'DENIED' | 'UNKNOWN';
+
+/**
+ * AVAILABLE candidates have at least one ALLOWED relationship and no DENIED relationship; BLOCKED candidates have at least one DENIED relationship; UNRELATED candidates have no ALLOWED or DENIED relationship to the assembly.
+ */
+export type ConfiguratorCandidateStatus = 'AVAILABLE' | 'BLOCKED' | 'UNRELATED';
+
+/**
+ * VALID means the selected components are connected through ALLOWED direct relationships and contain no DENIED pair. BLOCKED means at least one selected pair is DENIED. DISCONNECTED means there is no DENIED pair but the ALLOWED graph has more than one component.
+ */
+export type ConfiguratorAssemblyStatus = 'VALID' | 'BLOCKED' | 'DISCONNECTED';
+
+export type CompatibilityBlockingRule = {
+  ruleSetId: number;
+  ruleSetName: string;
+};
+
+export type ConfiguratorCandidateBaseDecision = {
+  baseComponentId: number;
+  status: ConfiguratorPairStatus;
+  /**
+   * Positive direct relationship evidence; empty for DENIED and UNKNOWN
+   */
+  explanations: Array<CompatibilityExplanation>;
+  /**
+   * Applicable rules that failed; populated only for DENIED
+   */
+  blockingRules: Array<CompatibilityBlockingRule>;
+};
+
+export type ConfiguratorAssemblyPairDecision = {
+  leftComponentId: number;
+  rightComponentId: number;
+  status: ConfiguratorPairStatus;
+  explanations: Array<CompatibilityExplanation>;
+  blockingRules: Array<CompatibilityBlockingRule>;
+};
+
+export type ConfiguratorAssemblyCandidate = {
+  id: number;
+  name: string;
+  brand?: string | null;
+  componentTypeId: number;
+  status: ConfiguratorCandidateStatus;
+  /**
+   * Pair decisions in componentIds request order
+   */
+  compatibilityByBase: Array<ConfiguratorCandidateBaseDecision>;
+};
+
+export type ConfiguratorCandidateTypeGroup = {
+  componentTypeId: number;
+  componentTypeName: string;
+  components: Array<ConfiguratorAssemblyCandidate>;
+};
+
+export type ConfiguratorCandidatesResponse = {
+  /**
+   * Selected assembly component identifiers in request order
+   */
+  componentIds: Array<number>;
+  /**
+   * All other active domain components classified for this assembly
+   */
+  candidatesByType: Array<ConfiguratorCandidateTypeGroup>;
+  assemblyStatus: ConfiguratorAssemblyStatus;
+  /**
+   * Direct pair decisions for selected components in deterministic pair order
+   */
+  assemblyDecisions: Array<ConfiguratorAssemblyPairDecision>;
 };
 
 /**
@@ -892,6 +984,68 @@ export type PutComponentTypesByIdResponses = {
 export type PutComponentTypesByIdResponse =
   PutComponentTypesByIdResponses[keyof PutComponentTypesByIdResponses];
 
+export type GetDomainsByDomainIdAttributesData = {
+  body?: never;
+  path: {
+    domainId: number;
+  };
+  query?: never;
+  url: '/domains/{domainId}/attributes';
+};
+
+export type GetDomainsByDomainIdAttributesErrors = {
+  /**
+   * Domain not found
+   */
+  404: ErrorResponse;
+};
+
+export type GetDomainsByDomainIdAttributesError =
+  GetDomainsByDomainIdAttributesErrors[keyof GetDomainsByDomainIdAttributesErrors];
+
+export type GetDomainsByDomainIdAttributesResponses = {
+  /**
+   * Success
+   */
+  200: Array<AttributeDefinition>;
+};
+
+export type GetDomainsByDomainIdAttributesResponse =
+  GetDomainsByDomainIdAttributesResponses[keyof GetDomainsByDomainIdAttributesResponses];
+
+export type PostDomainsByDomainIdAttributesData = {
+  body: CreateAttributeDefinitionRequest;
+  path: {
+    domainId: number;
+  };
+  query?: never;
+  url: '/domains/{domainId}/attributes';
+};
+
+export type PostDomainsByDomainIdAttributesErrors = {
+  /**
+   * Invalid input
+   */
+  400: ErrorResponse;
+  /**
+   * Domain not found
+   */
+  404: ErrorResponse;
+};
+
+export type PostDomainsByDomainIdAttributesError =
+  PostDomainsByDomainIdAttributesErrors[keyof PostDomainsByDomainIdAttributesErrors];
+
+export type PostDomainsByDomainIdAttributesResponses = {
+  /**
+   * Created
+   */
+  201: AttributeDefinition;
+};
+
+export type PostDomainsByDomainIdAttributesResponse =
+  PostDomainsByDomainIdAttributesResponses[keyof PostDomainsByDomainIdAttributesResponses];
+
 export type GetComponentTypesByIdAttributesData = {
   body?: never;
   path: {
@@ -957,6 +1111,107 @@ export type PostComponentTypesByIdAttributesResponses = {
 
 export type PostComponentTypesByIdAttributesResponse =
   PostComponentTypesByIdAttributesResponses[keyof PostComponentTypesByIdAttributesResponses];
+
+export type DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdData = {
+  body?: never;
+  path: {
+    componentTypeId: number;
+    attributeId: number;
+  };
+  query?: never;
+  url: '/component-types/{componentTypeId}/attributes/{attributeId}';
+};
+
+export type DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdErrors = {
+  /**
+   * Component type, attribute or link not found
+   */
+  404: ErrorResponse;
+};
+
+export type DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdError =
+  DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdErrors[keyof DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdErrors];
+
+export type DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdResponses = {
+  /**
+   * Detached and scoped values deleted
+   */
+  204: void;
+};
+
+export type DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdResponse =
+  DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdResponses[keyof DeleteComponentTypesByComponentTypeIdAttributesByAttributeIdResponses];
+
+export type PutComponentTypesByComponentTypeIdAttributesByAttributeIdData = {
+  body: ComponentTypeAttributeSettingsRequest;
+  path: {
+    componentTypeId: number;
+    attributeId: number;
+  };
+  query?: never;
+  url: '/component-types/{componentTypeId}/attributes/{attributeId}';
+};
+
+export type PutComponentTypesByComponentTypeIdAttributesByAttributeIdErrors = {
+  /**
+   * Attribute and component type belong to different domains
+   */
+  400: ErrorResponse;
+  /**
+   * Component type or attribute not found
+   */
+  404: ErrorResponse;
+  /**
+   * Attribute name conflict in component type
+   */
+  409: ErrorResponse;
+};
+
+export type PutComponentTypesByComponentTypeIdAttributesByAttributeIdError =
+  PutComponentTypesByComponentTypeIdAttributesByAttributeIdErrors[keyof PutComponentTypesByComponentTypeIdAttributesByAttributeIdErrors];
+
+export type PutComponentTypesByComponentTypeIdAttributesByAttributeIdResponses = {
+  /**
+   * Attached or updated
+   */
+  200: AttributeDefinition;
+};
+
+export type PutComponentTypesByComponentTypeIdAttributesByAttributeIdResponse =
+  PutComponentTypesByComponentTypeIdAttributesByAttributeIdResponses[keyof PutComponentTypesByComponentTypeIdAttributesByAttributeIdResponses];
+
+export type DeleteAttributesByIdData = {
+  body?: never;
+  path: {
+    id: number;
+  };
+  query?: never;
+  url: '/attributes/{id}';
+};
+
+export type DeleteAttributesByIdErrors = {
+  /**
+   * Not found
+   */
+  404: ErrorResponse;
+  /**
+   * Attribute is used by compatibility rules
+   */
+  409: ErrorResponse;
+};
+
+export type DeleteAttributesByIdError =
+  DeleteAttributesByIdErrors[keyof DeleteAttributesByIdErrors];
+
+export type DeleteAttributesByIdResponses = {
+  /**
+   * Deleted
+   */
+  204: void;
+};
+
+export type DeleteAttributesByIdResponse =
+  DeleteAttributesByIdResponses[keyof DeleteAttributesByIdResponses];
 
 export type PutAttributesByIdData = {
   body: CreateAttributeDefinitionRequest;
@@ -1783,6 +2038,39 @@ export type PostDomainsByIdConfiguratorCompatibleIntersectionResponses = {
 
 export type PostDomainsByIdConfiguratorCompatibleIntersectionResponse =
   PostDomainsByIdConfiguratorCompatibleIntersectionResponses[keyof PostDomainsByIdConfiguratorCompatibleIntersectionResponses];
+
+export type PostDomainsByIdConfiguratorCandidatesData = {
+  body: ConfiguratorCandidatesRequest;
+  path: {
+    id: number;
+  };
+  query?: never;
+  url: '/domains/{id}/configurator/candidates';
+};
+
+export type PostDomainsByIdConfiguratorCandidatesErrors = {
+  /**
+   * Invalid, duplicate, archived, or out-of-domain assembly component
+   */
+  400: ErrorResponse;
+  /**
+   * Domain or component not found
+   */
+  404: ErrorResponse;
+};
+
+export type PostDomainsByIdConfiguratorCandidatesError =
+  PostDomainsByIdConfiguratorCandidatesErrors[keyof PostDomainsByIdConfiguratorCandidatesErrors];
+
+export type PostDomainsByIdConfiguratorCandidatesResponses = {
+  /**
+   * Success, including empty candidate groups
+   */
+  200: ConfiguratorCandidatesResponse;
+};
+
+export type PostDomainsByIdConfiguratorCandidatesResponse =
+  PostDomainsByIdConfiguratorCandidatesResponses[keyof PostDomainsByIdConfiguratorCandidatesResponses];
 
 export type GetDomainsByIdConfigurationsData = {
   body?: never;

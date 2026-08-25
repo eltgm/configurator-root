@@ -4,9 +4,11 @@ import {
   apiData,
   client,
   getDomainsByIdConfiguratorCompatible,
+  postDomainsByIdConfiguratorCandidates,
   postDomainsByIdConfiguratorCompatibleIntersection,
   postDomainsByIdConfiguratorCompatibleSearch,
   type ConfiguratorBatchSearchResponse,
+  type ConfiguratorCandidatesResponse,
   type ConfiguratorIntersectionResponse,
   type ConfiguratorResponse,
 } from '@/shared/api';
@@ -43,6 +45,8 @@ export const configuratorCompatibilityKeys = {
       [...componentIds],
       includeTransitive,
     ] as const,
+  candidates: (domainId: number | null, componentIds: ReadonlyArray<number>) =>
+    [...configuratorCompatibilityKeys.root(domainId), 'candidates', [...componentIds]] as const,
 };
 
 export function fetchDirectCompatibility(
@@ -85,6 +89,20 @@ export function fetchCompatibilityIntersection(
       client,
       path: { id: domainId },
       body: { componentIds: [...componentIds], includeTransitive },
+      throwOnError: true,
+    }),
+  );
+}
+
+export function fetchAssemblyCandidates(
+  domainId: number,
+  componentIds: ReadonlyArray<number>,
+): Promise<ConfiguratorCandidatesResponse> {
+  return apiData(
+    postDomainsByIdConfiguratorCandidates({
+      client,
+      path: { id: domainId },
+      body: { componentIds: [...componentIds] },
       throwOnError: true,
     }),
   );
@@ -141,5 +159,22 @@ export function useCompatibilityIntersectionQuery(
       return fetchCompatibilityIntersection(domainId, componentIds, includeTransitive);
     },
     enabled: enabled && domainId !== null && componentIds.length >= 2,
+  });
+}
+
+export function useAssemblyCandidatesQuery(
+  domainId: number | null,
+  componentIds: ReadonlyArray<number>,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: configuratorCompatibilityKeys.candidates(domainId, componentIds),
+    queryFn: () => {
+      if (domainId === null || componentIds.length === 0) {
+        throw new Error('Domain and at least one assembly component are required');
+      }
+      return fetchAssemblyCandidates(domainId, componentIds);
+    },
+    enabled: enabled && domainId !== null && componentIds.length > 0,
   });
 }

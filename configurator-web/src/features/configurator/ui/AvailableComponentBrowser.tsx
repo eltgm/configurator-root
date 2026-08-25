@@ -1,5 +1,7 @@
 import {
+  Accordion,
   Alert,
+  Badge,
   Button,
   Group,
   Pagination,
@@ -20,11 +22,14 @@ import { Link } from 'react-router-dom';
 
 import { componentCatalogPageSize, useComponentsQuery } from '@/features/components/api/components';
 import {
+  useAssemblyCandidatesQuery,
   useCompatibilityIntersectionQuery,
   useDirectCompatibilityQuery,
 } from '@/features/configurator/api/configurator-compatibility';
 import type { ConfiguratorDraftItem } from '@/features/configurator/model/configurator-draft';
 import {
+  blockedCandidatesFromAssemblyResponse,
+  candidatesFromAssemblyResponse,
   candidatesFromDirectResponse,
   candidatesFromIntersectionResponse,
   filterConfiguratorCandidates,
@@ -107,16 +112,24 @@ export function AvailableComponentBrowser({
     domainId,
     baseComponentIds.length === 1 ? baseComponentIds[0]! : null,
     includeTransitive,
-    !catalogMode && !compatibilityBlocked,
+    includeTransitive && !catalogMode && !compatibilityBlocked,
   );
   const intersectionQuery = useCompatibilityIntersectionQuery(
     domainId,
     baseComponentIds,
     includeTransitive,
-    !catalogMode && !compatibilityBlocked,
+    includeTransitive && !catalogMode && !compatibilityBlocked,
+  );
+  const assemblyQuery = useAssemblyCandidatesQuery(
+    domainId,
+    baseComponentIds,
+    !includeTransitive && !catalogMode && !compatibilityBlocked,
   );
 
   const compatibilityCandidates = useMemo(() => {
+    if (!includeTransitive && assemblyQuery.data) {
+      return candidatesFromAssemblyResponse(assemblyQuery.data);
+    }
     if (baseComponentIds.length === 1 && directQuery.data) {
       return candidatesFromDirectResponse(directQuery.data);
     }
@@ -124,7 +137,33 @@ export function AvailableComponentBrowser({
       return candidatesFromIntersectionResponse(intersectionQuery.data);
     }
     return [];
-  }, [baseComponentIds.length, directQuery.data, intersectionQuery.data]);
+  }, [
+    assemblyQuery.data,
+    baseComponentIds.length,
+    directQuery.data,
+    includeTransitive,
+    intersectionQuery.data,
+  ]);
+  const blockedCandidates = useMemo(() => {
+    if (includeTransitive || !assemblyQuery.data) return [];
+    const normalizedSearch = search.trim().toLocaleLowerCase();
+    return blockedCandidatesFromAssemblyResponse(assemblyQuery.data).filter(
+      (candidate) =>
+        candidate.id !== replacementTarget?.id &&
+        (effectiveTypeId === undefined || candidate.componentTypeId === effectiveTypeId) &&
+        (replacementTarget || !selectedTypeIds.has(candidate.componentTypeId)) &&
+        (!normalizedSearch ||
+          candidate.name.toLocaleLowerCase().includes(normalizedSearch) ||
+          candidate.brand?.toLocaleLowerCase().includes(normalizedSearch)),
+    );
+  }, [
+    assemblyQuery.data,
+    effectiveTypeId,
+    includeTransitive,
+    replacementTarget,
+    search,
+    selectedTypeIds,
+  ]);
   const filteredCompatibilityCandidates = useMemo(
     () =>
       filterConfiguratorCandidates(compatibilityCandidates, {
@@ -149,7 +188,11 @@ export function AvailableComponentBrowser({
   const visibleComponents: ReadonlyArray<ConfiguratorBrowserCardComponent> = catalogMode
     ? catalogComponents
     : visibleCompatibilityCandidates;
-  const contextQuery = baseComponentIds.length === 1 ? directQuery : intersectionQuery;
+  const contextQuery = includeTransitive
+    ? baseComponentIds.length === 1
+      ? directQuery
+      : intersectionQuery
+    : assemblyQuery;
   const isPending = catalogMode ? catalogQuery.isPending : contextQuery.isPending;
   const isRefreshing = catalogMode ? catalogQuery.isFetching : contextQuery.isFetching;
   const error = catalogMode ? catalogQuery.error : contextQuery.error;
@@ -345,6 +388,62 @@ export function AvailableComponentBrowser({
                     />
                   ))}
                 </SimpleGrid>
+              ) : null}
+
+              {!catalogMode && blockedCandidates.length > 0 ? (
+                <Accordion variant="contained">
+                  <Accordion.Item value="blocked-candidates">
+                    <Accordion.Control>
+                      {t('configurator.browser.unavailableTitle', {
+                        count: blockedCandidates.length,
+                      })}
+                    </Accordion.Control>
+                    <Accordion.Panel>
+                      <Stack gap="sm">
+                        <Text size="sm" c="dimmed">
+                          {t('configurator.browser.unavailableDescription')}
+                        </Text>
+                        {blockedCandidates.slice(0, componentCatalogPageSize).map((candidate) => (
+                          <Paper key={candidate.id} p="sm" withBorder>
+                            <Stack gap="xs">
+                              <Group justify="space-between" align="flex-start">
+                                <Stack gap={2}>
+                                  <Text
+                                    component={Link}
+                                    to={`/components/${candidate.id}`}
+                                    fw={650}
+                                  >
+                                    {candidate.name}
+                                  </Text>
+                                  <Text size="xs" c="dimmed">
+                                    {[candidate.brand, candidate.componentTypeName]
+                                      .filter(Boolean)
+                                      .join(' · ')}
+                                  </Text>
+                                </Stack>
+                                <Badge color="red" variant="light">
+                                  {t('configurator.browser.unavailableBadge')}
+                                </Badge>
+                              </Group>
+                              {candidate.blockingByBase.map((entry) => (
+                                <Text key={entry.baseComponentId} size="sm">
+                                  {t('configurator.browser.blockingReason', {
+                                    component:
+                                      baseComponentNames.get(entry.baseComponentId) ??
+                                      `#${entry.baseComponentId}`,
+                                    rules: entry.blockingRules
+                                      .map((rule) => rule.ruleSetName)
+                                      .join(', '),
+                                  })}
+                                </Text>
+                              ))}
+                            </Stack>
+                          </Paper>
+                        ))}
+                      </Stack>
+                    </Accordion.Panel>
+                  </Accordion.Item>
+                </Accordion>
               ) : null}
 
               {totalPages > 1 ? (

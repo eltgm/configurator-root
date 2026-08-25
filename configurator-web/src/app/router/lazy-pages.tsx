@@ -1,5 +1,9 @@
 import { lazy } from 'react';
 
+export const AttributesPage = lazy(() =>
+  import('@/pages/AttributesPage').then(({ AttributesPage }) => ({ default: AttributesPage })),
+);
+
 export const ComponentsPage = lazy(() =>
   import('@/pages/ComponentsPage').then(({ ComponentsPage }) => ({ default: ComponentsPage })),
 );
