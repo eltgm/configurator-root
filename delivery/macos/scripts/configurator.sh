@@ -16,6 +16,7 @@ EXIT_LOCKED=80
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 PACKAGE_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 COMPOSE_FILE="$PACKAGE_ROOT/compose.yaml"
+COMPOSE_OVERRIDE_FILE="$PACKAGE_ROOT/compose.macos.yaml"
 ENV_FILE="$PACKAGE_ROOT/configurator.env"
 BACKUPS_DIR="$PACKAGE_ROOT/backups"
 LOGS_DIR="$PACKAGE_ROOT/logs"
@@ -33,6 +34,9 @@ BACKUP_ARGUMENT=""
 LOCK_ACQUIRED=0
 LOG_FILE=""
 LAST_BACKUP_DIR=""
+MAINTENANCE_ARCHIVE=""
+MAINTENANCE_VOLUME_ACTIVE=0
+PARTIAL_BACKUP_DIR=""
 DOCKER_WAIT_SECONDS=${CONFIGURATOR_DOCKER_WAIT_SECONDS:-180}
 READINESS_WAIT_SECONDS=${CONFIGURATOR_READINESS_WAIT_SECONDS:-180}
 MAINTENANCE_USER="$(id -u):$(id -g)"
@@ -104,7 +108,8 @@ run_logged() {
 
 compose() {
   CONFIGURATOR_MAINTENANCE_USER="$MAINTENANCE_USER" \
-    docker compose --project-directory "$PACKAGE_ROOT" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
+    docker compose --project-directory "$PACKAGE_ROOT" --env-file "$ENV_FILE" \
+    -f "$COMPOSE_FILE" -f "$COMPOSE_OVERRIDE_FILE" "$@"
 }
 
 release_lock() {
@@ -114,7 +119,32 @@ release_lock() {
   fi
 }
 
+cleanup_maintenance_archive() {
+  if [ -n "$MAINTENANCE_ARCHIVE" ] && [ -f "$MAINTENANCE_ARCHIVE" ] && [ ! -L "$MAINTENANCE_ARCHIVE" ]; then
+    rm -f -- "$MAINTENANCE_ARCHIVE"
+  fi
+  MAINTENANCE_ARCHIVE=""
+}
+
+cleanup_maintenance_volume() {
+  if [ "$MAINTENANCE_VOLUME_ACTIVE" -eq 1 ]; then
+    compose run --rm --no-deps --user 0:0 postgres-maintenance \
+      sh -c 'find /backup -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +' >/dev/null 2>&1 || true
+    MAINTENANCE_VOLUME_ACTIVE=0
+  fi
+}
+
+cleanup_partial_backup() {
+  if [ -n "$PARTIAL_BACKUP_DIR" ] && [ -d "$PARTIAL_BACKUP_DIR" ] && [ ! -L "$PARTIAL_BACKUP_DIR" ]; then
+    rm -rf -- "$PARTIAL_BACKUP_DIR"
+  fi
+  PARTIAL_BACKUP_DIR=""
+}
+
 cleanup() {
+  cleanup_maintenance_archive
+  cleanup_maintenance_volume
+  cleanup_partial_backup
   release_lock
 }
 trap cleanup EXIT HUP INT TERM
@@ -128,6 +158,7 @@ acquire_lock() {
 
 validate_package() {
   [ -f "$COMPOSE_FILE" ] || fail "$EXIT_PREREQUISITE" "Не найден compose.yaml. Распакуйте архив полностью."
+  [ -f "$COMPOSE_OVERRIDE_FILE" ] || fail "$EXIT_PREREQUISITE" "Не найден compose.macos.yaml. Распакуйте архив полностью."
   [ -f "$ENV_FILE" ] || fail "$EXIT_PREREQUISITE" "Не найден configurator.env. Распакуйте архив полностью."
   mkdir -p "$BACKUPS_DIR" "$LOGS_DIR"
 }
@@ -298,13 +329,44 @@ resolved_image_id() {
   fi
 }
 
-prepare_maintenance_directory() {
-  directory=$1
-  mode=$2
-  chmod "$mode" "$directory" || return 1
-  if [ -d "$directory/minio" ]; then
-    chmod "$mode" "$directory/minio" || return 1
+reset_maintenance_volume() {
+  cleanup_maintenance_volume
+  if ! run_logged compose run --rm --no-deps --user 0:0 postgres-maintenance \
+    sh -c 'find /backup -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +; chmod 0777 /backup'; then
+    return 1
   fi
+  MAINTENANCE_VOLUME_ACTIVE=1
+}
+
+create_maintenance_archive() {
+  cleanup_maintenance_archive
+  archive_root=${TMPDIR:-/tmp}
+  [ -d "$archive_root" ] || return 1
+  MAINTENANCE_ARCHIVE=$(mktemp "$archive_root/configurator-maintenance.XXXXXX.tar") || return 1
+  [ -f "$MAINTENANCE_ARCHIVE" ] && [ ! -L "$MAINTENANCE_ARCHIVE" ] || return 1
+}
+
+export_maintenance_volume() {
+  destination=$1
+  create_maintenance_archive || return 1
+  if ! compose run --rm --no-deps postgres-maintenance tar -C /backup -cf - . \
+    >"$MAINTENANCE_ARCHIVE" 2>>"$LOG_FILE"; then
+    return 1
+  fi
+  COPYFILE_DISABLE=1 tar -C "$destination" -xf "$MAINTENANCE_ARCHIVE" >>"$LOG_FILE" 2>&1 || return 1
+  cleanup_maintenance_archive
+}
+
+import_maintenance_volume() {
+  source_directory=$1
+  create_maintenance_archive || return 1
+  COPYFILE_DISABLE=1 tar -C "$source_directory" -cf "$MAINTENANCE_ARCHIVE" . >>"$LOG_FILE" 2>&1 || return 1
+  reset_maintenance_volume || return 1
+  if ! compose run --rm --no-deps --user 0:0 postgres-maintenance tar -C /backup -xf - \
+    <"$MAINTENANCE_ARCHIVE" >>"$LOG_FILE" 2>&1; then
+    return 1
+  fi
+  cleanup_maintenance_archive
 }
 
 secure_maintenance_directory() {
@@ -361,12 +423,17 @@ create_backup() {
     suffix=$((suffix + 1))
   done
   partial_dir="$final_dir.partial"
-  mkdir -p "$partial_dir/minio"
-  prepare_maintenance_directory "$partial_dir" 777 || return 1
+  mkdir -p "$partial_dir" || return 1
+  PARTIAL_BACKUP_DIR=$partial_dir
+  if ! reset_maintenance_volume; then
+    cleanup_partial_backup
+    return 1
+  fi
 
   log "Подготавливаю PostgreSQL и MinIO для backup…"
   if ! run_logged compose up -d --wait --wait-timeout "$READINESS_WAIT_SECONDS" postgres minio; then
-    rm -rf "$partial_dir"
+    cleanup_maintenance_volume
+    cleanup_partial_backup
     restore_service_state "$app_was_running" "$gateway_was_running" "$postgres_was_running" "$minio_was_running" || true
     return 1
   fi
@@ -378,34 +445,45 @@ create_backup() {
   channel=$(read_env_value CONFIGURATOR_CHANNEL)
 
   log "Сохраняю базу данных…"
-  if ! CONFIGURATOR_MAINTENANCE_DIR="$partial_dir" run_logged compose run --rm --no-deps postgres-maintenance \
+  if ! run_logged compose run --rm --no-deps postgres-maintenance \
     pg_dump --format=custom --no-owner --no-privileges --file=/backup/database.dump "$db_name"; then
-    rm -rf "$partial_dir"
+    cleanup_maintenance_volume
+    cleanup_partial_backup
     restore_service_state "$app_was_running" "$gateway_was_running" "$postgres_was_running" "$minio_was_running" || true
     return 1
   fi
 
-  if ! CONFIGURATOR_MAINTENANCE_DIR="$partial_dir" run_logged compose run --rm --no-deps postgres-maintenance \
+  if ! run_logged compose run --rm --no-deps postgres-maintenance \
     pg_restore --list /backup/database.dump; then
-    rm -rf "$partial_dir"
+    cleanup_maintenance_volume
+    cleanup_partial_backup
     restore_service_state "$app_was_running" "$gateway_was_running" "$postgres_was_running" "$minio_was_running" || true
     return 1
   fi
 
   log "Сохраняю изображения…"
-  if ! CONFIGURATOR_MAINTENANCE_DIR="$partial_dir" run_logged compose run --rm --no-deps minio-maintenance \
+  if ! run_logged compose run --rm --no-deps minio-maintenance \
     mb --ignore-existing "configurator/$bucket"; then
-    rm -rf "$partial_dir"
+    cleanup_maintenance_volume
+    cleanup_partial_backup
     restore_service_state "$app_was_running" "$gateway_was_running" "$postgres_was_running" "$minio_was_running" || true
     return 1
   fi
-  if ! CONFIGURATOR_MAINTENANCE_DIR="$partial_dir" run_logged compose run --rm --no-deps minio-maintenance \
+  if ! run_logged compose run --rm --no-deps minio-maintenance \
     mirror --overwrite "configurator/$bucket" /backup/minio; then
-    rm -rf "$partial_dir"
+    cleanup_maintenance_volume
+    cleanup_partial_backup
     restore_service_state "$app_was_running" "$gateway_was_running" "$postgres_was_running" "$minio_was_running" || true
     return 1
   fi
 
+  if ! export_maintenance_volume "$partial_dir"; then
+    cleanup_maintenance_volume
+    cleanup_partial_backup
+    restore_service_state "$app_was_running" "$gateway_was_running" "$postgres_was_running" "$minio_was_running" || true
+    return 1
+  fi
+  cleanup_maintenance_volume
   secure_maintenance_directory "$partial_dir"
 
   cat >"$partial_dir/manifest.properties" <<EOF
@@ -421,20 +499,21 @@ minioArtifact=minio
 EOF
 
   if ! generate_checksums "$partial_dir" || ! verify_checksums "$partial_dir"; then
-    rm -rf "$partial_dir"
+    cleanup_partial_backup
     restore_service_state "$app_was_running" "$gateway_was_running" "$postgres_was_running" "$minio_was_running" || true
     return 1
   fi
   if ! restore_service_state "$app_was_running" "$gateway_was_running" "$postgres_was_running" "$minio_was_running"; then
-    rm -rf "$partial_dir"
+    cleanup_partial_backup
     return 1
   fi
   if [ "$app_was_running" -eq 1 ] && [ "$gateway_was_running" -eq 1 ] && ! wait_for_application; then
     write_safe_diagnostics
-    rm -rf "$partial_dir"
+    cleanup_partial_backup
     return 1
   fi
   mv "$partial_dir" "$final_dir"
+  PARTIAL_BACKUP_DIR=""
   LAST_BACKUP_DIR=$final_dir
   log "Backup создан: $final_dir"
   return 0
@@ -516,49 +595,49 @@ perform_restore() {
   create_backup pre-restore || return 1
   safety_backup=$LAST_BACKUP_DIR
 
-  prepare_maintenance_directory "$selected_backup" 755 || return 1
+  import_maintenance_volume "$selected_backup" || return 1
 
   if ! run_logged compose up -d --wait --wait-timeout "$READINESS_WAIT_SECONDS" postgres minio; then
-    secure_maintenance_directory "$selected_backup"
+    cleanup_maintenance_volume
     return 1
   fi
   run_logged compose stop gateway app || true
 
   log "Восстанавливаю базу данных…"
-  if ! CONFIGURATOR_MAINTENANCE_DIR="$selected_backup" run_logged compose run --rm --no-deps postgres-maintenance \
+  if ! run_logged compose run --rm --no-deps postgres-maintenance \
     dropdb --maintenance-db=postgres --if-exists --force "$db_name"; then
-    secure_maintenance_directory "$selected_backup"
+    cleanup_maintenance_volume
     LAST_BACKUP_DIR=$safety_backup
     return 1
   fi
-  if ! CONFIGURATOR_MAINTENANCE_DIR="$selected_backup" run_logged compose run --rm --no-deps postgres-maintenance \
+  if ! run_logged compose run --rm --no-deps postgres-maintenance \
     createdb --maintenance-db=postgres --template=template0 "$db_name"; then
-    secure_maintenance_directory "$selected_backup"
+    cleanup_maintenance_volume
     LAST_BACKUP_DIR=$safety_backup
     return 1
   fi
-  if ! CONFIGURATOR_MAINTENANCE_DIR="$selected_backup" run_logged compose run --rm --no-deps postgres-maintenance \
+  if ! run_logged compose run --rm --no-deps postgres-maintenance \
     pg_restore --exit-on-error --no-owner --no-privileges --dbname="$db_name" /backup/database.dump; then
-    secure_maintenance_directory "$selected_backup"
+    cleanup_maintenance_volume
     LAST_BACKUP_DIR=$safety_backup
     return 1
   fi
 
   log "Восстанавливаю изображения…"
-  if ! CONFIGURATOR_MAINTENANCE_DIR="$selected_backup" run_logged compose run --rm --no-deps minio-maintenance \
+  if ! run_logged compose run --rm --no-deps minio-maintenance \
     mb --ignore-existing "configurator/$bucket"; then
-    secure_maintenance_directory "$selected_backup"
+    cleanup_maintenance_volume
     LAST_BACKUP_DIR=$safety_backup
     return 1
   fi
-  if ! CONFIGURATOR_MAINTENANCE_DIR="$selected_backup" run_logged compose run --rm --no-deps minio-maintenance \
+  if ! run_logged compose run --rm --no-deps minio-maintenance \
     mirror --overwrite --remove /backup/minio "configurator/$bucket"; then
-    secure_maintenance_directory "$selected_backup"
+    cleanup_maintenance_volume
     LAST_BACKUP_DIR=$safety_backup
     return 1
   fi
 
-  secure_maintenance_directory "$selected_backup"
+  cleanup_maintenance_volume
 
   if ! run_logged compose up -d --remove-orphans; then
     LAST_BACKUP_DIR=$safety_backup

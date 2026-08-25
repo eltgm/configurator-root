@@ -1,0 +1,15 @@
+services:
+  postgres-maintenance:
+    volumes:
+      - type: volume
+        source: maintenance_data
+        target: /backup
+
+  minio-maintenance:
+    volumes:
+      - type: volume
+        source: maintenance_data
+        target: /backup
+
+volumes:
+  maintenance_data:

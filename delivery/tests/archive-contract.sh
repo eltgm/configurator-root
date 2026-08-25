@@ -91,6 +91,8 @@ readonly WINDOWS_ROOT="${TEMP_DIRECTORY}/windows/Configurator"
 readonly MACOS_ROOT="${TEMP_DIRECTORY}/macos/Configurator"
 validate_common_package "${WINDOWS_ROOT}" windows
 validate_common_package "${MACOS_ROOT}" macos
+[[ -f "${MACOS_ROOT}/compose.macos.yaml" ]] || fail 'macOS: missing compose.macos.yaml'
+[[ ! -f "${WINDOWS_ROOT}/compose.macos.yaml" ]] || fail 'Windows: macOS Compose override leaked into package'
 
 for operation in Start Stop Update Backup Restore; do
   [[ -f "${WINDOWS_ROOT}/${operation}.cmd" ]] || fail "Windows: missing ${operation}.cmd"
@@ -110,10 +112,16 @@ done < <(find "${WINDOWS_ROOT}" -type f \( -name '*.cmd' -o -name '*.ps1' \) -pr
 
 bash -n "${MACOS_ROOT}/scripts/configurator.sh" "${MACOS_ROOT}"/*.command
 
-CONFIGURATOR_MAINTENANCE_DIR="${TEMP_DIRECTORY}/maintenance" \
+CONFIGURATOR_MAINTENANCE_DIR="${TEMP_DIRECTORY}/unshared-placeholder" \
   CONFIGURATOR_MAINTENANCE_USER="$(id -u):$(id -g)" \
   docker compose --project-directory "${MACOS_ROOT}" \
   --env-file "${MACOS_ROOT}/configurator.env" \
-  -f "${MACOS_ROOT}/compose.yaml" --profile maintenance config --quiet
+  -f "${MACOS_ROOT}/compose.yaml" -f "${MACOS_ROOT}/compose.macos.yaml" \
+  --profile maintenance config >"${TEMP_DIRECTORY}/macos-compose.yaml"
+grep -Fq 'type: volume' "${TEMP_DIRECTORY}/macos-compose.yaml" ||
+  fail 'macOS maintenance storage is not a Docker volume'
+if grep -Fq "${TEMP_DIRECTORY}/unshared-placeholder" "${TEMP_DIRECTORY}/macos-compose.yaml"; then
+  fail 'macOS maintenance storage still uses the host bind mount'
+fi
 
 echo 'archive-contract: OK'
