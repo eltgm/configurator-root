@@ -2,10 +2,14 @@
 
 Дата аудита: 2026-08-25. Исходный release scope: CON1-132 и CON1-133.
 
-Вердикт: **release metadata подготовлены, публикация пока заблокирована**. Код двух задач уже находится в `master`,
-но annotated tag `v1.1.0` был создан на commit `ce6c4a6` до добавления секции changelog, release notes и синхронизации
-версий. Такой commit не проходит шаг `Validate tag and release commit` текущего workflow. До проверки GitHub Actions,
-Release и GHCR tag нельзя удалять, перемещать или повторно использовать.
+Вердикт: **release candidate исправлен локально, публикация пока заблокирована повторным merge/tag workflow**.
+Annotated tag `v1.1.0` указывает на commit `6b032888`, где functional E2E и accessibility прошли, но pinned visual
+regression остановился на устаревшем `configurator-light.png`: 28 853 пикселя отличались одинаково во всех трёх
+попытках. Downstream jobs публикации не запускались, поскольку зависят от успешного `Verify release candidate`.
+
+Diff подтвердил ожидаемое изменение assembly-aware workspace из CON1-133: новые тексты политики и меньшая высота
+информационных блоков сдвинули содержимое страницы. Baseline просмотрен, обновлён только для этого экрана и повторно
+проверен в pinned Playwright container — 8/8 visual tests прошли.
 
 ## Состав обновления
 
@@ -25,7 +29,7 @@ Release и GHCR tag нельзя удалять, перемещать или п�
 ## Версии release candidate
 
 | Область  | Состояние                                                                               |
-|----------|-----------------------------------------------------------------------------------------|
+| -------- | --------------------------------------------------------------------------------------- |
 | Backend  | Spring Boot 3.4.11; Gradle default `1.1.0-SNAPSHOT`; tag build `-PreleaseVersion=1.1.0` |
 | Frontend | package/lock version `1.1.0`; Node 24 / npm 11 contract                                 |
 | REST     | OpenAPI 3.0.3, info version `1.1.0`                                                     |
@@ -39,20 +43,30 @@ Release и GHCR tag нельзя удалять, перемещать или п�
 - CON1-133: Gradle unit/local/build/external, frontend check/coverage, 69 Playwright E2E и 34 accessibility checks
   прошли; visual regression и delivery e2e не запускались, поскольку delivery-контракт не менялся.
 
-Эти результаты подтверждают соответствующие task commits, но не заменяют повторный полный прогон окончательного
-release commit. Фактические проверки текущей подготовки будут добавлены после запуска.
+## Проверки release preparation и visual fix
+
+| Проверка                                                                                        | Результат                                      |
+| ----------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `./gradlew --no-daemon clean build -PreleaseVersion=1.1.0 -PspotlessRatchetFrom=origin/develop` | PASS, 24 tasks                                 |
+| `npm ci && npm run check`                                                                       | PASS, 43 suites / 213 tests и production build |
+| `npm run test:coverage`                                                                         | PASS, statements 90.11%, lines 90.66%          |
+| Functional Playwright в tag workflow                                                            | PASS, 72/72 Chromium/Firefox/WebKit            |
+| Accessibility в tag workflow                                                                    | PASS, 36/36 desktop/mobile checks              |
+| Пять non-Docker-lifecycle delivery contracts                                                    | PASS                                           |
+| `npm run test:visual:update` после review diff                                                  | PASS, 8/8; обновлён один baseline              |
+| Повторный `npm run test:visual`                                                                 | PASS, 8/8 в pinned Playwright container        |
+
+Предшествующие task results и эти проверки не заменяют оставшийся external/delivery matrix на окончательном release
+commit.
 
 ## Release blockers
 
-1. В GitHub проверить состояние workflow, draft release и GHCR exact tag `1.1.0`, запущенных существующим tag.
-2. Если tag не был опубликован и exact images отсутствуют, удалить premature remote/local tag по owner-approved
-   процедуре
-   из `GIT_RELEASE_v1.1.0.md`; если release или immutable images уже появились — не перемещать tag и выбрать новую
-   версию.
-3. Провести release-preparation PR через `develop`, затем release PR `develop` → `master`; direct push запрещён.
-4. Повторить полный backend/frontend/browser/external/delivery matrix на окончательном release commit.
-5. Проверить migration `V7` на копии непустой базы `v1.0.0` и выполнить clean-machine Windows/macOS smoke.
-6. Проверить anonymous pull, checksums, attestations и вручную опубликовать только проверенный draft.
+1. Влить visual-baseline fix через `develop`, затем release PR `develop` → `master`; direct push запрещён.
+2. После проверки отсутствия draft release и exact images удалить failed remote/local tag по owner-approved процедуре
+   из `GIT_RELEASE_v1.1.0.md`, затем создать tag на окончательном release commit.
+3. Повторить полный tag workflow, включая external integration, production delivery smoke и Docker lifecycle.
+4. Проверить migration `V7` на копии непустой базы `v1.0.0` и выполнить clean-machine Windows/macOS smoke.
+5. Проверить anonymous pull, checksums, attestations и вручную опубликовать только проверенный draft.
 
 Локальное изменение `configurator-integration-tests/src/test/resources/testcontainers.properties` принадлежит
 пользователю и не входит в release commit.
