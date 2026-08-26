@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from '@/app/App';
 import { appRoutes } from '@/app/router/routes';
-import type { ComponentType, Configuration, ConfiguratorBatchSearchResponse } from '@/shared/api';
+import type { ComponentType, Configuration, ConfiguratorCandidatesResponse } from '@/shared/api';
 import { configuratorDraftStorageKey, selectedDomainStorageKey } from '@/shared/config/preferences';
 import { downloadTextFile } from '@/shared/lib/download';
 import { server, testApiBaseUrl } from '@/test/server';
@@ -16,6 +16,7 @@ vi.mock('@/shared/lib/download', () => ({ downloadTextFile: vi.fn() }));
 const componentTypes: ComponentType[] = [
   { id: 11, domainId: 101, name: 'Процессор', orderIndex: 10 },
   { id: 12, domainId: 101, name: 'Видеокарта', orderIndex: 20 },
+  { id: 13, domainId: 101, name: 'Оперативная память', orderIndex: 30 },
 ];
 
 const configuration: Configuration = {
@@ -43,46 +44,21 @@ const configuration: Configuration = {
   ],
 };
 
-function directBatch(componentIds = [7, 8]): ConfiguratorBatchSearchResponse {
-  const [left, right] = componentIds;
-  if (left === undefined || right === undefined) return { results: [] };
+function validAssembly(componentIds = [7, 8]): ConfiguratorCandidatesResponse {
+  const assemblyDecisions = componentIds.flatMap((leftComponentId, leftIndex) =>
+    componentIds.slice(leftIndex + 1).map((rightComponentId) => ({
+      leftComponentId,
+      rightComponentId,
+      status: 'ALLOWED' as const,
+      explanations: [{ source: 'MANUAL' as const, linkId: leftComponentId + rightComponentId }],
+      blockingRules: [],
+    })),
+  );
   return {
-    results: [
-      {
-        baseComponentId: left,
-        compatibleByType: [
-          {
-            componentTypeId: 12,
-            componentTypeName: 'Видеокарта',
-            components: [
-              {
-                id: right,
-                name: 'RTX 5090',
-                componentTypeId: 12,
-                explanations: [{ source: 'MANUAL', linkId: 1 }],
-              },
-            ],
-          },
-        ],
-      },
-      {
-        baseComponentId: right,
-        compatibleByType: [
-          {
-            componentTypeId: 11,
-            componentTypeName: 'Процессор',
-            components: [
-              {
-                id: left,
-                name: 'Ryzen 9',
-                componentTypeId: 11,
-                explanations: [{ source: 'MANUAL', linkId: 1 }],
-              },
-            ],
-          },
-        ],
-      },
-    ],
+    componentIds,
+    assemblyStatus: 'VALID',
+    assemblyDecisions,
+    candidatesByType: [],
   };
 }
 
@@ -92,13 +68,10 @@ function useConfigurationHandlers(value: Configuration = configuration) {
     http.get(`${testApiBaseUrl}/domains/101/component-types`, () =>
       HttpResponse.json(componentTypes),
     ),
-    http.post(
-      `${testApiBaseUrl}/domains/101/configurator/compatible/search`,
-      async ({ request }) => {
-        const body = (await request.json()) as { componentIds: number[] };
-        return HttpResponse.json(directBatch(body.componentIds));
-      },
-    ),
+    http.post(`${testApiBaseUrl}/domains/101/configurator/candidates`, async ({ request }) => {
+      const body = (await request.json()) as { componentIds: number[] };
+      return HttpResponse.json(validAssembly(body.componentIds));
+    }),
     http.post(`${testApiBaseUrl}/domains/101/configurator/compatible/intersection`, () =>
       HttpResponse.json({ componentIds: [7, 8], compatibleByType: [] }),
     ),
@@ -301,6 +274,240 @@ describe('configuration details and editor', () => {
 
     await findConfigurationHeading('Новая станция');
     expect(requestBody).toEqual({ name: 'Новая станция', componentIds: [7, 8] });
+  });
+
+  it('updates a connected assembly when some pairs are unknown', async () => {
+    const user = userEvent.setup();
+    let requestBody: unknown;
+    const connectedConfiguration: Configuration = {
+      ...configuration,
+      components: [
+        configuration.components[0]!,
+        {
+          ...configuration.components[1]!,
+          name: 'B650',
+          componentTypeName: 'Материнская плата',
+        },
+        {
+          id: 9,
+          name: 'DDR5',
+          componentTypeId: 13,
+          componentTypeName: 'Оперативная память',
+          archived: false,
+        },
+      ],
+    };
+    useConfigurationHandlers(connectedConfiguration);
+    server.use(
+      http.post(`${testApiBaseUrl}/domains/101/configurator/candidates`, () =>
+        HttpResponse.json<ConfiguratorCandidatesResponse>({
+          componentIds: [7, 8, 9],
+          assemblyStatus: 'VALID',
+          assemblyDecisions: [
+            {
+              leftComponentId: 7,
+              rightComponentId: 8,
+              status: 'ALLOWED',
+              explanations: [{ source: 'AUTOMATIC', ruleSetId: 71 }],
+              blockingRules: [],
+            },
+            {
+              leftComponentId: 7,
+              rightComponentId: 9,
+              status: 'UNKNOWN',
+              explanations: [],
+              blockingRules: [],
+            },
+            {
+              leftComponentId: 8,
+              rightComponentId: 9,
+              status: 'ALLOWED',
+              explanations: [{ source: 'MANUAL', linkId: 89 }],
+              blockingRules: [],
+            },
+          ],
+          candidatesByType: [],
+        }),
+      ),
+      http.put(`${testApiBaseUrl}/configurations/91`, async ({ request }) => {
+        requestBody = await request.json();
+        return HttpResponse.json({ ...connectedConfiguration, name: 'Связная сборка' });
+      }),
+    );
+    renderAt('/configurations/91/edit');
+
+    const name = await screen.findByRole('textbox', { name: 'Название' });
+    await user.clear(name);
+    await user.type(name, 'Связная сборка');
+    expect(
+      await screen.findByText('Компоненты образуют связную сборку без блокирующих правил.'),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Сохранить изменения' })).toBeEnabled(),
+    );
+    await user.click(screen.getByRole('button', { name: 'Сохранить изменения' }));
+
+    await findConfigurationHeading('Связная сборка');
+    expect(requestBody).toEqual({
+      name: 'Связная сборка',
+      description: 'Тихая сборка',
+      componentIds: [7, 8, 9],
+    });
+  });
+
+  it('allows adding a bridge component to repair a disconnected assembly', async () => {
+    const user = userEvent.setup();
+    let requestBody: unknown;
+    useConfigurationHandlers();
+    server.use(
+      http.post(`${testApiBaseUrl}/domains/101/configurator/candidates`, async ({ request }) => {
+        const { componentIds } = (await request.json()) as { componentIds: number[] };
+        if (componentIds.length === 2) {
+          return HttpResponse.json<ConfiguratorCandidatesResponse>({
+            componentIds,
+            assemblyStatus: 'DISCONNECTED',
+            assemblyDecisions: [
+              {
+                leftComponentId: 7,
+                rightComponentId: 8,
+                status: 'UNKNOWN',
+                explanations: [],
+                blockingRules: [],
+              },
+            ],
+            candidatesByType: [
+              {
+                componentTypeId: 13,
+                componentTypeName: 'Оперативная память',
+                components: [
+                  {
+                    id: 9,
+                    name: 'DDR5 bridge',
+                    componentTypeId: 13,
+                    status: 'AVAILABLE',
+                    compatibilityByBase: [
+                      {
+                        baseComponentId: 7,
+                        status: 'ALLOWED',
+                        explanations: [{ source: 'AUTOMATIC', ruleSetId: 79 }],
+                        blockingRules: [],
+                      },
+                      {
+                        baseComponentId: 8,
+                        status: 'ALLOWED',
+                        explanations: [{ source: 'MANUAL', linkId: 89 }],
+                        blockingRules: [],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          });
+        }
+        return HttpResponse.json<ConfiguratorCandidatesResponse>({
+          componentIds,
+          assemblyStatus: 'VALID',
+          assemblyDecisions: [
+            {
+              leftComponentId: 7,
+              rightComponentId: 8,
+              status: 'UNKNOWN',
+              explanations: [],
+              blockingRules: [],
+            },
+            {
+              leftComponentId: 7,
+              rightComponentId: 9,
+              status: 'ALLOWED',
+              explanations: [{ source: 'AUTOMATIC', ruleSetId: 79 }],
+              blockingRules: [],
+            },
+            {
+              leftComponentId: 8,
+              rightComponentId: 9,
+              status: 'ALLOWED',
+              explanations: [{ source: 'MANUAL', linkId: 89 }],
+              blockingRules: [],
+            },
+          ],
+          candidatesByType: [],
+        });
+      }),
+      http.put(`${testApiBaseUrl}/configurations/91`, async ({ request }) => {
+        requestBody = await request.json();
+        return HttpResponse.json({
+          ...configuration,
+          components: [
+            ...configuration.components,
+            {
+              id: 9,
+              name: 'DDR5 bridge',
+              componentTypeId: 13,
+              componentTypeName: 'Оперативная память',
+              archived: false,
+            },
+          ],
+        });
+      }),
+    );
+    renderAt('/configurations/91/edit');
+
+    expect(await screen.findByText(/Состав не связан подтверждёнными связями/)).toBeInTheDocument();
+    const browser = screen.getByRole('region', { name: 'Доступные компоненты' });
+    const candidateName = await within(browser).findByText('DDR5 bridge');
+    const candidateCard = candidateName.closest('[data-with-border="true"]');
+    expect(candidateCard).not.toBeNull();
+    await user.click(
+      within(candidateCard as HTMLElement).getByRole('button', { name: 'Добавить' }),
+    );
+
+    expect(
+      await screen.findByText('Компоненты образуют связную сборку без блокирующих правил.'),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Сохранить изменения' }));
+    await findConfigurationHeading('Рабочая станция');
+    expect(requestBody).toEqual({
+      name: 'Рабочая станция',
+      description: 'Тихая сборка',
+      componentIds: [7, 8, 9],
+    });
+  });
+
+  it('blocks DENIED pairs until a conflicting component is removed', async () => {
+    const user = userEvent.setup();
+    useConfigurationHandlers();
+    server.use(
+      http.post(`${testApiBaseUrl}/domains/101/configurator/candidates`, () =>
+        HttpResponse.json<ConfiguratorCandidatesResponse>({
+          componentIds: [7, 8],
+          assemblyStatus: 'BLOCKED',
+          assemblyDecisions: [
+            {
+              leftComponentId: 7,
+              rightComponentId: 8,
+              status: 'DENIED',
+              explanations: [],
+              blockingRules: [{ ruleSetId: 78, ruleSetName: 'Power limit' }],
+            },
+          ],
+          candidatesByType: [],
+        }),
+      ),
+    );
+    renderAt('/configurations/91/edit');
+
+    expect(await screen.findByText(/Состав нарушает автоматические правила/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Сохранить изменения' })).toBeDisabled();
+    const composition = screen.getByRole('region', { name: 'Состав конфигурации' });
+    const blockedRow = within(composition).getByText('RTX 5090').closest('.mantine-Paper-root');
+    expect(blockedRow).not.toBeNull();
+    await user.click(within(blockedRow as HTMLElement).getByRole('button', { name: 'Убрать' }));
+
+    expect(
+      await screen.findByText('Компоненты образуют связную сборку без блокирующих правил.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Сохранить изменения' })).toBeEnabled();
   });
 
   it('replaces a component with an active candidate of the same type', async () => {

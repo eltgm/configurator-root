@@ -566,8 +566,10 @@ export type CreateConfigurationRequest = {
   description?: string | null;
   /**
    * Unique active components from the path domain. At most one component of each type is
-   * allowed. Every pair must be directly compatible through a manual link or an enabled
-   * automatic attribute rule. Transitive reachability does not validate a configuration.
+   * allowed. For two or more components, ALLOWED relationships must form a connected graph
+   * and no selected pair may be DENIED. UNKNOWN pairs are permitted when the ALLOWED graph
+   * remains connected. Transitive reachability through unselected components does not
+   * validate a configuration.
    *
    */
   componentIds: Array<number>;
@@ -589,8 +591,9 @@ export type UpdateConfigurationRequest = {
   description?: string | null;
   /**
    * Complete replacement set of unique active components from the configuration domain.
-   * At most one component of each type is allowed. Every pair must be directly compatible
-   * through a manual link or an enabled automatic attribute rule. An archived component is
+   * At most one component of each type is allowed. For two or more components, ALLOWED
+   * relationships must form a connected graph and no selected pair may be DENIED. UNKNOWN
+   * pairs are permitted when the ALLOWED graph remains connected. An archived component is
    * rejected even when it already belongs to the saved configuration.
    *
    */

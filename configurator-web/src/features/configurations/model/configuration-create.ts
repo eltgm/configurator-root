@@ -1,7 +1,7 @@
 import type { CreateConfigurationRequest } from '@/shared/api';
 
 export type ConfigurationSaveBlockReason =
-  'empty' | 'pending' | 'transitive' | 'conflict' | 'blocked' | 'error';
+  'empty' | 'pending' | 'conflict' | 'disconnected' | 'blocked' | 'error';
 
 export type ConfigurationCompatibilityState = ConfigurationSaveBlockReason | 'valid';
 

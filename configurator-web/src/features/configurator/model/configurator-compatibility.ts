@@ -1,7 +1,7 @@
 import type {
   CompatibilityExplanation,
   CompatibilityBlockingRule,
-  ConfiguratorBatchSearchResponse,
+  ConfiguratorAssemblyStatus,
   ConfiguratorCandidatesResponse,
   ConfiguratorIntersectionResponse,
   ConfiguratorResponse,
@@ -43,15 +43,13 @@ export interface ConfiguratorConflictPair {
 }
 
 export interface ConfiguratorPairResult extends ConfiguratorConflictPair {
-  relation: CompatibilityRelation;
+  relation: CompatibilityRelation | 'unknown';
   explanations: ReadonlyArray<CompatibilityExplanation>;
   blockingRules?: ReadonlyArray<CompatibilityBlockingRule>;
 }
 
 export interface ConfiguratorValidationResult {
-  compatible: boolean;
-  directlyCompatible: boolean;
-  relation: CompatibilityRelation;
+  assemblyStatus: ConfiguratorAssemblyStatus;
   pairs: ReadonlyArray<ConfiguratorPairResult>;
   conflictPairs: ReadonlyArray<ConfiguratorConflictPair>;
   conflictComponentIds: ReadonlySet<number>;
@@ -168,31 +166,55 @@ export function validationFromAssemblyResponse(
   const pairs: ConfiguratorPairResult[] = response.assemblyDecisions.map((decision) => ({
     leftComponentId: decision.leftComponentId,
     rightComponentId: decision.rightComponentId,
-    relation: decision.status === 'ALLOWED' ? 'direct' : 'incompatible',
+    relation:
+      decision.status === 'ALLOWED'
+        ? 'direct'
+        : decision.status === 'DENIED'
+          ? 'incompatible'
+          : 'unknown',
     explanations: decision.explanations,
     ...(decision.blockingRules.length > 0 ? { blockingRules: decision.blockingRules } : {}),
   }));
-  const conflictingPairs =
-    response.assemblyStatus === 'BLOCKED'
-      ? response.assemblyDecisions.filter((decision) => decision.status === 'DENIED')
-      : response.assemblyStatus === 'DISCONNECTED'
-        ? response.assemblyDecisions.filter((decision) => decision.status === 'UNKNOWN')
-        : [];
+  const conflictingPairs = response.assemblyDecisions.filter(
+    (decision) => decision.status === 'DENIED',
+  );
   const conflictPairs = conflictingPairs.map(({ leftComponentId, rightComponentId }) => ({
     leftComponentId,
     rightComponentId,
   }));
-  const conflictComponentIds = new Set(
-    conflictPairs.flatMap((pair) => [pair.leftComponentId, pair.rightComponentId]),
-  );
+  const conflictComponentIds =
+    response.assemblyStatus === 'DISCONNECTED'
+      ? disconnectedComponentIds(response)
+      : new Set(conflictPairs.flatMap((pair) => [pair.leftComponentId, pair.rightComponentId]));
   return {
-    compatible: response.assemblyStatus === 'VALID',
-    directlyCompatible: response.assemblyStatus === 'VALID',
-    relation: response.assemblyStatus === 'VALID' ? 'direct' : 'incompatible',
+    assemblyStatus: response.assemblyStatus,
     pairs,
     conflictPairs,
     conflictComponentIds,
   };
+}
+
+function disconnectedComponentIds(response: ConfiguratorCandidatesResponse) {
+  const adjacency = new Map(
+    response.componentIds.map((componentId) => [componentId, new Set<number>()]),
+  );
+  for (const decision of response.assemblyDecisions) {
+    if (decision.status !== 'ALLOWED') continue;
+    adjacency.get(decision.leftComponentId)?.add(decision.rightComponentId);
+    adjacency.get(decision.rightComponentId)?.add(decision.leftComponentId);
+  }
+
+  const rootId = response.componentIds[0];
+  if (rootId === undefined) return new Set<number>();
+  const visited = new Set<number>();
+  const pending = [rootId];
+  while (pending.length > 0) {
+    const componentId = pending.pop()!;
+    if (visited.has(componentId)) continue;
+    visited.add(componentId);
+    pending.push(...(adjacency.get(componentId) ?? []));
+  }
+  return new Set(response.componentIds.filter((componentId) => !visited.has(componentId)));
 }
 
 export function filterConfiguratorCandidates(
@@ -215,75 +237,6 @@ export function filterConfiguratorCandidates(
         candidate.name.toLocaleLowerCase().includes(normalizedSearch) ||
         candidate.brand?.toLocaleLowerCase().includes(normalizedSearch)),
   );
-}
-
-function compatibleComponentsByBase(response: ConfiguratorBatchSearchResponse) {
-  return new Map(
-    response.results.map((result) => [
-      result.baseComponentId,
-      new Map(
-        result.compatibleByType.flatMap((group) =>
-          group.components.map((component) => [component.id, component] as const),
-        ),
-      ),
-    ]),
-  );
-}
-
-export function validateConfiguratorAssembly(
-  componentIds: ReadonlyArray<number>,
-  response: ConfiguratorBatchSearchResponse,
-): ConfiguratorValidationResult {
-  const compatibleByBase = compatibleComponentsByBase(response);
-  const conflictPairs: ConfiguratorConflictPair[] = [];
-  const conflictComponentIds = new Set<number>();
-  const pairs: ConfiguratorPairResult[] = [];
-
-  for (let leftIndex = 0; leftIndex < componentIds.length; leftIndex += 1) {
-    const leftComponentId = componentIds[leftIndex]!;
-    for (let rightIndex = leftIndex + 1; rightIndex < componentIds.length; rightIndex += 1) {
-      const rightComponentId = componentIds[rightIndex]!;
-      const leftToRight = compatibleByBase.get(leftComponentId)?.get(rightComponentId);
-      const rightToLeft = compatibleByBase.get(rightComponentId)?.get(leftComponentId);
-      const relation: CompatibilityRelation =
-        leftToRight === undefined || rightToLeft === undefined
-          ? 'incompatible'
-          : compatibilityRelationFromExplanations(leftToRight.explanations) === 'direct' &&
-              compatibilityRelationFromExplanations(rightToLeft.explanations) === 'direct'
-            ? 'direct'
-            : 'transitive';
-      pairs.push({
-        leftComponentId,
-        rightComponentId,
-        relation,
-        explanations:
-          leftToRight && leftToRight.explanations.length > 0
-            ? leftToRight.explanations
-            : (rightToLeft?.explanations ?? []),
-      });
-      if (relation === 'incompatible') {
-        conflictPairs.push({ leftComponentId, rightComponentId });
-        conflictComponentIds.add(leftComponentId);
-        conflictComponentIds.add(rightComponentId);
-      }
-    }
-  }
-
-  const relation: CompatibilityRelation =
-    conflictPairs.length > 0
-      ? 'incompatible'
-      : pairs.some((pair) => pair.relation === 'transitive')
-        ? 'transitive'
-        : 'direct';
-
-  return {
-    compatible: relation !== 'incompatible',
-    directlyCompatible: relation === 'direct',
-    relation,
-    pairs,
-    conflictPairs,
-    conflictComponentIds,
-  };
 }
 
 export function replacementBaseComponentIds(

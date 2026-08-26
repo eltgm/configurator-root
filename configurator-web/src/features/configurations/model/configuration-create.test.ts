@@ -6,7 +6,7 @@ import {
 } from '@/features/configurations/model/configuration-create';
 
 describe('configuration create model', () => {
-  it('allows only a non-empty directly compatible assembly', () => {
+  it('allows only a non-empty valid connected assembly', () => {
     expect(getConfigurationSaveEligibility(1, 'valid')).toEqual({ allowed: true });
     expect(getConfigurationSaveEligibility(2, 'valid')).toEqual({ allowed: true });
     expect(getConfigurationSaveEligibility(0, 'valid')).toEqual({
@@ -14,7 +14,7 @@ describe('configuration create model', () => {
       reason: 'empty',
     });
 
-    for (const reason of ['pending', 'transitive', 'conflict', 'blocked', 'error'] as const) {
+    for (const reason of ['pending', 'conflict', 'disconnected', 'blocked', 'error'] as const) {
       expect(getConfigurationSaveEligibility(2, reason)).toEqual({ allowed: false, reason });
     }
   });

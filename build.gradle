@@ -25,7 +25,7 @@ subprojects {
     apply plugin: 'com.diffplug.spotless'
 
     group = 'ru.sultanyarov'
-    version = providers.gradleProperty('releaseVersion').orElse('1.1.1-SNAPSHOT').get()
+    version = providers.gradleProperty('releaseVersion').orElse('1.1.2-SNAPSHOT').get()
 
     repositories {
         mavenCentral()
