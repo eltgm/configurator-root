@@ -19,12 +19,9 @@ import { z } from 'zod';
 
 import type { ComponentType, Configuration } from '@/shared/api';
 import { getFieldErrors } from '@/shared/api/errors';
-import { useBatchCompatibilityQuery } from '@/features/configurator/api/configurator-compatibility';
+import { useAssemblyCandidatesQuery } from '@/features/configurator/api/configurator-compatibility';
 import type { ConfiguratorComponentSelection } from '@/features/configurator/model/configurator-compatibility';
-import {
-  replacementBaseComponentIds,
-  validateConfiguratorAssembly,
-} from '@/features/configurator/model/configurator-compatibility';
+import { replacementBaseComponentIds } from '@/features/configurator/model/configurator-compatibility';
 import { AvailableComponentBrowser } from '@/features/configurator/ui/AvailableComponentBrowser';
 import { useUpdateConfigurationMutation } from '@/features/configurations/api/configurations';
 import {
@@ -80,29 +77,25 @@ export function ConfigurationEditor({ configuration, componentTypes }: Configura
   const [replacementComponentId, setReplacementComponentId] = useState<number | null>(null);
   const componentIds = configurationComponentIds(components);
   const hasArchivedComponents = components.some((component) => component.archived);
-  const batchQuery = useBatchCompatibilityQuery(
+  const assemblyQuery = useAssemblyCandidatesQuery(
     configuration.domainId,
     componentIds,
-    false,
     componentIds.length >= 2 && !hasArchivedComponents,
   );
-  const validation = batchQuery.data
-    ? validateConfiguratorAssembly(componentIds, batchQuery.data)
-    : null;
   const validationState: ConfigurationEditorValidationState =
     componentIds.length < 2
       ? 'idle'
       : hasArchivedComponents
         ? 'idle'
-        : batchQuery.isPending
+        : assemblyQuery.isPending
           ? 'pending'
-          : batchQuery.error
+          : assemblyQuery.error
             ? 'error'
-            : validation?.relation === 'direct'
-              ? 'direct'
-              : validation?.relation === 'transitive'
-                ? 'transitive'
-                : 'conflict';
+            : assemblyQuery.data?.assemblyStatus === 'VALID'
+              ? 'valid'
+              : assemblyQuery.data?.assemblyStatus === 'BLOCKED'
+                ? 'blocked'
+                : 'disconnected';
   const eligibility = getConfigurationEditorEligibility(components, validationState);
   const compositionDirty = configurationComponentsChanged(baselineComponents, components);
   const isDirty = form.formState.isDirty || compositionDirty;
@@ -119,9 +112,7 @@ export function ConfigurationEditor({ configuration, componentTypes }: Configura
   }));
   const browserBlocked = replacementTarget
     ? baseComponents.some((component) => component.archived)
-    : components.some((component) => component.archived) ||
-      components.length >= 50 ||
-      (components.length >= 2 && validationState !== 'direct');
+    : components.some((component) => component.archived) || components.length >= 50;
 
   const resetServerError = () => {
     if (updateMutation.error) updateMutation.reset();

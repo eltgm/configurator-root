@@ -159,6 +159,7 @@ export const resources = {
             'Добавляйте компоненты из каталога. В сборке может быть один компонент каждого типа.',
           archived: 'В архиве',
           conflict: 'Конфликт',
+          disconnected: 'Нет связи',
           unknownType: 'Неизвестный тип #{{id}}',
           unavailable: 'Компонент #{{id}} не удалось загрузить. Он сохранён в черновике.',
           retry: 'Повторить',
@@ -171,15 +172,15 @@ export const resources = {
           pendingDescription: 'Сервер проверяет каждую пару компонентов текущей сборки.',
           valid: 'Сборка корректна',
           validDescription: 'Компоненты связаны через выбранные элементы, блокирующих правил нет.',
-          transitive: 'Сборка совместима только с учётом цепочек',
-          transitiveDescription:
-            'Подбор можно продолжить, но эту сборку нельзя сохранить, пока каждая пара не станет совместима напрямую.',
+          disconnected: 'Сборка не связана',
+          disconnectedDescription:
+            'Между всеми выбранными компонентами нет связного пути подтверждённых связей.',
           showDetails: 'Показать проверку',
-          conflict: 'В сборке есть конфликт',
-          conflictDescription_one: 'Обнаружена {{count}} несовместимая пара.',
-          conflictDescription_few: 'Обнаружено {{count}} несовместимые пары.',
-          conflictDescription_many: 'Обнаружено {{count}} несовместимых пар.',
-          conflictDescription_other: 'Обнаружено {{count}} несовместимой пары.',
+          conflict: 'Сборка заблокирована правилами',
+          conflictDescription_one: 'Обнаружена {{count}} заблокированная пара.',
+          conflictDescription_few: 'Обнаружено {{count}} заблокированные пары.',
+          conflictDescription_many: 'Обнаружено {{count}} заблокированных пар.',
+          conflictDescription_other: 'Обнаружено {{count}} заблокированной пары.',
           blocked: 'Проверка недоступна',
           blockedDescription:
             'Один из компонентов загружается, находится в архиве или больше недоступен.',
@@ -201,6 +202,7 @@ export const resources = {
             direct: 'Напрямую',
             transitive: 'Через цепочку',
             incompatible: 'Несовместимы',
+            unknown: 'Нет данных',
           },
           sources: {
             MANUAL: 'Ручная связь',
@@ -284,8 +286,8 @@ export const resources = {
         save: {
           unavailable: {
             pending: 'Дождитесь завершения проверки совместимости.',
-            transitive: 'Сохранение требует прямой совместимости каждой пары компонентов.',
-            conflict: 'Устраните несовместимые пары перед сохранением.',
+            conflict: 'Устраните пары, заблокированные автоматическими правилами.',
+            disconnected: 'Свяжите все компоненты сборки подтверждёнными связями.',
             blocked: 'Дождитесь загрузки или удалите недоступные и архивные компоненты.',
             error: 'Повторите проверку совместимости перед сохранением.',
           },
@@ -359,13 +361,15 @@ export const resources = {
           remove: 'Убрать',
           save: 'Сохранить изменения',
           validation: {
-            ready: 'Состав напрямую совместим и готов к сохранению.',
+            ready: 'Компоненты образуют связную сборку без блокирующих правил.',
             empty: 'Добавьте хотя бы один компонент.',
             limit: 'В конфигурации может быть не более 50 компонентов.',
             archived: 'Удалите или замените все архивные компоненты.',
-            pending: 'Дождитесь строгой проверки совместимости состава.',
-            transitive: 'Для сохранения каждой паре нужна прямая совместимость.',
-            conflict: 'В составе есть несовместимые компоненты. Удалите или замените их.',
+            pending: 'Дождитесь проверки связности и блокирующих правил.',
+            blocked:
+              'Состав нарушает автоматические правила совместимости. Удалите или замените заблокированные компоненты.',
+            disconnected:
+              'Состав не связан подтверждёнными связями. Добавьте, удалите или замените компоненты.',
             error: 'Не удалось проверить совместимость. Измените состав или повторите запрос.',
           },
           unsaved: {
@@ -1274,6 +1278,7 @@ export const resources = {
             'Add components from the catalog. The assembly can contain one component of each type.',
           archived: 'Archived',
           conflict: 'Conflict',
+          disconnected: 'No connection',
           unknownType: 'Unknown type #{{id}}',
           unavailable: 'Component #{{id}} could not be loaded. It remains in the draft.',
           retry: 'Try again',
@@ -1287,13 +1292,13 @@ export const resources = {
           valid: 'The assembly is valid',
           validDescription:
             'The components are connected through selected items and no rule blocks the assembly.',
-          transitive: 'The assembly is compatible only through chains',
-          transitiveDescription:
-            'You can continue selecting components, but this assembly cannot be saved until every pair is directly compatible.',
+          disconnected: 'The assembly is disconnected',
+          disconnectedDescription:
+            'The selected components do not all share a connected path of confirmed relationships.',
           showDetails: 'Show validation details',
-          conflict: 'The assembly has a conflict',
-          conflictDescription_one: '{{count}} incompatible pair found.',
-          conflictDescription_other: '{{count}} incompatible pairs found.',
+          conflict: 'The assembly is blocked by rules',
+          conflictDescription_one: '{{count}} blocked pair found.',
+          conflictDescription_other: '{{count}} blocked pairs found.',
           blocked: 'Validation unavailable',
           blockedDescription: 'A component is still loading, archived, or no longer available.',
           error: 'Could not validate the assembly',
@@ -1314,6 +1319,7 @@ export const resources = {
             direct: 'Direct',
             transitive: 'Through a chain',
             incompatible: 'Incompatible',
+            unknown: 'No data',
           },
           sources: {
             MANUAL: 'Manual link',
@@ -1394,8 +1400,8 @@ export const resources = {
         save: {
           unavailable: {
             pending: 'Wait until compatibility validation finishes.',
-            transitive: 'Every component pair must be directly compatible before saving.',
-            conflict: 'Resolve incompatible pairs before saving.',
+            conflict: 'Resolve pairs blocked by automatic compatibility rules.',
+            disconnected: 'Connect all assembly components through confirmed relationships.',
             blocked: 'Wait for loading or remove unavailable and archived components.',
             error: 'Retry compatibility validation before saving.',
           },
@@ -1467,13 +1473,15 @@ export const resources = {
           remove: 'Remove',
           save: 'Save changes',
           validation: {
-            ready: 'The composition is directly compatible and ready to save.',
+            ready: 'The components form a connected assembly with no blocking rules.',
             empty: 'Add at least one component.',
             limit: 'A configuration cannot contain more than 50 components.',
             archived: 'Remove or replace every archived component.',
-            pending: 'Wait for strict compatibility validation to finish.',
-            transitive: 'Every pair must be directly compatible before saving.',
-            conflict: 'The composition contains incompatible components. Remove or replace them.',
+            pending: 'Wait for connectivity and blocking-rule validation to finish.',
+            blocked:
+              'The composition violates automatic compatibility rules. Remove or replace the blocked components.',
+            disconnected:
+              'The composition is not connected by confirmed relationships. Add, remove, or replace components.',
             error: 'Compatibility could not be validated. Change the composition or retry.',
           },
           unsaved: {

@@ -128,6 +128,24 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         persisted.components*.id == [1L, 5L]
     }
 
+    def "should update configuration to a connected assembly without all pair links"() {
+        given:
+        prepareData()
+        def original = createConfiguration("Initial", [1L, 2L])
+
+        when:
+        def result = put(
+                "/configurations/${original.id}",
+                request("Connected chain", null, [1L, 2L, 9L])
+        )
+
+        then:
+        result.status == 200
+        def body = objectMapper.readValue(result.body, SavedConfiguration)
+        body.name == "Connected chain"
+        body.components*.id == [1L, 2L, 9L]
+    }
+
     def "should normalize blank description during configuration update"() {
         given:
         prepareData()

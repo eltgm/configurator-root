@@ -8,6 +8,7 @@ test('saves the current assembly and shows it in the configurations list', async
   const browser = page.getByRole('region', { name: 'Доступные компоненты' });
   const assembly = page.getByRole('region', { name: 'Текущая сборка' });
   await browser.getByRole('button', { name: 'Добавить' }).first().click();
+  await browser.getByRole('button', { name: 'Добавить' }).first().click();
   await expect(assembly.getByText('Сборка корректна')).toBeVisible();
   await expect(assembly.getByRole('button', { name: 'Сохранить конфигурацию' })).toBeEnabled();
   await assembly.getByRole('button', { name: 'Сохранить конфигурацию' }).click();
@@ -26,7 +27,7 @@ test('saves the current assembly and shows it in the configurations list', async
   expect((await createRequest).postDataJSON()).toEqual({
     name: 'Домашний ПК',
     description: 'Тихая сборка',
-    componentIds: [101],
+    componentIds: [101, 102],
   });
   await expect(page).toHaveURL(/\/configurations$/);
   const card = page.getByRole('article');
@@ -46,7 +47,11 @@ test('saves the current assembly and shows it in the configurations list', async
 
   await page.getByRole('textbox', { name: 'Название' }).fill('Домашний ПК 2026');
   const composition = page.getByRole('region', { name: 'Состав конфигурации' });
-  await composition.getByRole('button', { name: 'Заменить' }).click();
+  await composition
+    .locator('[data-with-border="true"]')
+    .filter({ hasText: 'Ryzen 7 7800X3D' })
+    .getByRole('button', { name: 'Заменить' })
+    .click();
   const replacementBrowser = page.getByRole('region', { name: 'Выбор замены' });
   await expect(replacementBrowser.getByText('Core Ultra 9 285K')).toBeVisible();
   await replacementBrowser.getByRole('button', { name: 'Выбрать Core Ultra 9 285K' }).click();
@@ -60,7 +65,7 @@ test('saves the current assembly and shows it in the configurations list', async
   expect((await updateRequest).postDataJSON()).toEqual({
     name: 'Домашний ПК 2026',
     description: 'Тихая сборка',
-    componentIds: [104],
+    componentIds: [104, 102],
   });
   await expect(page).toHaveURL(/\/configurations\/901$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Домашний ПК 2026' })).toBeVisible();
@@ -82,7 +87,7 @@ test('saves the current assembly and shows it in the configurations list', async
   expect((await copyRequest).postDataJSON()).toEqual({
     name: 'Домашний ПК 2026 — копия',
     description: 'Тихая сборка',
-    componentIds: [104],
+    componentIds: [104, 102],
   });
   await expect(page).toHaveURL(/\/configurations\/902$/);
 

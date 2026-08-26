@@ -507,7 +507,7 @@ describe('configurator workspace', () => {
 
     const assembly = await screen.findByRole('region', { name: 'Текущая сборка' });
     const browser = screen.getByRole('region', { name: 'Доступные компоненты' });
-    expect(await within(assembly).findByText('В сборке есть конфликт')).toBeInTheDocument();
+    expect(await within(assembly).findByText('Сборка заблокирована правилами')).toBeInTheDocument();
     expect(within(assembly).getAllByText('Конфликт')).toHaveLength(2);
     expect(within(browser).queryByText('Подбор временно недоступен')).not.toBeInTheDocument();
 
@@ -584,7 +584,7 @@ describe('configurator workspace', () => {
     }
   });
 
-  it('shows direct evidence and keeps transitive-only additions invalid for saving', async () => {
+  it('shows direct evidence and reports a transitive-only addition as disconnected', async () => {
     const user = userEvent.setup();
     useHandlers();
     server.use(
@@ -732,7 +732,7 @@ describe('configurator workspace', () => {
     browser = screen.getByRole('region', { name: 'Доступные компоненты' });
     await user.click(within(browser).getAllByRole('button', { name: 'Добавить' }).at(-1)!);
     const assembly = screen.getByRole('region', { name: 'Текущая сборка' });
-    expect(await within(assembly).findByText('В сборке есть конфликт')).toBeInTheDocument();
+    expect(await within(assembly).findByText('Сборка не связана')).toBeInTheDocument();
 
     await user.click(within(assembly).getByRole('button', { name: 'Показать проверку' }));
     expect(
@@ -741,6 +741,6 @@ describe('configurator workspace', () => {
     await user.keyboard('{Escape}');
 
     await user.click(screen.getByRole('switch', { name: /^Учитывать транзитивную совместимость/ }));
-    expect(await within(assembly).findByText('В сборке есть конфликт')).toBeInTheDocument();
+    expect(await within(assembly).findByText('Сборка не связана')).toBeInTheDocument();
   });
 });

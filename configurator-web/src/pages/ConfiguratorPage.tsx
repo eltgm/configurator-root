@@ -76,9 +76,11 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
           ? ('pending' as const)
           : assemblyQuery.error
             ? ('error' as const)
-            : validation?.compatible
+            : validation?.assemblyStatus === 'VALID'
               ? ('valid' as const)
-              : ('conflict' as const);
+              : validation?.assemblyStatus === 'BLOCKED'
+                ? ('conflict' as const)
+                : ('disconnected' as const);
   const baseComponentIds = replacementBaseComponentIds(componentIds, replacementTarget?.id ?? null);
   const baseComponentNames = new Map(
     draft.slots.map((slot) => [
@@ -101,10 +103,10 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
     switch (reason) {
       case 'pending':
         return t('configurations.save.unavailable.pending');
-      case 'transitive':
-        return t('configurations.save.unavailable.transitive');
       case 'conflict':
         return t('configurations.save.unavailable.conflict');
+      case 'disconnected':
+        return t('configurations.save.unavailable.disconnected');
       case 'blocked':
         return t('configurations.save.unavailable.blocked');
       case 'error':
