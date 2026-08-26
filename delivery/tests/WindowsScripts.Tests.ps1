@@ -44,6 +44,7 @@ set "FAKE_HAS_PULL=0"
 set "FAKE_HAS_PG_DUMP=0"
 set "FAKE_HAS_MIRROR=0"
 set "FAKE_HAS_BACKUP_MINIO=0"
+set "FAKE_HAS_UP=0"
 :scan_arguments
 if "%~1"=="" goto arguments_scanned
 if /I "%~1"=="ps" set "FAKE_HAS_PS=1"
@@ -51,10 +52,12 @@ if /I "%~1"=="pull" set "FAKE_HAS_PULL=1"
 if /I "%~1"=="pg_dump" set "FAKE_HAS_PG_DUMP=1"
 if /I "%~1"=="mirror" set "FAKE_HAS_MIRROR=1"
 if /I "%~1"=="/backup/minio" set "FAKE_HAS_BACKUP_MINIO=1"
+if /I "%~1"=="up" set "FAKE_HAS_UP=1"
 shift
 goto scan_arguments
 
 :arguments_scanned
+if "%FAKE_HAS_UP%"=="1" if "%FAKE_EMIT_PROGRESS%"=="1" echo fake Docker Compose progress 1>&2
 if "%FAKE_HAS_PS%"=="1" goto handle_ps
 if "%FAKE_HAS_PULL%"=="1" goto handle_pull
 if "%FAKE_HAS_PG_DUMP%"=="1" goto handle_pg_dump
@@ -128,6 +131,7 @@ finally { $listener.Stop() }
     $env:FAKE_DOCKER_LOG = $FakeDockerLog
     $env:FAKE_DAEMON_DOWN = '0'
     $env:FAKE_COMPOSE_DOWN = '0'
+    $env:FAKE_EMIT_PROGRESS = '1'
     $env:CONFIGURATOR_DOCKER_WAIT_SECONDS = '0'
     $env:CONFIGURATOR_READINESS_WAIT_SECONDS = '4'
     $env:PROCESSOR_ARCHITECTURE = 'AMD64'
