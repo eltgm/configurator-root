@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Configurator Backend API
-  version: 1.1.1
+  version: 1.1.2
   description: API спецификация локального приложения Configurator
 
 servers:
@@ -1289,8 +1289,10 @@ components:
           maxItems: 50
           description: |
             Unique active components from the path domain. At most one component of each type is
-            allowed. Every pair must be directly compatible through a manual link or an enabled
-            automatic attribute rule. Transitive reachability does not validate a configuration.
+            allowed. For two or more components, ALLOWED relationships must form a connected graph
+            and no selected pair may be DENIED. UNKNOWN pairs are permitted when the ALLOWED graph
+            remains connected. Transitive reachability through unselected components does not
+            validate a configuration.
           items:
             type: integer
             format: int64
@@ -1321,8 +1323,9 @@ components:
           maxItems: 50
           description: |
             Complete replacement set of unique active components from the configuration domain.
-            At most one component of each type is allowed. Every pair must be directly compatible
-            through a manual link or an enabled automatic attribute rule. An archived component is
+            At most one component of each type is allowed. For two or more components, ALLOWED
+            relationships must form a connected graph and no selected pair may be DENIED. UNKNOWN
+            pairs are permitted when the ALLOWED graph remains connected. An archived component is
             rejected even when it already belongs to the saved configuration.
           items:
             type: integer

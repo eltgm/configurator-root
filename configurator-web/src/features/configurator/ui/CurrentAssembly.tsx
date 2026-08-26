@@ -233,8 +233,15 @@ export function CurrentAssembly({
                             </Badge>
                           ) : null}
                           {conflictComponentIds.has(component.id) ? (
-                            <Badge color="red" size="xs">
-                              {t('configurator.assembly.conflict')}
+                            <Badge
+                              color={compatibilityState === 'disconnected' ? 'orange' : 'red'}
+                              size="xs"
+                            >
+                              {t(
+                                compatibilityState === 'disconnected'
+                                  ? 'configurator.assembly.disconnected'
+                                  : 'configurator.assembly.conflict',
+                              )}
                             </Badge>
                           ) : null}
                         </Group>

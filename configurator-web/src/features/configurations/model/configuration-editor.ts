@@ -14,10 +14,10 @@ export interface ConfigurationEditorValues {
 export type ConfigurationEditorComponent = ConfigurationComponent;
 
 export type ConfigurationEditorValidationState =
-  'idle' | 'pending' | 'direct' | 'transitive' | 'conflict' | 'error';
+  'idle' | 'pending' | 'valid' | 'blocked' | 'disconnected' | 'error';
 
 export type ConfigurationEditorBlockReason =
-  'empty' | 'limit' | 'archived' | 'pending' | 'transitive' | 'conflict' | 'error';
+  'empty' | 'limit' | 'archived' | 'pending' | 'blocked' | 'disconnected' | 'error';
 
 export type ConfigurationEditorEligibility =
   { allowed: true } | { allowed: false; reason: ConfigurationEditorBlockReason };
@@ -110,7 +110,7 @@ export function getConfigurationEditorEligibility(
   if (components.length === 1) {
     return { allowed: true };
   }
-  if (validationState === 'direct') {
+  if (validationState === 'valid') {
     return { allowed: true };
   }
   if (validationState === 'idle' || validationState === 'pending') {

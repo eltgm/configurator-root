@@ -71,9 +71,9 @@ describe('configuration editor model', () => {
     expect(configurationComponentsChanged([processor, board], [processor, otherBoard])).toBe(true);
   });
 
-  it('allows one active component and a directly compatible assembly', () => {
+  it('allows one active component and a valid connected assembly', () => {
     expect(getConfigurationEditorEligibility([processor], 'idle')).toEqual({ allowed: true });
-    expect(getConfigurationEditorEligibility([processor, board], 'direct')).toEqual({
+    expect(getConfigurationEditorEligibility([processor, board], 'valid')).toEqual({
       allowed: true,
     });
   });
@@ -84,7 +84,7 @@ describe('configuration editor model', () => {
       id: index + 1,
       componentTypeId: index + 1,
     }));
-    expect(getConfigurationEditorEligibility(components, 'direct')).toEqual({
+    expect(getConfigurationEditorEligibility(components, 'valid')).toEqual({
       allowed: false,
       reason: 'limit',
     });
@@ -92,11 +92,11 @@ describe('configuration editor model', () => {
 
   it.each([
     [[], 'idle', 'empty'],
-    [[{ ...processor, archived: true }], 'direct', 'archived'],
+    [[{ ...processor, archived: true }], 'valid', 'archived'],
     [[processor, board], 'idle', 'pending'],
     [[processor, board], 'pending', 'pending'],
-    [[processor, board], 'transitive', 'transitive'],
-    [[processor, board], 'conflict', 'conflict'],
+    [[processor, board], 'blocked', 'blocked'],
+    [[processor, board], 'disconnected', 'disconnected'],
     [[processor, board], 'error', 'error'],
   ] as const)('blocks invalid state %#', (components, state, reason) => {
     expect(getConfigurationEditorEligibility(components, state)).toEqual({

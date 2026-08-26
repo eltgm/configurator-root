@@ -8,7 +8,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 export type AssemblyCompatibilityState =
-  'empty' | 'pending' | 'valid' | 'transitive' | 'conflict' | 'blocked' | 'error';
+  'empty' | 'pending' | 'valid' | 'conflict' | 'disconnected' | 'blocked' | 'error';
 
 interface AssemblyCompatibilityStatusProps {
   state: AssemblyCompatibilityState;
@@ -54,20 +54,20 @@ export function AssemblyCompatibilityStatus({
       </Alert>
     );
   }
-  if (state === 'transitive') {
+  if (state === 'disconnected') {
     return (
       <Alert
-        color="violet"
+        color="orange"
         icon={<IconInfoCircle aria-hidden="true" />}
-        title={t('configurator.validation.transitive')}
+        title={t('configurator.validation.disconnected')}
       >
         <Stack gap="sm">
-          <Text size="sm">{t('configurator.validation.transitiveDescription')}</Text>
+          <Text size="sm">{t('configurator.validation.disconnectedDescription')}</Text>
           {onShowDetails ? (
             <Button
               size="xs"
               variant="light"
-              color="violet"
+              color="orange"
               w="fit-content"
               onClick={onShowDetails}
             >

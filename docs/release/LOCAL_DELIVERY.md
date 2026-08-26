@@ -21,7 +21,7 @@ Exact version и digest фиксируются в `IMAGE_DIGESTS`. `stable` — 
 ## Установка пользователем
 
 1. Установить и запустить актуальный Docker Desktop.
-2. Скачать архив своей ОС, `SHA256SUMS` и при необходимости `IMAGE_DIGESTS` из GitHub Release `v1.1.1`.
+2. Скачать архив своей ОС, `SHA256SUMS` и при необходимости `IMAGE_DIGESTS` из GitHub Release `v1.1.2`.
 3. Проверить checksum архива.
 4. Полностью распаковать папку `Configurator` в каталог с правом записи. Не запускать файлы внутри ZIP.
 5. Windows: двойной клик `Start.cmd`. macOS: двойной клик `Start.command`; при первом Gatekeeper prompt использовать
@@ -31,13 +31,13 @@ Exact version и digest фиксируются в `IMAGE_DIGESTS`. `stable` — 
 Windows PowerShell:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\configurator-windows-v1.1.1.zip
+Get-FileHash -Algorithm SHA256 .\configurator-windows-v1.1.2.zip
 ```
 
 macOS:
 
 ```bash
-shasum -a 256 configurator-macos-v1.1.1.tar.gz
+shasum -a 256 configurator-macos-v1.1.2.tar.gz
 ```
 
 ## Команды пакета
@@ -71,15 +71,15 @@ docker compose --env-file configurator.env -f compose.yaml down --volumes --remo
 ## Проверка происхождения
 
 ```bash
-gh attestation verify configurator-macos-v1.1.1.tar.gz -R eltgm/configurator-root
-gh attestation verify oci://ghcr.io/eltgm/configurator-web:1.1.1 -R eltgm/configurator-root
+gh attestation verify configurator-macos-v1.1.2.tar.gz -R eltgm/configurator-root
+gh attestation verify oci://ghcr.io/eltgm/configurator-web:1.1.2 -R eltgm/configurator-root
 ```
 
 ## Доставка владельцем
 
 1. Убедиться, что checklist и release audit актуальны, CI зелёный, GHCR packages public.
 2. Влить release PR `develop` → `master`.
-3. Создать annotated tag на commit из `master`: `scripts/release/start-release-tag.sh 1.1.1`.
+3. Создать annotated tag на commit из `master`: `scripts/release/start-release-tag.sh 1.1.2`.
 4. Дождаться workflow `Prepare GitHub release`: он повторно запускает полный test matrix, публикует exact/sha/stable
    images, attestations и draft release assets.
 5. Проверить anonymous pull и clean-machine установку на Windows и macOS, checksum, Start/Stop/Update/Backup/Restore.
@@ -88,5 +88,5 @@ gh attestation verify oci://ghcr.io/eltgm/configurator-web:1.1.1 -R eltgm/config
 Локальная сборка структуры пакетов для проверки:
 
 ```bash
-scripts/release/build-delivery-packages.sh 1.1.1
+scripts/release/build-delivery-packages.sh 1.1.2
 ```

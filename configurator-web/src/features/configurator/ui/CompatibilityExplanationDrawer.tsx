@@ -15,13 +15,13 @@ import { IconAlertTriangle, IconArrowRight } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 
 import { useCompatibilityGraphQuery } from '@/features/compatibility/api/compatibility-graph';
-import type { CompatibilityRelation } from '@/features/configurator/model/configurator-compatibility';
+import type { ConfiguratorPairResult } from '@/features/configurator/model/configurator-compatibility';
 import type { CompatibilityBlockingRule, CompatibilityExplanation } from '@/shared/api';
 
 export interface CompatibilityExplanationGroup {
   key: string;
   title: string;
-  relation: CompatibilityRelation;
+  relation: ConfiguratorPairResult['relation'];
   explanations: ReadonlyArray<CompatibilityExplanation>;
   blockingRules?: ReadonlyArray<CompatibilityBlockingRule>;
 }
@@ -34,9 +34,10 @@ interface CompatibilityExplanationDrawerProps {
   groups: ReadonlyArray<CompatibilityExplanationGroup>;
 }
 
-function relationColor(relation: CompatibilityRelation) {
+function relationColor(relation: CompatibilityExplanationGroup['relation']) {
   if (relation === 'direct') return 'green';
   if (relation === 'transitive') return 'violet';
+  if (relation === 'unknown') return 'gray';
   return 'red';
 }
 

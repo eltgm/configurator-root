@@ -197,14 +197,14 @@ test('explains a transitive candidate and returns the draft to strict validation
 
   await browser.getByRole('button', { name: 'Добавить' }).click();
   const assembly = page.getByRole('region', { name: 'Текущая сборка' });
-  await expect(assembly.getByText('В сборке есть конфликт')).toBeVisible();
+  await expect(assembly.getByText('Сборка не связана')).toBeVisible();
   await expect(assembly.getByRole('button', { name: 'Сохранить конфигурацию' })).toBeDisabled();
   await assembly.getByRole('button', { name: 'Показать проверку' }).click();
   await expect(page.getByRole('dialog', { name: 'Проверка текущей сборки' })).toBeVisible();
   await page.keyboard.press('Escape');
 
   await mode.uncheck();
-  await expect(assembly.getByText('В сборке есть конфликт')).toBeVisible();
+  await expect(assembly.getByText('Сборка не связана')).toBeVisible();
   await expect(browser.getByText('Подбор временно недоступен')).toHaveCount(0);
 });
 
@@ -298,7 +298,7 @@ test('keeps a conflicting draft and repairs it with a slot-aware replacement', a
   await page.goto('/configurator');
 
   const assembly = page.getByRole('region', { name: 'Текущая сборка' });
-  await expect(assembly.getByText('В сборке есть конфликт')).toBeVisible();
+  await expect(assembly.getByText('Сборка заблокирована правилами')).toBeVisible();
   await expect(assembly.getByText('Конфликт', { exact: true })).toHaveCount(2);
   await expect(page.getByRole('region', { name: 'Доступные компоненты' })).toBeVisible();
 

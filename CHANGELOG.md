@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-08-26
+
+### Fixed
+
+- Редактор сохранённой конфигурации использует ту же assembly-aware проверку, что и создание: связная сборка с
+  `UNKNOWN`-парами сохраняется, `DENIED` и `DISCONNECTED` различаются, а добавление компонента может восстановить
+  связность состава.
+
 ## [1.1.1] - 2026-08-25
 
 ### Fixed
@@ -57,8 +65,9 @@
 - Единственная поддерживаемая точка входа — `http://127.0.0.1:8080`; LAN/public/server deployment не входит в v1.0.0.
 - Совместимость с данными и backup формата до `v1.0.0` не гарантируется; разрешена чистая переустановка.
 
-[Unreleased]: https://github.com/eltgm/configurator-root/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/eltgm/configurator-root/compare/v1.1.2...HEAD
 
+[1.1.2]: https://github.com/eltgm/configurator-root/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/eltgm/configurator-root/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/eltgm/configurator-root/releases/tag/v1.1.0
 [1.0.0]: https://github.com/eltgm/configurator-root/releases/tag/v1.0.0

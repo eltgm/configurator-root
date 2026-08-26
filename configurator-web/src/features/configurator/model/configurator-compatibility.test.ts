@@ -8,10 +8,8 @@ import {
   filterConfiguratorCandidates,
   replacementBaseComponentIds,
   validationFromAssemblyResponse,
-  validateConfiguratorAssembly,
 } from '@/features/configurator/model/configurator-compatibility';
 import type {
-  ConfiguratorBatchSearchResponse,
   ConfiguratorCandidatesResponse,
   ConfiguratorIntersectionResponse,
   ConfiguratorResponse,
@@ -124,9 +122,13 @@ describe('configurator compatibility model', () => {
       }),
     ]);
     expect(validationFromAssemblyResponse(response)).toMatchObject({
-      compatible: true,
-      relation: 'direct',
+      assemblyStatus: 'VALID',
       conflictPairs: [],
+      pairs: [
+        expect.objectContaining({ relation: 'direct' }),
+        expect.objectContaining({ relation: 'unknown' }),
+        expect.objectContaining({ relation: 'direct' }),
+      ],
     });
 
     const blockedValidation = validationFromAssemblyResponse({
@@ -142,7 +144,7 @@ describe('configurator compatibility model', () => {
         },
       ],
     });
-    expect(blockedValidation.compatible).toBe(false);
+    expect(blockedValidation.assemblyStatus).toBe('BLOCKED');
     expect(blockedValidation.conflictPairs).toEqual([{ leftComponentId: 1, rightComponentId: 3 }]);
     expect(blockedValidation.pairs[0]?.blockingRules).toEqual([
       { ruleSetId: 9, ruleSetName: 'Socket' },
@@ -228,44 +230,7 @@ describe('configurator compatibility model', () => {
     ).toEqual([3]);
   });
 
-  it('finds each incompatible pair once and marks all involved components', () => {
-    const response: ConfiguratorBatchSearchResponse = {
-      results: [
-        {
-          baseComponentId: 1,
-          compatibleByType: [
-            {
-              ...direct.compatibleByType[0]!,
-              components: [{ ...direct.compatibleByType[0]!.components[0]!, id: 2 }],
-            },
-          ],
-        },
-        {
-          baseComponentId: 2,
-          compatibleByType: [
-            {
-              componentTypeId: 10,
-              componentTypeName: 'CPU',
-              components: [{ id: 1, name: 'CPU', componentTypeId: 10, explanations: [] }],
-            },
-          ],
-        },
-        { baseComponentId: 3, compatibleByType: [] },
-      ],
-    };
-
-    const result = validateConfiguratorAssembly([1, 2, 3], response);
-    expect(result.compatible).toBe(false);
-    expect(result.relation).toBe('incompatible');
-    expect(result.pairs[0]).toMatchObject({ relation: 'direct' });
-    expect(result.conflictPairs).toEqual([
-      { leftComponentId: 1, rightComponentId: 3 },
-      { leftComponentId: 2, rightComponentId: 3 },
-    ]);
-    expect([...result.conflictComponentIds]).toEqual([1, 3, 2]);
-  });
-
-  it('classifies mixed direct and transitive evidence for candidates and assemblies', () => {
+  it('classifies mixed direct and transitive evidence for candidates', () => {
     const intersection: ConfiguratorIntersectionResponse = {
       componentIds: [1, 3],
       compatibleByType: [
@@ -296,60 +261,62 @@ describe('configurator compatibility model', () => {
         { baseComponentId: 3, relation: 'transitive' },
       ],
     });
-
-    const response: ConfiguratorBatchSearchResponse = {
-      results: [
-        {
-          baseComponentId: 1,
-          compatibleByType: [
-            {
-              componentTypeId: 20,
-              componentTypeName: 'Motherboard',
-              components: [
-                {
-                  id: 2,
-                  name: 'B650',
-                  componentTypeId: 20,
-                  explanations: [{ source: 'TRANSITIVE', pathComponentIds: [1, 3, 2] }],
-                },
-              ],
-            },
-          ],
-        },
-        {
-          baseComponentId: 2,
-          compatibleByType: [
-            {
-              componentTypeId: 10,
-              componentTypeName: 'CPU',
-              components: [
-                {
-                  id: 1,
-                  name: 'CPU',
-                  componentTypeId: 10,
-                  explanations: [{ source: 'TRANSITIVE', pathComponentIds: [2, 3, 1] }],
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    };
-    const validation = validateConfiguratorAssembly([1, 2], response);
-    expect(validation).toMatchObject({
-      compatible: true,
-      directlyCompatible: false,
-      relation: 'transitive',
-      pairs: [{ leftComponentId: 1, rightComponentId: 2, relation: 'transitive' }],
-    });
   });
 
-  it('treats zero or one component as compatible and missing reciprocal evidence as a conflict', () => {
-    expect(validateConfiguratorAssembly([], { results: [] }).compatible).toBe(true);
-    expect(validateConfiguratorAssembly([1], { results: [] }).compatible).toBe(true);
-    expect(validateConfiguratorAssembly([1, 2], { results: [direct] }).conflictPairs).toEqual([
-      { leftComponentId: 1, rightComponentId: 2 },
-    ]);
+  it('marks only components outside the root ALLOWED graph as disconnected', () => {
+    const validation = validationFromAssemblyResponse({
+      componentIds: [1, 2, 3, 4],
+      assemblyStatus: 'DISCONNECTED',
+      assemblyDecisions: [
+        {
+          leftComponentId: 1,
+          rightComponentId: 2,
+          status: 'ALLOWED',
+          explanations: [],
+          blockingRules: [],
+        },
+        {
+          leftComponentId: 1,
+          rightComponentId: 3,
+          status: 'UNKNOWN',
+          explanations: [],
+          blockingRules: [],
+        },
+        {
+          leftComponentId: 1,
+          rightComponentId: 4,
+          status: 'UNKNOWN',
+          explanations: [],
+          blockingRules: [],
+        },
+        {
+          leftComponentId: 2,
+          rightComponentId: 3,
+          status: 'UNKNOWN',
+          explanations: [],
+          blockingRules: [],
+        },
+        {
+          leftComponentId: 2,
+          rightComponentId: 4,
+          status: 'UNKNOWN',
+          explanations: [],
+          blockingRules: [],
+        },
+        {
+          leftComponentId: 3,
+          rightComponentId: 4,
+          status: 'ALLOWED',
+          explanations: [],
+          blockingRules: [],
+        },
+      ],
+      candidatesByType: [],
+    });
+
+    expect(validation.assemblyStatus).toBe('DISCONNECTED');
+    expect(validation.conflictPairs).toEqual([]);
+    expect([...validation.conflictComponentIds]).toEqual([3, 4]);
   });
 
   it('excludes only the replaced component while preserving draft order', () => {
