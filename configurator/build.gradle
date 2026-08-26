@@ -52,6 +52,10 @@ java {
     }
 }
 
+tasks.named('bootJar') {
+    archiveFileName = 'configurator.jar'
+}
+
 tasks.named('compileJava') {
     dependsOn tasks.named('openApiGenerate'), tasks.named('jooqCodegen')
 }

@@ -18,7 +18,7 @@ LABEL org.opencontainers.image.title="Configurator Backend" \
 
 WORKDIR /app
 
-ARG JAR_FILE=configurator/build/libs/configurator-1.1.1-SNAPSHOT.jar
+ARG JAR_FILE=configurator/build/libs/configurator.jar
 COPY --chown=10001:10001 ${JAR_FILE} app.jar
 
 EXPOSE 8080

@@ -115,7 +115,7 @@ jobs:
 
       - name: Start release candidate environment
         env:
-          JAR_FILE: configurator/build/libs/configurator-${{ steps.release.outputs.version }}.jar
+          JAR_FILE: configurator/build/libs/configurator.jar
         run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 
       - name: Wait for release candidate API
@@ -156,7 +156,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-candidate-jar
-          path: configurator/build/libs/configurator-${{ steps.release.outputs.version }}.jar
+          path: configurator/build/libs/configurator.jar
           if-no-files-found: error
           retention-days: 1
 
@@ -256,7 +256,7 @@ jobs:
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
           build-args: |
-            JAR_FILE=configurator/build/libs/configurator-${{ needs.verify-release-candidate.outputs.version }}.jar
+            JAR_FILE=configurator/build/libs/configurator.jar
             OCI_CREATED=${{ needs.verify-release-candidate.outputs.created }}
             OCI_REVISION=${{ github.sha }}
             OCI_VERSION=${{ needs.verify-release-candidate.outputs.version }}
@@ -471,7 +471,7 @@ jobs:
         run: >-
           scripts/release/prepare-release-assets.sh
           "${{ needs.verify-release-candidate.outputs.version }}"
-          "configurator/build/libs/configurator-${{ needs.verify-release-candidate.outputs.version }}.jar"
+          "configurator/build/libs/configurator.jar"
           "${APP_IMAGE}"
           "${{ needs.publish-app-image.outputs.digest }}"
           "${GATEWAY_IMAGE}"
