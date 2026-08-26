@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Configurator Backend API
-  version: 1.1.2
+  version: 1.1.3
   description: API спецификация локального приложения Configurator
 
 servers:

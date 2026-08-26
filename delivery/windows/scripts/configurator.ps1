@@ -71,8 +71,20 @@ function Add-CommandOutput($Output) {
 }
 
 function Invoke-Docker([string[]]$Arguments, [switch]$AllowFailure) {
-    $output = & docker @Arguments 2>&1
-    $exitCode = $LASTEXITCODE
+    $output = @()
+    $exitCode = 1
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        # Docker Compose reports normal progress through stderr. Windows PowerShell 5.1 turns that
+        # stream into a terminating error when ErrorActionPreference is Stop, before $LASTEXITCODE
+        # can be checked.
+        $ErrorActionPreference = 'Continue'
+        $output = & docker @Arguments 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
     Add-CommandOutput $output
     if ($exitCode -ne 0 -and -not $AllowFailure) {
         throw "docker exited with code $exitCode"
