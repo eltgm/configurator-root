@@ -4,6 +4,11 @@ import ru.sultanyarov.configurator.api.inbounds.rest.dto.AttributeDefinition
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ComponentTypeAttributeSettingsRequest
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateAttributeDefinitionRequest
 import spock.lang.Specification
+import spock.lang.Unroll
+import java.util.concurrent.Callable
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 abstract class AbstractAttributesControllerContract extends Specification implements ApiTestSupport {
 
@@ -398,5 +403,99 @@ abstract class AbstractAttributesControllerContract extends Specification implem
 
         then:
         delete("/attributes/101").status == 409
+    }
+
+    @Unroll
+    def "should reject domain name duplicates from #firstPath via #secondPath"() {
+        given:
+        prepareAttributeCatalog()
+        assert post(firstPath, catalogRequest("socket")).status == 201
+
+        when:
+        def result = post(secondPath, catalogRequest("socket"))
+
+        then:
+        result.status == 409
+        def error = objectMapper.readTree(result.body)
+        error.path("code").asText() == "ENTITY_ALREADY_EXISTS"
+        error.path("details").get(0).path("field").asText() == "name"
+        objectMapper.readTree(get("/domains/1/attributes").body).size() == 1
+        objectMapper.readTree(get("/component-types/2/attributes").body).size() == 0
+
+        where:
+        firstPath                      | secondPath
+        "/domains/1/attributes"        | "/domains/1/attributes"
+        "/domains/1/attributes"        | "/component-types/1/attributes"
+        "/component-types/1/attributes" | "/domains/1/attributes"
+        "/component-types/1/attributes" | "/component-types/2/attributes"
+    }
+
+    def "should reject catalog rename collisions and allow unchanged names case variants and other domains"() {
+        given:
+        prepareAttributeCatalog()
+        def first = objectMapper.readTree(post("/domains/1/attributes", catalogRequest("socket")).body)
+        def second = objectMapper.readTree(post("/domains/1/attributes", catalogRequest("other")).body)
+
+        expect:
+        put("/attributes/${second.path('id').asLong()}", catalogRequest("socket")).status == 409
+        put("/attributes/${first.path('id').asLong()}", catalogRequest("socket")).status == 200
+        post("/domains/1/attributes", catalogRequest("Socket")).status == 201
+        objectMapper.readTree(get("/domains/1/attributes").body)*.path('name')*.asText().sort() == ["Socket", "other", "socket"]
+
+        when:
+        runSqlScripts("/sql/insert-second-test-domain.sql")
+
+        then:
+        post("/domains/2/attributes", catalogRequest("socket")).status == 201
+    }
+
+    @Unroll
+    def "should keep one definition during concurrent #operation requests"() {
+        given:
+        prepareAttributeCatalog()
+        def ids = operation == "rename" ? ["first", "second"].collect {
+            objectMapper.readTree(post("/domains/1/attributes", catalogRequest(it)).body).path('id').asLong()
+        } : []
+        def executor = Executors.newFixedThreadPool(2)
+        def start = new CountDownLatch(1)
+        def futures = (0..1).collect { index ->
+            executor.submit({
+                assert start.await(10, TimeUnit.SECONDS)
+                operation == "rename"
+                    ? put("/attributes/${ids[index]}", catalogRequest("socket"))
+                    : post(index == 0 ? "/domains/1/attributes" : "/component-types/2/attributes", catalogRequest("socket"))
+            } as Callable<TestResponse>)
+        }
+
+        when:
+        start.countDown()
+        def responses = futures.collect { it.get(30, TimeUnit.SECONDS) }
+
+        then:
+        responses*.status.sort() == [successStatus, 409]
+        def error = objectMapper.readTree(responses.find { it.status == 409 }.body)
+        error.path('code').asText() == 'ENTITY_ALREADY_EXISTS'
+        error.path('details').get(0).path('field').asText() == 'name'
+        def catalog = objectMapper.readTree(get('/domains/1/attributes').body)
+        catalog.count { it.path('name').asText() == 'socket' } == 1
+        catalog.size() == (operation == 'rename' ? 2 : 1)
+
+        cleanup:
+        executor?.shutdownNow()
+
+        where:
+        operation | successStatus
+        "create"  | 201
+        "rename"  | 200
+    }
+
+    private void prepareAttributeCatalog() {
+        runSqlScripts("/sql/clear-db.sql", "/sql/insert-test-domain.sql", "/sql/insert-test-component-type.sql",
+                "/sql/insert-second-test-component-type.sql")
+    }
+
+    protected static CreateAttributeDefinitionRequest catalogRequest(String name) {
+        new CreateAttributeDefinitionRequest().name(name).label("Same label")
+                .dataType(CreateAttributeDefinitionRequest.DataTypeEnum.STRING)
     }
 }

@@ -74,6 +74,20 @@ describe('attributes API', () => {
     expect(source).toEqual(attributes);
   });
 
+  it('preserves every record even when the server returns identical names and labels', async () => {
+    const duplicated = [attributes[0]!, { ...attributes[0]!, id: 99 }];
+    server.use(
+      http.get(`${testApiBaseUrl}/domains/:domainId/attributes`, () =>
+        HttpResponse.json(duplicated),
+      ),
+      http.get(`${testApiBaseUrl}/component-types/:id/attributes`, () =>
+        HttpResponse.json(duplicated),
+      ),
+    );
+    expect((await fetchAttributeCatalog(7)).map((attribute) => attribute.id)).toEqual([3, 99]);
+    expect((await fetchAttributes(11)).map((attribute) => attribute.id)).toEqual([3, 99]);
+  });
+
   it('loads the attribute catalog for one domain', async () => {
     let requestedDomainId: string | undefined;
     server.use(

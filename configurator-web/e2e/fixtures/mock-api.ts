@@ -318,6 +318,29 @@ async function installMockApi(page: Page) {
         )
         .map(([typeId]) => typeId),
     }));
+  const hasAttributeName = (domainId: number, name: string, excludingId?: number) =>
+    attributeCatalog.some(
+      (attribute) =>
+        attribute.domainId === domainId && attribute.name === name && attribute.id !== excludingId,
+    );
+  const attributeNameConflict = (path: string) => ({
+    status: 409,
+    json: {
+      timestamp: '2026-08-31T12:00:00Z',
+      status: 409,
+      error: 'Conflict',
+      code: 'ENTITY_ALREADY_EXISTS',
+      message: 'Attribute name already exists in the domain',
+      path,
+      details: [
+        {
+          field: 'name',
+          code: 'ENTITY_ALREADY_EXISTS',
+          message: 'Attribute name already exists in the domain',
+        },
+      ],
+    },
+  });
   let nextAttributeId = 3001;
   const toAttributeValues = (
     inputs: ReadonlyArray<{ attributeDefinitionId: number; value: string }> = [],
@@ -539,6 +562,10 @@ async function installMockApi(page: Page) {
     }
     if (request.method() === 'POST') {
       const body = request.postDataJSON() as Omit<AttributeDefinition, 'id' | 'domainId'>;
+      if (hasAttributeName(domainId, body.name)) {
+        await route.fulfill(attributeNameConflict(new URL(request.url()).pathname));
+        return;
+      }
       const created: AttributeDefinition = {
         id: nextAttributeId++,
         domainId,
@@ -564,6 +591,10 @@ async function installMockApi(page: Page) {
         'id' | 'domainId' | 'componentTypeId'
       >;
       const domainId = componentTypeState.find((type) => type.id === typeId)?.domainId ?? 0;
+      if (hasAttributeName(domainId, body.name)) {
+        await route.fulfill(attributeNameConflict(new URL(request.url()).pathname));
+        return;
+      }
       const created: AttributeDefinition = {
         id: nextAttributeId++,
         domainId,
@@ -665,6 +696,10 @@ async function installMockApi(page: Page) {
     const catalogIndex = attributeCatalog.findIndex((attribute) => attribute.id === attributeId);
     if (catalogIndex >= 0 && request.method() === 'PUT') {
       const body = request.postDataJSON() as Omit<AttributeDefinition, 'id' | 'componentTypeId'>;
+      if (hasAttributeName(attributeCatalog[catalogIndex].domainId, body.name, attributeId)) {
+        await route.fulfill(attributeNameConflict(new URL(request.url()).pathname));
+        return;
+      }
       const updated: AttributeDefinition = { ...attributeCatalog[catalogIndex], ...body };
       attributeCatalog[catalogIndex] = updated;
       for (const [typeId, attributes] of attributeState) {

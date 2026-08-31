@@ -32,7 +32,7 @@ abstract class AbstractDomainControllerContract extends Specification implements
         domain.description
         domain.createdAt != null
 
-        and: "the catalog contains six ordered types and twelve attribute definitions"
+        and: "the catalog contains six ordered types and twelve attribute links"
         def typesResult = get("/domains/${domain.id}/component-types")
         typesResult.status == 200
         def types = objectMapper.readerForListOf(ComponentType).readValue(typesResult.body)
@@ -45,6 +45,16 @@ abstract class AbstractDomainControllerContract extends Specification implements
         }
         attributes.size() == 12
         attributes.every { it.getIsRequired() }
+        def catalog = objectMapper.readerForListOf(AttributeDefinition).readValue(get("/domains/${domain.id}/attributes").body)
+        catalog.size() == 9
+        catalog*.name.toSet().size() == 9
+        ["socket", "memory_standard", "form_factor"].every { name ->
+            def shared = attributes.findAll { it.name == name }
+            shared.size() == 2 && shared*.id.toSet().size() == 1 &&
+                catalog.find { it.name == name }.componentTypeIds.size() == 2
+        }
+        attributes.findAll { it.name == "memory_standard" }*.orderIndex == [1, 0]
+        attributes.findAll { it.name == "form_factor" }*.orderIndex == [2, 0]
 
         and: "the catalog contains compatible and intentionally incompatible components"
         def componentResult = get("/domains/${domain.id}/components", [page: 0, size: 100])
@@ -68,6 +78,9 @@ abstract class AbstractDomainControllerContract extends Specification implements
         rules.size() == 6
         rules.every { it.enabled && it.conditions.size() == 1 }
         rules*.conditions*.operator.flatten().count(CompatibilityRuleOperator.EQUALS) == 3
+        rules.collectMany { it.conditions }.findAll { it.operator == CompatibilityRuleOperator.EQUALS }.every {
+            it.leftAttributeDefinitionId == it.rightAttributeDefinitionId
+        }
         rules*.conditions*.operator.flatten().count(CompatibilityRuleOperator.LTE) == 3
         def graphResult = get("/domains/${domain.id}/compatibility/graph")
         graphResult.status == 200

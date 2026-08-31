@@ -129,6 +129,9 @@ export type AttributeDefinition = {
   id: number;
   domainId: number;
   componentTypeId?: number | null;
+  /**
+   * Case-sensitive system name, unique within the domain across all component types.
+   */
   name: string;
   label: string;
   dataType: 'STRING' | 'NUMBER' | 'BOOLEAN' | 'ENUM';
@@ -142,6 +145,9 @@ export type AttributeDefinition = {
 };
 
 export type CreateAttributeDefinitionRequest = {
+  /**
+   * Case-sensitive system name, unique within the domain across all component types.
+   */
   name: string;
   label: string;
   dataType: 'STRING' | 'NUMBER' | 'BOOLEAN' | 'ENUM';
@@ -1034,6 +1040,10 @@ export type PostDomainsByDomainIdAttributesErrors = {
    * Domain not found
    */
   404: ErrorResponse;
+  /**
+   * Attribute name already exists in this domain; details identifies the name field
+   */
+  409: ErrorResponse;
 };
 
 export type PostDomainsByDomainIdAttributesError =
@@ -1097,7 +1107,7 @@ export type PostComponentTypesByIdAttributesErrors = {
    */
   404: ErrorResponse;
   /**
-   * Attribute name conflict
+   * Attribute name already exists in this domain; details identifies the name field
    */
   409: ErrorResponse;
 };
@@ -1234,6 +1244,10 @@ export type PutAttributesByIdErrors = {
    * Not found
    */
   404: ErrorResponse;
+  /**
+   * Another attribute definition already has this name in the domain; details identifies the name field
+   */
+  409: ErrorResponse;
 };
 
 export type PutAttributesByIdError = PutAttributesByIdErrors[keyof PutAttributesByIdErrors];

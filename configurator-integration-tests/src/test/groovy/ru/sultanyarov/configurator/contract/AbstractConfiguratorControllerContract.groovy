@@ -47,7 +47,7 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
             conditions*.leftAttributeName == ["socket", "power"]
             conditions*.leftValue == ["AM5", "100"]
             conditions*.operator*.toString() == ["EQUALS", "LTE"]
-            conditions*.rightAttributeDefinitionId == [201L, 202L]
+            conditions*.rightAttributeDefinitionId == [101L, 202L]
             conditions*.rightAttributeName == ["socket", "power_limit"]
             conditions*.rightValue == ["AM5", "200"]
         }

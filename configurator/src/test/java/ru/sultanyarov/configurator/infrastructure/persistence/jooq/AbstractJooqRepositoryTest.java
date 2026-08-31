@@ -1,5 +1,8 @@
 package ru.sultanyarov.configurator.infrastructure.persistence.jooq;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.h2.jdbcx.JdbcDataSource;
@@ -7,6 +10,7 @@ import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DSL;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
@@ -37,6 +41,19 @@ abstract class AbstractJooqRepositoryTest {
             new ClassPathResource("db/migration/V5__CON1-82-create-system-user.sql"),
             new ClassPathResource("db/migration/V6__CON1-100-store-component-image-object-key.sql"),
             new ClassPathResource("db/migration/V7__create-domain-attribute-catalog.sql"));
+    // H2 checks the same final schema. PostgreSQL-only data rewriting is covered by the Flyway
+    // upgrade tests.
+    try {
+      String migration =
+          new ClassPathResource("db/migration/V8__enforce-domain-attribute-name-uniqueness.sql")
+              .getContentAsString(StandardCharsets.UTF_8);
+      String schemaSql =
+          migration.substring(
+              migration.indexOf("-- [jooq ignore stop]") + "-- [jooq ignore stop]".length());
+      populator.addScript(new ByteArrayResource(schemaSql.getBytes(StandardCharsets.UTF_8)));
+    } catch (IOException exception) {
+      throw new UncheckedIOException(exception);
+    }
     populator.execute(dataSource);
     return dataSource;
   }

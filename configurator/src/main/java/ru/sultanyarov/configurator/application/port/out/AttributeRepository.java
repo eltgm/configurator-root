@@ -18,15 +18,8 @@ public interface AttributeRepository {
    */
   boolean hasByComponentTypeId(Long id);
 
-  /**
-   * Checks if an attribute definition with the specified name exists for the given component type.
-   *
-   * @param id the unique identifier of the component type
-   * @param name the name to check for existence
-   * @return {@code true} if an attribute definition with the given name exists for the component
-   *     type, {@code false} otherwise
-   */
-  boolean hasByComponentTypeIdAndName(Long id, String name);
+  /** Checks a domain catalog name, optionally excluding the definition being updated. */
+  boolean existsByDomainIdAndName(Long domainId, String name, Long excludingId);
 
   /**
    * Creates a new attribute definition.

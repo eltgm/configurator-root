@@ -155,6 +155,20 @@ afterEach(() => {
 });
 
 describe('component details and form', () => {
+  it('shows separate value fields for each attribute ID even with identical names', async () => {
+    useHandlers();
+    server.use(
+      http.get(`${testApiBaseUrl}/component-types/11/attributes`, () =>
+        HttpResponse.json([attributes[0]!, { ...attributes[0]!, id: 9999 }]),
+      ),
+    );
+    renderRoute('/components/501/edit');
+    const fields = await screen.findAllByRole('textbox', { name: 'Сокет' }, { timeout: 5_000 });
+    expect(fields).toHaveLength(2);
+    expect(fields[0]).toHaveValue('AM5');
+    expect(fields[1]).toHaveValue('');
+  });
+
   it('creates a component with fields for every attribute data type', async () => {
     const user = userEvent.setup();
     let submittedBody: unknown;

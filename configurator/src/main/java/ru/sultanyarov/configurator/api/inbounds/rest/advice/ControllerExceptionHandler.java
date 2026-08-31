@@ -42,6 +42,7 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorDetail;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ErrorResponse;
+import ru.sultanyarov.configurator.domain.exception.AttributeNameConflictException;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
 import ru.sultanyarov.configurator.domain.exception.ComponentArchivedException;
 import ru.sultanyarov.configurator.domain.exception.ConfigurationConflictException;
@@ -88,7 +89,12 @@ public class ControllerExceptionHandler {
   })
   public ResponseEntity<ErrorResponse> handleEntityAlreadyExistsException(
       Exception exception, HttpServletRequest request) {
-    return getBody(CONFLICT, conflictCode(exception), exception.getLocalizedMessage(), request);
+    List<ApiErrorDetail> details =
+        exception instanceof AttributeNameConflictException
+            ? List.of(detail("name", "ENTITY_ALREADY_EXISTS", exception.getLocalizedMessage()))
+            : List.of();
+    return getBody(
+        CONFLICT, conflictCode(exception), exception.getLocalizedMessage(), request, details);
   }
 
   @ExceptionHandler({
