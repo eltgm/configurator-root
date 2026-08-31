@@ -87,6 +87,9 @@ public interface ComponentService {
    */
   ComponentImageContent getImageContent(Long id);
 
+  /** Reads the reduced image, generating it for legacy uploads when necessary. */
+  ComponentImageContent getImageThumbnail(Long id);
+
   /**
    * Permanently deletes an image from an active component and external storage.
    *

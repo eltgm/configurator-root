@@ -1,4 +1,5 @@
 import type {
+  Component,
   CompatibilityExplanation,
   CompatibilityBlockingRule,
   ConfiguratorAssemblyStatus,
@@ -12,6 +13,7 @@ export interface ConfiguratorComponentSelection {
   name: string;
   brand?: string | null;
   componentTypeId: number;
+  primaryImage?: Component['primaryImage'];
 }
 
 export interface ConfiguratorCandidate extends ConfiguratorComponentSelection {
@@ -105,6 +107,7 @@ export function candidatesFromIntersectionResponse(response: ConfiguratorInterse
         toBaseEvidence(entry.baseComponentId, entry.explanations),
       );
       return {
+        primaryImage: component.primaryImage,
         id: component.id,
         name: component.name,
         ...(component.brand === undefined ? {} : { brand: component.brand }),
@@ -127,6 +130,7 @@ export function candidatesFromAssemblyResponse(response: ConfiguratorCandidatesR
           .filter((entry) => entry.status === 'ALLOWED')
           .map((entry) => toBaseEvidence(entry.baseComponentId, entry.explanations));
         return {
+          primaryImage: component.primaryImage,
           id: component.id,
           name: component.name,
           ...(component.brand === undefined ? {} : { brand: component.brand }),
@@ -145,6 +149,7 @@ export function blockedCandidatesFromAssemblyResponse(response: ConfiguratorCand
     group.components
       .filter((component) => component.status === 'BLOCKED')
       .map<ConfiguratorBlockedCandidate>((component) => ({
+        primaryImage: component.primaryImage,
         id: component.id,
         name: component.name,
         ...(component.brand === undefined ? {} : { brand: component.brand }),

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { configuratorCompatibilityKeys } from '@/features/configurator/api/configurator-compatibility';
 import { componentKeys } from '@/features/components/api/components';
 import { sortComponentImages } from '@/features/components/model/component-images';
 import {
@@ -48,7 +49,9 @@ function setComponentImages(
     orderedImages,
   );
   queryClient.setQueryData<Component>(componentKeys.detail(domainId, componentId), (component) =>
-    component ? { ...component, images: orderedImages } : component,
+    component
+      ? { ...component, images: orderedImages, primaryImage: orderedImages[0] ?? null }
+      : component,
   );
 }
 
@@ -56,10 +59,13 @@ async function invalidateComponentCatalogs(
   queryClient: ReturnType<typeof useQueryClient>,
   domainId: number,
 ) {
-  await queryClient.invalidateQueries({
-    queryKey: componentKeys.byDomain(domainId),
-    predicate: (query) => query.queryKey[3] !== 'detail',
-  });
+  await Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: componentKeys.byDomain(domainId),
+      predicate: (query) => query.queryKey[3] !== 'detail',
+    }),
+    queryClient.invalidateQueries({ queryKey: configuratorCompatibilityKeys.root(domainId) }),
+  ]);
 }
 
 interface UploadComponentImageVariables {

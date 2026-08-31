@@ -9,6 +9,8 @@ import ru.sultanyarov.configurator.domain.model.ComponentImageContent
 import ru.sultanyarov.configurator.domain.model.ComponentImageUpload
 import ru.sultanyarov.configurator.domain.model.StoredImage
 
+import ru.sultanyarov.configurator.infrastructure.storage.minio.ComponentImageThumbnailer
+
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
@@ -22,6 +24,7 @@ class ComponentImageStorageTestConfiguration {
         return new ComponentImageStorage() {
             @Override
             StoredImage store(Long componentId, ComponentImageUpload image) {
+                new ComponentImageThumbnailer().create(image.content())
                 def extension = switch (image.contentType()) {
                     case "image/jpeg" -> "jpg"
                     case "image/png" -> "png"
@@ -44,6 +47,11 @@ class ComponentImageStorageTestConfiguration {
                     )
                 }
                 return content
+            }
+
+            @Override
+            ComponentImageContent readThumbnail(String objectKey) {
+                return new ComponentImageThumbnailer().create(read(objectKey).content())
             }
 
             @Override

@@ -465,13 +465,16 @@ export const resources = {
           imageAlt: '{{name}}, изображение {{number}}',
         },
         gallery: {
-          activeHint: 'Добавляйте изображения и управляйте порядком их показа.',
+          activeHint:
+            'Первое изображение — заглавное: оно показывается в каталоге и конфигураторе.',
+          primary: 'Заглавное',
+          primaryDraft: 'Заглавное после сохранения',
           readOnlyHint: 'Архивная галерея доступна только для просмотра.',
-          imageNumber: 'Изображение {{number}}',
+          imageNumber: 'Фото {{number}}',
           file: {
             label: 'Новое изображение',
             placeholder: 'Выберите файл',
-            description: 'JPEG, PNG или WebP, не более 10 МиБ',
+            description: 'JPEG, PNG или WebP, не более 10 МиБ и 40 мегапикселей',
           },
           states: {
             loading: 'Загрузка галереи',
@@ -483,6 +486,8 @@ export const resources = {
             delete: 'Удалить',
             deleteImage: 'Удалить изображение {{number}}',
             reorder: 'Изменить порядок',
+            makePrimary: 'Сделать заглавным',
+            makePrimaryNamed: 'Сделать изображение {{number}} заглавным',
             moveEarlier: 'Переместить раньше',
             moveLater: 'Переместить позже',
             saveOrder: 'Сохранить порядок',
@@ -499,6 +504,8 @@ export const resources = {
           },
           delete: {
             title: 'Удалить изображение?',
+            primaryWarning:
+              'Заглавным станет следующее изображение. Если изображений не останется, будет показана заглушка.',
             description: 'Изображение будет безвозвратно удалено из галереи.',
             warning: 'Это действие нельзя отменить.',
           },
@@ -510,6 +517,7 @@ export const resources = {
           notifications: {
             uploaded: 'Изображение загружено',
             deleted: 'Изображение удалено',
+            primaryChanged: 'Заглавное изображение изменено',
             reordered: 'Порядок изображений сохранён',
           },
         },
@@ -1575,13 +1583,15 @@ export const resources = {
           imageAlt: '{{name}}, image {{number}}',
         },
         gallery: {
-          activeHint: 'Add images and manage their display order.',
+          activeHint: 'The first image is the primary image shown in the catalog and configurator.',
+          primary: 'Primary',
+          primaryDraft: 'Primary after saving',
           readOnlyHint: 'The archived gallery is available in read-only mode.',
           imageNumber: 'Image {{number}}',
           file: {
             label: 'New image',
             placeholder: 'Select a file',
-            description: 'JPEG, PNG, or WebP, up to 10 MiB',
+            description: 'JPEG, PNG, or WebP, up to 10 MiB and 40 megapixels',
           },
           states: {
             loading: 'Loading gallery',
@@ -1593,6 +1603,8 @@ export const resources = {
             delete: 'Delete',
             deleteImage: 'Delete image {{number}}',
             reorder: 'Change order',
+            makePrimary: 'Make primary',
+            makePrimaryNamed: 'Make image {{number}} primary',
             moveEarlier: 'Move earlier',
             moveLater: 'Move later',
             saveOrder: 'Save order',
@@ -1609,6 +1621,8 @@ export const resources = {
           },
           delete: {
             title: 'Delete image?',
+            primaryWarning:
+              'The next image will become primary. If none remain, a placeholder will be shown.',
             description: 'The image will be permanently removed from the gallery.',
             warning: 'This action cannot be undone.',
           },
@@ -1620,6 +1634,7 @@ export const resources = {
           notifications: {
             uploaded: 'Image uploaded',
             deleted: 'Image deleted',
+            primaryChanged: 'Primary image changed',
             reordered: 'Image order saved',
           },
         },

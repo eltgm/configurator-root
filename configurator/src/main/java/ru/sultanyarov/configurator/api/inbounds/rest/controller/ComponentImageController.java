@@ -26,7 +26,15 @@ public class ComponentImageController implements ComponentImagesApi {
 
   @Override
   public ResponseEntity<Resource> getComponentImagesByIdContent(Long id) {
-    ComponentImageContent image = componentFacade.getComponentImageContent(id);
+    return imageResponse(componentFacade.getComponentImageContent(id));
+  }
+
+  @Override
+  public ResponseEntity<Resource> getComponentImagesByIdThumbnail(Long id) {
+    return imageResponse(componentFacade.getComponentImageThumbnail(id));
+  }
+
+  private ResponseEntity<Resource> imageResponse(ComponentImageContent image) {
     byte[] content = image.content();
 
     return ResponseEntity.ok()

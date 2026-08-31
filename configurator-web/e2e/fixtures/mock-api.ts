@@ -158,6 +158,7 @@ function configuratorResponse(
       componentTypeName:
         types.find((componentType) => componentType.id === componentTypeId)?.name ?? 'Unknown',
       components: components.map((component) => ({
+        primaryImage: component.primaryImage,
         id: component.id,
         name: component.name,
         brand: component.brand,
@@ -215,6 +216,7 @@ function configuratorCandidatesResponse(
         blockingRules: [],
       }));
       return {
+        primaryImage: component.primaryImage,
         id: component.id,
         name: component.name,
         brand: component.brand,
@@ -380,8 +382,18 @@ async function installMockApi(page: Page) {
   }> = [];
   let nextConfigurationId = 901;
   let componentImages = [
-    { id: 9001, url: '/component-images/9001/content', orderIndex: 0 },
-    { id: 9002, url: '/component-images/9002/content', orderIndex: 1 },
+    {
+      id: 9001,
+      url: '/component-images/9001/content',
+      thumbnailUrl: '/component-images/9001/thumbnail',
+      orderIndex: 0,
+    },
+    {
+      id: 9002,
+      url: '/component-images/9002/content',
+      thumbnailUrl: '/component-images/9002/thumbnail',
+      orderIndex: 1,
+    },
   ];
   const compatibilityGraph: GraphResponse = {
     nodes: [
@@ -775,6 +787,7 @@ async function installMockApi(page: Page) {
           }
           return [
             {
+              primaryImage: component.primaryImage,
               id: component.id,
               name: component.name,
               brand: component.brand,
@@ -877,6 +890,7 @@ async function installMockApi(page: Page) {
           if (!component) return [];
           return [
             {
+              primaryImage: component.primaryImage,
               id: component.id,
               name: component.name,
               brand: component.brand,
@@ -954,6 +968,7 @@ async function installMockApi(page: Page) {
               componentTypeState.find((componentType) => componentType.id === componentTypeId)
                 ?.name ?? 'Unknown',
             components: components.map((component) => ({
+              primaryImage: component.primaryImage,
               id: component.id,
               name: component.name,
               brand: component.brand,
@@ -1131,12 +1146,19 @@ async function installMockApi(page: Page) {
     componentState = [...componentState, created];
     await route.fulfill({ status: 201, json: created });
   });
+  const syncPrimaryImage = () => {
+    componentState = componentState.map((component) =>
+      component.id === 101 ? { ...component, primaryImage: componentImages[0] ?? null } : component,
+    );
+  };
+  syncPrimaryImage();
   await page.route(frontendApiBaseUrl + '/components/*/images/order', async (route) => {
     const body = route.request().postDataJSON() as { imageIds: Array<number> };
     componentImages = body.imageIds.map((id, orderIndex) => ({
       ...componentImages.find((image) => image.id === id)!,
       orderIndex,
     }));
+    syncPrimaryImage();
     await route.fulfill({ json: componentImages });
   });
   await page.route(frontendApiBaseUrl + '/components/*/images', async (route) => {
@@ -1147,23 +1169,29 @@ async function installMockApi(page: Page) {
     const image = {
       id: 9003,
       url: '/component-images/9003/content',
+      thumbnailUrl: '/component-images/9003/thumbnail',
       orderIndex: componentImages.length,
     };
     componentImages = [...componentImages, image];
+    syncPrimaryImage();
     await route.fulfill({ status: 201, json: image });
   });
-  await page.route(frontendApiBaseUrl + '/component-images/*/content', async (route) => {
-    await route.fulfill({
-      contentType: 'image/png',
-      body: Buffer.from(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-        'base64',
-      ),
-    });
-  });
+  await page.route(
+    frontendApiBaseUrl + '/component-images/*/{content,thumbnail}',
+    async (route) => {
+      await route.fulfill({
+        contentType: 'image/png',
+        body: Buffer.from(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+          'base64',
+        ),
+      });
+    },
+  );
   await page.route(frontendApiBaseUrl + '/component-images/*', async (route) => {
     const imageId = Number(new URL(route.request().url()).pathname.split('/').at(-1));
     componentImages = componentImages.filter((image) => image.id !== imageId);
+    syncPrimaryImage();
     await route.fulfill({ status: 204 });
   });
 }

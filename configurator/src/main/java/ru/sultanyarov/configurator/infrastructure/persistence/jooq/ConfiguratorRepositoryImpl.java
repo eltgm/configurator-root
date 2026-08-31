@@ -43,6 +43,7 @@ public class ConfiguratorRepositoryImpl implements ConfiguratorRepository {
                 COMPONENT.ARCHIVED,
                 COMPONENT.CREATED_AT));
     fields.add(attributeValuesField());
+    fields.add(ComponentImageFields.primaryImage());
 
     return dslContext
         .select(fields)
@@ -72,6 +73,7 @@ public class ConfiguratorRepositoryImpl implements ConfiguratorRepository {
                 COMPONENT.ARCHIVED,
                 COMPONENT.CREATED_AT));
     fields.add(attributeValuesField());
+    fields.add(ComponentImageFields.primaryImage());
 
     return dslContext
         .select(fields)
@@ -172,6 +174,7 @@ public class ConfiguratorRepositoryImpl implements ConfiguratorRepository {
             .description(record.get(COMPONENT.DESCRIPTION))
             .archived(record.get(COMPONENT.ARCHIVED))
             .attributes(JooqMapperUtils.getListOrNull(record, "attributes"))
+            .primaryImage(ComponentImageFields.readPrimaryImage(record))
             .createdAt(record.get(COMPONENT.CREATED_AT))
             .build();
   }
