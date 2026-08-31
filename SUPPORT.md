@@ -1,16 +1,18 @@
-# Support
+# Поддержка
 
-Поддерживается текущая линия `1.1.x` в виде локальных Windows/macOS пакетов с Docker Desktop. Серверное развёртывание,
-LAN/public exposure, сторонние Compose-модификации и восстановление данных версий до `v1.0.0` не входят в поддержку.
+Текущая стабильная линия `1.2.x` поддерживается в виде локальных пакетов для Windows и macOS с Docker Desktop.
+Серверное развёртывание, публикация в локальной сети или интернете, сторонние изменения Compose и восстановление данных
+версий до `v1.0.0` в поддержку не входят.
 
-Перед созданием bug report:
+Перед созданием сообщения об ошибке:
 
 1. Убедитесь, что Docker Desktop запущен и обновлён.
 2. Выполните `Stop`, затем `Start` из полностью распакованного пакета.
-3. Сохраните версию из файла `VERSION`, ОС, Docker Desktop version и безопасный фрагмент лога из `logs/`.
-4. Не прикладывайте backups, `configurator.env`, токены, пароли или персональные данные.
+3. Сохраните версию из файла `VERSION`, название и версию ОС, версию Docker Desktop и безопасный фрагмент журнала из
+   каталога `logs`.
+4. Не прикладывайте резервные копии, `configurator.env`, токены, пароли и персональные данные.
 
 Для воспроизводимых ошибок используйте
-[Bug report](https://github.com/eltgm/configurator-root/issues/new?template=bug_report.yml), для предложений —
-[Feature request](https://github.com/eltgm/configurator-root/issues/new?template=feature_request.yml). Уязвимости сообщайте
-только по процедуре из [SECURITY.md](SECURITY.md).
+[форму сообщения об ошибке](https://github.com/eltgm/configurator-root/issues/new?template=bug_report.yml), для
+предложений — [форму предложения](https://github.com/eltgm/configurator-root/issues/new?template=feature_request.yml).
+Об уязвимостях сообщайте только способом, указанным в [политике безопасности](SECURITY.md).

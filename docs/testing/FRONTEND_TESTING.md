@@ -1,19 +1,20 @@
-# Frontend testing
+# Проверка пользовательского интерфейса
 
-## Установка
-
-Из `configurator-web` установите exact зависимости и Playwright browsers:
+## Установка зависимостей
 
 ```bash
+cd configurator-web
 npm ci
 npx playwright install
 ```
 
-`npm ci` намеренно не скачивает браузеры. Для visual regression дополнительно нужен запущенный Docker Desktop.
+`npm ci` намеренно не скачивает браузеры Playwright. Для проверки эталонных изображений дополнительно требуется
+запущенный Docker Desktop.
 
 ## Наборы проверок
 
 ```bash
+npm run api:check
 npm run check
 npm run test:coverage
 npm run test:e2e
@@ -22,18 +23,19 @@ npm run test:visual
 npm run test:delivery
 ```
 
-- `check` проверяет OpenAPI client drift, формат, ESLint, Stylelint, unit/component tests, TypeScript и production build;
-- `test:coverage` блокирует падение ниже 90% lines/statements, 85% functions и 80% branches;
-- `test:e2e` выполняет функциональные journeys в Chromium, Firefox и WebKit;
-- `test:accessibility` выполняет axe WCAG A/AA scans в Chromium для desktop и mobile;
-- `test:visual` выполняет сравнение PNG-baselines в pinned Linux Playwright container.
-- `test:delivery` проверяет собранную SPA и реальный `/api` boundary через запущенный production gateway.
+- `api:check` проверяет, что созданный клиент соответствует `specs/configurator-api.yaml`;
+- `check` запускает проверку формата, ESLint, Stylelint, модульные и компонентные тесты, TypeScript и рабочую сборку;
+- `test:coverage` проверяет покрытие Vitest;
+- `test:e2e` выполняет пользовательские сценарии Playwright в Chromium, Firefox и WebKit;
+- `test:accessibility` выполняет проверки axe по WCAG A/AA в Chromium для широкого и узкого экранов;
+- `test:visual` сравнивает страницы с эталонными изображениями в закреплённом контейнере Playwright;
+- `test:delivery` проверяет собранное SPA и настоящую границу `/api` через рабочий шлюз.
 
-Functional, accessibility и visual suites используют один детерминированный mock HTTP boundary. Они не требуют
-запущенного backend/PostgreSQL/MinIO и не обращаются к пользовательским данным.
+Проверки `test:e2e`, `test:accessibility` и `test:visual` используют MSW и не обращаются к пользовательским данным,
+серверной части, PostgreSQL или MinIO.
 
-Delivery suite намеренно отделён: перед ним нужно собрать boot JAR и поднять Compose с development override, чтобы
-host-side external fixtures имели loopback-доступ к PostgreSQL:
+Проверка поставки намеренно отделена. Перед ней нужно собрать JAR и поднять Compose с конфигурацией разработки, чтобы
+внешние SQL-фикстуры имели локальный доступ к PostgreSQL:
 
 ```bash
 ./gradlew :configurator:bootJar
@@ -42,63 +44,64 @@ cd configurator-web
 npm run test:delivery
 ```
 
-Тест открывает `http://127.0.0.1:8080` без route mocks, проверяет production HTML, реальный `/api/domains` и прямую
-навигацию на вложенный SPA route. Значение entry point можно переопределить через `CONFIGURATOR_DELIVERY_BASE_URL`.
+Сценарий открывает `http://127.0.0.1:8080` без подмены маршрутов, проверяет рабочий HTML, настоящий `/api/domains` и
+прямое открытие вложенного маршрута SPA.
 
-### Диагностика gateway
+### Диагностика шлюза
 
-- `502 Bad Gateway`: проверьте `docker compose ps` и `docker compose logs app gateway`; liveness `/healthz` проверяет
-  только NGINX, readiness backend подтверждает `/api/v3/api-docs`;
-- старый UI после rebuild: убедитесь, что запущен новый gateway image; `index.html` не кэшируется, а `/assets/*`
-  используют immutable content hash;
-- `413 Request Entity Too Large`: gateway принимает до 16 MB, backend — файл до 10 MB; больший ответ является
-  ожидаемой защитой, а не сетевой ошибкой;
-- API вернул HTML: проверьте наличие `/api` в browser URL и trailing slash у `proxy_pass` в reviewed NGINX config.
+- `502 Bad Gateway`: проверьте `docker compose ps` и `docker compose logs app gateway`; `/healthz` подтверждает только
+  работу NGINX, готовность серверной части проверяется через `/api/v3/api-docs`;
+- после пересборки виден старый интерфейс: убедитесь, что запущен новый образ шлюза; `index.html` не кэшируется, а
+  `/assets/*` содержит хеш в имени;
+- `413 Request Entity Too Large`: шлюз принимает запрос до 16 МБ, серверная часть — один файл до 10 МБ; большее
+  значение должно отклоняться ожидаемым образом.
 
-## Accessibility
+## Доступность
 
-Accessibility gate проверяет автоматически обнаруживаемые нарушения по тегам `wcag2a`, `wcag2aa`, `wcag21a`,
-`wcag21aa`, `wcag22aa`. При падении откройте HTML report в `playwright-report/accessibility`: JSON attachment содержит
-полные `violations` и `incomplete`, а сообщение теста — rule, impact, selectors и help URL.
+Автоматическая проверка axe не заменяет ручную проверку. Перед выпуском следует пройти контрольный список из
+[`docs/accessibility/WCAG_2_2_AA_AUDIT.md`](../accessibility/WCAG_2_2_AA_AUDIT.md), включая:
 
-Нельзя исправлять падение blanket `exclude`, глобальным отключением rule или постоянным allowlist. Сначала подтвердите
-нарушение в DOM и исправьте UI. Возможный third-party false positive должен быть точечно доказан, документирован и
-получить отдельную follow-up задачу. Axe не заменяет manual checklist из `docs/accessibility/WCAG_2_2_AA_AUDIT.md`.
+- навигацию только с клавиатуры;
+- увеличение страницы до 200%;
+- ширину содержимого 320 CSS-пикселей;
+- VoiceOver в Safari;
+- светлую и тёмную темы;
+- формы, диалоги, таблицы, галерею, граф и конфигуратор.
 
-## Visual baselines
+Найденные нарушения доступности исправляются как обычные дефекты. Если исправление требует отдельной задачи, её связь
+с выпуском должна быть явно указана.
 
-Обычное сравнение:
+## Эталонные изображения
+
+Обычная проверка:
 
 ```bash
 npm run test:visual
 ```
 
-Контролируемое обновление после намеренного UI-изменения:
+Обновление после согласованного изменения интерфейса:
 
 ```bash
 npm run test:visual:update
-git status --short configurator-web/e2e/__screenshots__
+npm run test:visual
 ```
 
-Обе команды используют образ `mcr.microsoft.com/playwright:v1.62.1-noble`; версия должна совпадать с exact
-`@playwright/test` в `package.json`. Host `node_modules` закрыт отдельным container volume, поэтому Linux packages не
-попадают на Windows/macOS.
+Команды запускают закреплённый образ Playwright, версия которого совпадает с `@playwright/test` в `package.json`.
+Каталог `node_modules` компьютера закрыт отдельным томом контейнера, поэтому пакеты Linux не попадают в рабочее дерево.
 
-Перед commit просмотрите каждый added/changed PNG и убедитесь, что diff вызван ожидаемым изменением, данные не содержат
-секретов, а masks/tolerances не скрывают regressions. Затем повторно выполните `npm run test:visual`: второй прогон
-должен пройти без обновления файлов. Не создавайте baselines обычным host Playwright — rasterization зависит от ОС.
+После обновления обязательно просмотрите различия и запустите обычную проверку без режима обновления. Не создавайте
+эталоны обычным Playwright на компьютере: отрисовка шрифтов и элементов зависит от операционной системы.
 
-## CI и диагностика
+## Непрерывная интеграция и диагностика
 
-CI выполняет два frontend jobs. `Frontend static and unit quality` запускает `npm ci`, `check` и coverage. После него
-`Frontend browser quality` внутри того же pinned Playwright image выполняет functional, accessibility и visual suites
-с одним worker. Job external contracts поднимает production gateway, выполняет REST contracts через `/api`, затем
-запускает delivery smoke без mocks.
+Непрерывная интеграция выполняет два этапа интерфейса:
 
-При failure на семь дней сохраняются отдельные `playwright-report` и `test-results`. Trace открывается командой:
+1. `Frontend static and unit quality` запускает `npm ci`, `check` и проверку покрытия.
+2. `Frontend browser quality` в том же закреплённом образе Playwright последовательно выполняет функциональные проверки,
+   доступность и сравнение изображений одним исполнителем.
 
-```bash
-npx playwright show-trace path/to/trace.zip
-```
+Отдельный этап внешних контрактов поднимает рабочий шлюз, проверяет REST через `/api`, затем выполняет проверку
+поставки интерфейса.
 
-Локально HTML report можно открыть через `npx playwright show-report` с соответствующим каталогом report.
+При сбое приложите к задаче только безопасные материалы Playwright: отчёт, трассировку, снимок экрана и видео. Не
+прикладывайте `configurator.env`, резервные копии, настоящие пользовательские данные или секреты.
