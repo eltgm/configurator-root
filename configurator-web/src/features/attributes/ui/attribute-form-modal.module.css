@@ -1,0 +1,7 @@
+.form {
+  --mantine-color-error: var(--mantine-color-red-8);
+}
+
+[data-mantine-color-scheme='dark'] .form {
+  --mantine-color-error: var(--mantine-color-red-4);
+}

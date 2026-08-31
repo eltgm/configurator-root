@@ -981,7 +981,11 @@ export const resources = {
           createTitle: 'Новый атрибут',
           editTitle: 'Редактирование атрибута',
           name: 'Системное имя',
-          nameHint: 'Уникальное в области имя для API и правил совместимости (с учётом регистра)',
+          nameHint: 'Уникальное в области имя для API и правил совместимости (с учётом регистра).',
+          nameAutoHint: 'Заполняется из названия, пока вы не измените его вручную.',
+          nameEditHint:
+            'Для замены сохранённого имени используйте ручной ввод или включите автозаполнение кнопкой ниже.',
+          fillNameFromLabel: 'Заполнять из названия',
           namePlaceholder: 'Например, memory_size',
           label: 'Название для пользователя',
           labelPlaceholder: 'Например, Объём памяти',
@@ -2074,8 +2078,12 @@ export const resources = {
           editTitle: 'Edit attribute',
           name: 'System name',
           nameHint:
-            'A case-sensitive name unique within the domain, used by the API and compatibility rules',
+            'A case-sensitive name unique within the domain, used by the API and compatibility rules.',
           namePlaceholder: 'For example, memory_size',
+          nameAutoHint: 'Filled from the display name until you edit it manually.',
+          nameEditHint:
+            'To replace the saved name, edit it manually or enable autofill using the button below.',
+          fillNameFromLabel: 'Fill from display name',
           label: 'User-facing name',
           labelPlaceholder: 'For example, Memory size',
           dataType: 'Data type',

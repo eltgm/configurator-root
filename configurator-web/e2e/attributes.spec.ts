@@ -1,5 +1,80 @@
 import { expect, test } from './fixtures/mock-api';
 
+for (const entry of ['catalog', 'type'] as const) {
+  test(`autofills and preserves manual attribute names from the ${entry}`, async ({
+    page,
+  }, testInfo) => {
+    await page.goto(entry === 'catalog' ? '/settings/attributes' : '/settings/types');
+    if (entry === 'catalog') {
+      await page.getByRole('button', { name: 'Новый атрибут' }).click();
+    } else {
+      await page.getByRole('button', { name: 'Добавить', exact: true }).click();
+      await page.getByRole('menuitem', { name: 'Создать новый' }).click();
+    }
+    const dialog = page.getByRole('dialog', { name: 'Новый атрибут' });
+    const label = dialog.getByRole('textbox', { name: 'Название для пользователя' });
+    const name = dialog.getByRole('textbox', { name: /Системное имя/ });
+    await expect(label).toBeFocused();
+    await label.fill('Разъём USB Type-C');
+    await expect(name).toHaveValue('razyom_usb_type_c');
+    await label.press('Tab');
+    await expect(name).toBeFocused();
+    await name.fill('Custom_USB');
+    await label.fill('Основной разъём USB');
+    await expect(name).toHaveValue('Custom_USB');
+    await name.clear();
+    await label.fill('MemorySize');
+    await expect(name).toHaveValue('');
+    await dialog.getByRole('button', { name: 'Заполнять из названия' }).click();
+    await expect(name).toHaveValue('memory_size');
+    await expect(name).toBeFocused();
+    await label.fill('Объём памяти');
+    await expect(name).toHaveValue('obyom_pamyati');
+    await testInfo.attach('attribute-autofill.png', {
+      body: await dialog.screenshot(),
+      contentType: 'image/png',
+    });
+    await label.press('Enter');
+    await expect(dialog).toBeHidden();
+
+    await page
+      .getByRole('button', { name: 'Редактировать атрибут Объём памяти', exact: true })
+      .click();
+    const editDialog = page.getByRole('dialog', { name: 'Редактирование атрибута' });
+    const editLabel = editDialog.getByRole('textbox', { name: 'Название для пользователя' });
+    const editName = editDialog.getByRole('textbox', { name: /Системное имя/ });
+    await expect(editName).toHaveValue('obyom_pamyati');
+    await editLabel.fill('Доступный объём памяти');
+    await expect(editName).toHaveValue('obyom_pamyati');
+    await editDialog.getByRole('button', { name: 'Сохранить', exact: true }).click();
+    await expect(editDialog).toBeHidden();
+    await page
+      .getByRole('button', { name: 'Редактировать атрибут Доступный объём памяти', exact: true })
+      .click();
+    await expect(editName).toHaveValue('obyom_pamyati');
+  });
+}
+
+test('keeps a conflicting generated name editable without inventing a suffix', async ({ page }) => {
+  await page.goto('/settings/attributes');
+  await page.getByRole('button', { name: 'Новый атрибут' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Новый атрибут' });
+  const label = dialog.getByRole('textbox', { name: 'Название для пользователя' });
+  const name = dialog.getByRole('textbox', { name: /Системное имя/ });
+  await label.fill('Cores');
+  await expect(name).toHaveValue('cores');
+  await dialog.getByRole('button', { name: 'Создать', exact: true }).click();
+  await expect(
+    dialog.getByText(/Атрибут с таким системным именем уже есть в области/),
+  ).toBeVisible();
+  await expect(name).toHaveValue('cores');
+  await name.fill('physical_cores');
+  await label.fill('Physical Cores');
+  await expect(name).toHaveValue('physical_cores');
+  await dialog.getByRole('button', { name: 'Создать', exact: true }).click();
+  await expect(dialog).toBeHidden();
+});
+
 test('creates, reuses, detaches and deletes a domain catalog attribute', async ({ page }) => {
   await page.goto('/settings/attributes');
   await page.getByRole('button', { name: 'Новый атрибут' }).click();
