@@ -259,6 +259,8 @@ export const postDomainsDemo = <ThrowOnError extends boolean = false>(
 
 /**
  * Delete domain
+ *
+ * Permanently deletes the domain and all remaining catalog data, including active and archived components, attributes, images and compatibility rules/links. Any saved configuration in the domain, regardless of owner or component state, prevents deletion. Database changes are atomic; image files and thumbnails are cleaned up asynchronously with durable retries. No configuration is deleted by this operation.
  */
 export const deleteDomainsById = <ThrowOnError extends boolean = false>(
   options: Options<DeleteDomainsByIdData, ThrowOnError>,

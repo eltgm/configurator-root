@@ -3,7 +3,6 @@ import {
   Badge,
   Button,
   Group,
-  Modal,
   Paper,
   SimpleGrid,
   Stack,
@@ -16,13 +15,12 @@ import { IconCheck, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react'
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useDeleteDomainMutation } from '@/features/domains/api/domains';
 import { useDomainContext } from '@/features/domains/model/domain-context';
 import { CreateDemoDomainButton } from '@/features/domains/ui/CreateDemoDomainButton';
+import { DeleteDomainModal } from '@/features/domains/ui/DeleteDomainModal';
 import { DomainFormModal } from '@/features/domains/ui/DomainFormModal';
 import type { Domain } from '@/shared/api';
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle';
-import { showSuccessNotification } from '@/shared/notifications/notifications';
 import { EmptyState, ErrorState, LoadingState, PageHeader } from '@/shared/ui';
 
 export function DomainSettingsPage() {
@@ -31,7 +29,6 @@ export function DomainSettingsPage() {
   const [formOpened, form] = useDisclosure(false);
   const [editingDomain, setEditingDomain] = useState<Domain>();
   const [deletingDomain, setDeletingDomain] = useState<Domain>();
-  const deleteDomain = useDeleteDomainMutation();
   const title = t('domains.management.title');
   useDocumentTitle(title, t('app.name'));
 
@@ -49,20 +46,6 @@ export function DomainSettingsPage() {
   const openEdit = (domain: Domain) => {
     setEditingDomain(domain);
     form.open();
-  };
-
-  const confirmDelete = async () => {
-    if (!deletingDomain) {
-      return;
-    }
-
-    try {
-      await deleteDomain.mutateAsync(deletingDomain.id);
-      showSuccessNotification(t('domains.notifications.deleted'));
-      setDeletingDomain(undefined);
-    } catch {
-      // The global mutation policy presents the structured API error.
-    }
   };
 
   return (
@@ -166,42 +149,13 @@ export function DomainSettingsPage() {
         }}
       />
 
-      <Modal
-        opened={Boolean(deletingDomain)}
-        onClose={() => {
-          if (!deleteDomain.isPending) {
-            setDeletingDomain(undefined);
-          }
-        }}
-        title={t('domains.delete.title')}
-        centered
-        closeButtonProps={{ 'aria-label': t('common.close') }}
-        closeOnClickOutside={!deleteDomain.isPending}
-        closeOnEscape={!deleteDomain.isPending}
-      >
-        <Stack gap="md">
-          <Text>{t('domains.delete.description', { name: deletingDomain?.name ?? '' })}</Text>
-          <Text size="sm" c="red.9">
-            {t('domains.delete.warning')}
-          </Text>
-          <Group justify="flex-end">
-            <Button
-              variant="default"
-              disabled={deleteDomain.isPending}
-              onClick={() => setDeletingDomain(undefined)}
-            >
-              {t('common.cancel')}
-            </Button>
-            <Button
-              color="red.9"
-              loading={deleteDomain.isPending}
-              onClick={() => void confirmDelete()}
-            >
-              {t('domains.actions.delete')}
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+      {deletingDomain ? (
+        <DeleteDomainModal
+          key={deletingDomain.id}
+          domain={deletingDomain}
+          onClose={() => setDeletingDomain(undefined)}
+        />
+      ) : null}
     </Stack>
   );
 }

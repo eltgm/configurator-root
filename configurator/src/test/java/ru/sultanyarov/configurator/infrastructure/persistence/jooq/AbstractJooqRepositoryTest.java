@@ -54,6 +54,9 @@ abstract class AbstractJooqRepositoryTest {
     } catch (IOException exception) {
       throw new UncheckedIOException(exception);
     }
+    populator.addScript(
+        new ClassPathResource(
+            "db/migration/V9__protect-configurations-and-queue-image-cleanup.sql"));
     populator.execute(dataSource);
     return dataSource;
   }
