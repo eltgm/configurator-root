@@ -1,90 +1,92 @@
-# WCAG 2.2 AA Internal Audit
+# Внутренняя проверка WCAG 2.2 AA
 
-## Scope and status model
+## Охват и статусы
 
-Матрица относится к `configurator-web` и задачам 9.26–9.27. Она является внутренним implementation audit, а не внешней
-сертификацией. Проверка охватывает все критерии WCAG 2.2 уровней A и AA, актуальные для текущего SPA. Runtime auth,
-аудио/видео, timed content и пользовательский ввод rich media в текущем продукте отсутствуют.
+Матрица относится к `configurator-web` и задачам 9.26–9.27. Это внутренняя проверка реализации, а не внешняя
+сертификация. Она охватывает применимые к текущему SPA критерии WCAG 2.2 уровней A и AA. В приложении пока нет
+действующей аутентификации, аудио, видео, содержимого с ограничением времени и пользовательских мультимедийных данных.
 
 Статусы:
 
-- `covered` — требование реализовано и имеет code/test/manual evidence;
-- `manual` — реализация присутствует, окончательная проверка требует ручного браузерного прохода;
-- `n/a` — критерий неприменим к текущему содержимому; при появлении соответствующего сценария он пересматривается;
-- `manual` не повышается автоматически только из-за успешного axe scan: критерий требует отдельной ручной проверки.
+- `покрыто` — требование реализовано и подтверждено кодом или проверками;
+- `вручную` — реализация присутствует, но требуется окончательная ручная проверка в браузере;
+- `не применимо` — в текущем содержимом нет соответствующего сценария; при его появлении критерий пересматривается.
 
-Normative references: [WCAG 2.2](https://www.w3.org/TR/WCAG22/),
-[Quick Reference](https://www.w3.org/WAI/WCAG22/quickref/).
+Успешная проверка axe сама по себе не меняет статус `вручную`: соответствующий критерий требует отдельного просмотра.
 
-## Audit matrix
+Нормативные источники: [WCAG 2.2](https://www.w3.org/TR/WCAG22/) и
+[краткий справочник](https://www.w3.org/WAI/WCAG22/quickref/).
 
-| Criterion                             | Applicability and implementation                                                              | Evidence                                   | Status  |
-| ------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------ | ------- |
-| 1.1.1 Non-text Content                | Значимые изображения получают alt; декоративные icons/previews скрыты от AT.                  | Gallery/component tests, axe, manual audit | manual  |
-| 1.2.1–1.2.5 Time-based Media          | Аудио и видео отсутствуют.                                                                    | Content inventory                          | n/a     |
-| 1.3.1 Info and Relationships          | Landmarks, headings, labels, tables/lists и form associations выражены семантически.          | App/shared/feature tests, axe route matrix | covered |
-| 1.3.2 Meaningful Sequence             | DOM order совпадает с визуальным; mobile перестраивает layout без CSS ordering.               | Keyboard and responsive checks             | manual  |
-| 1.3.3 Sensory Characteristics         | Инструкции и actions не зависят только от формы/позиции.                                      | Copy and control audit                     | manual  |
-| 1.3.4 Orientation                     | Layout не блокирует portrait/landscape.                                                       | Responsive Playwright                      | covered |
-| 1.3.5 Identify Input Purpose          | Текущие предметные поля не являются персональными autofill-полями.                            | Form inventory                             | n/a     |
-| 1.4.1 Use of Color                    | State дополняется текстом/icon/role.                                                          | State tests, axe themes, manual audit      | manual  |
-| 1.4.2 Audio Control                   | Автовоспроизводимое аудио отсутствует.                                                        | Content inventory                          | n/a     |
-| 1.4.3 Contrast (Minimum)              | Mantine tokens и собственные styles проверяются в light/dark.                                 | Axe light/dark scans, manual sampling      | manual  |
-| 1.4.4 Resize Text                     | Контент работает при browser zoom 200%.                                                       | Manual zoom checklist                      | manual  |
-| 1.4.5 Images of Text                  | Изображения текста не используются.                                                           | Asset inventory                            | covered |
-| 1.4.10 Reflow                         | Линейный UI поддерживает 320 CSS px; graph canvas имеет линейную details alternative.         | Responsive CSS and Playwright              | covered |
-| 1.4.11 Non-text Contrast              | Focus, controls и meaningful graphics проверяются в обеих темах.                              | Axe themes and manual contrast sampling    | manual  |
-| 1.4.12 Text Spacing                   | Layout не фиксирует высоту текстовых containers и переносит длинный контент.                  | Manual text-spacing check                  | manual  |
-| 1.4.13 Content on Hover or Focus      | Tooltip/menu content dismissible и не является единственным источником информации.            | Component/manual keyboard audit            | manual  |
-| 2.1.1 Keyboard                        | Все business actions работают с клавиатуры; reorder использует кнопки.                        | Component and E2E keyboard paths           | covered |
-| 2.1.2 No Keyboard Trap                | Mantine overlays закрываются и возвращают focus.                                              | Modal/drawer tests                         | covered |
-| 2.1.4 Character Key Shortcuts         | Одноклавишные shortcuts отсутствуют.                                                          | Code inventory                             | n/a     |
-| 2.2.1–2.2.2 Timing Adjustable / Pause | Timed limits, moving and auto-updating content отсутствуют.                                   | Behavior inventory                         | n/a     |
-| 2.3.1 Three Flashes                   | Flashing content отсутствует.                                                                 | Content inventory                          | n/a     |
-| 2.4.1 Bypass Blocks                   | Первый keyboard control — skip link к `main`.                                                 | App test and E2E                           | covered |
-| 2.4.2 Page Titled                     | Каждая route page задаёт локализованный document title.                                       | Existing page tests                        | covered |
-| 2.4.3 Focus Order                     | Tab order следует DOM и сохраняется при responsive layout.                                    | Keyboard E2E/manual                        | manual  |
-| 2.4.4 Link Purpose (In Context)       | Links имеют предметные labels или доступный context.                                          | Component audit and axe route matrix       | covered |
-| 2.4.5 Multiple Ways                   | Основные страницы доступны через navigation; детали — через каталог/списки и browser history. | Route/navigation inventory                 | covered |
-| 2.4.6 Headings and Labels             | Один H1 на странице, labels описывают назначение controls.                                    | App/feature tests and axe route matrix     | covered |
-| 2.4.7 Focus Visible                   | Global high-contrast `:focus-visible` indicator.                                              | CSS and manual themes                      | covered |
-| 2.4.11 Focus Not Obscured (Minimum)   | Shell scroll offsets и overlay focus management не дают полностью скрыть focus.               | Responsive keyboard E2E                    | covered |
-| 2.5.1 Pointer Gestures                | Multipoint/path gestures не требуются; graph имеет controls/search.                           | Interaction inventory                      | covered |
-| 2.5.2 Pointer Cancellation            | Actions выполняются стандартным click activation/up event.                                    | Component interaction tests                | covered |
-| 2.5.3 Label in Name                   | Visible button/link/form labels входят в accessible name.                                     | Component audit and axe interactions       | covered |
-| 2.5.4 Motion Actuation                | Motion/device actuation отсутствует.                                                          | Interaction inventory                      | n/a     |
-| 2.5.7 Dragging Movements              | Бизнес-функции используют кнопки; graph node dragging отключён.                               | Graph/gallery/rule tests                   | covered |
-| 2.5.8 Target Size (Minimum)           | Icon controls минимум 24 px; основные mobile navigation/actions крупнее.                      | CSS/component/Playwright sampling          | covered |
-| 3.1.1 Language of Page                | `<html lang>` синхронизирован с ru/en locale.                                                 | App tests                                  | covered |
-| 3.1.2 Language of Parts               | Интерфейс переключает locale целиком; смешанные известные фрагменты не используются.          | Content inventory                          | covered |
-| 3.2.1 On Focus                        | Focus сам не запускает route/mutation/context change.                                         | Interaction audit                          | covered |
-| 3.2.2 On Input                        | Context-changing selections предсказуемы и подписаны; destructive actions подтверждаются.     | Feature tests                              | covered |
-| 3.2.3 Consistent Navigation           | Общая desktop/mobile navigation model неизменна между routes.                                 | App tests                                  | covered |
-| 3.2.4 Consistent Identification       | Общие actions/icons/labels идентичны между экранами.                                          | Shared UI inventory                        | covered |
-| 3.2.6 Consistent Help                 | Постоянного механизма помощи пока нет.                                                        | Product inventory                          | n/a     |
-| 3.3.1 Error Identification            | Field и request errors определяются текстом, не одним цветом.                                 | Form/error tests                           | covered |
-| 3.3.2 Labels or Instructions          | Формы содержат labels, required/help/format instructions.                                     | Form tests                                 | covered |
-| 3.3.3 Error Suggestion                | Исправимые ошибки содержат безопасное объяснение и field details.                             | Form/error tests                           | covered |
-| 3.3.4 Error Prevention                | Безвозвратное удаление и значимые destructive actions требуют confirmation.                   | Modal/E2E tests                            | covered |
-| 3.3.7 Redundant Entry                 | Повторный ввод персональной информации в текущих сценариях отсутствует.                       | Form inventory                             | n/a     |
-| 3.3.8 Accessible Authentication       | Runtime auth UI пока отсутствует; пересмотреть вместе с реализацией auth.                     | Security limitation                        | n/a     |
-| 4.1.1 Parsing                         | React/TypeScript создают валидную DOM structure; duplicate IDs проверяются code review/tests. | Build, component tests and axe             | covered |
-| 4.1.2 Name, Role, Value               | Native/Mantine semantics, ARIA только для дополнения.                                         | Component tests and axe interactions       | covered |
-| 4.1.3 Status Messages                 | Loading, validation, conflict, result и notification используют status/alert/live regions.    | Shared/feature tests                       | covered |
+## Матрица проверки
 
-## Manual verification checklist
+| Критерий                                 | Применимость и реализация                                                                                      | Подтверждение                                     | Статус       |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ------------ |
+| 1.1.1 Нетекстовое содержимое             | Значимые изображения имеют `alt`; декоративные значки и превью скрыты от вспомогательных технологий            | Тесты галереи и компонентов, axe, ручная проверка | вручную      |
+| 1.2.1–1.2.5 Мультимедиа                  | Аудио и видео отсутствуют                                                                                      | Перечень содержимого                              | не применимо |
+| 1.3.1 Информация и отношения             | Ориентиры, заголовки, подписи, таблицы, списки и связи полей выражены семантически                             | Тесты приложения и матрица маршрутов axe          | покрыто      |
+| 1.3.2 Значимая последовательность        | Порядок DOM совпадает с визуальным; узкая раскладка не меняет порядок через CSS                                | Клавиатурные и адаптивные проверки                | вручную      |
+| 1.3.3 Сенсорные характеристики           | Инструкции и действия не зависят только от формы или положения                                                 | Проверка текстов и элементов управления           | вручную      |
+| 1.3.4 Ориентация                         | Интерфейс не блокирует книжную и альбомную ориентацию                                                          | Адаптивные проверки Playwright                    | покрыто      |
+| 1.3.5 Назначение ввода                   | Текущие предметные поля не являются персональными полями автозаполнения                                        | Перечень форм                                     | не применимо |
+| 1.4.1 Использование цвета                | Состояние дополняется текстом, значком или семантической ролью                                                 | Тесты состояний, обе темы axe, ручная проверка    | вручную      |
+| 1.4.2 Управление звуком                  | Автовоспроизводимый звук отсутствует                                                                           | Перечень содержимого                              | не применимо |
+| 1.4.3 Минимальная контрастность          | Токены Mantine и собственные стили проверяются в светлой и тёмной темах                                        | axe и ручная выборка                              | вручную      |
+| 1.4.4 Изменение размера текста           | Содержимое работает при увеличении браузера до 200%                                                            | Ручной контрольный список                         | вручную      |
+| 1.4.5 Изображения текста                 | Изображения текста не используются                                                                             | Перечень ресурсов                                 | покрыто      |
+| 1.4.10 Перекомпоновка                    | Линейный интерфейс поддерживает 320 CSS-пикселей; у графа есть линейное описание                               | CSS и Playwright                                  | покрыто      |
+| 1.4.11 Контраст нетекстовых элементов    | Фокус, элементы управления и значимая графика проверяются в обеих темах                                        | axe и ручная выборка                              | вручную      |
+| 1.4.12 Интервалы текста                  | Высота текстовых контейнеров не фиксируется, длинное содержимое переносится                                    | Ручная проверка интервалов                        | вручную      |
+| 1.4.13 Содержимое при наведении и фокусе | Подсказки и меню можно закрыть; они не являются единственным источником сведений                               | Компонентные и ручные проверки                    | вручную      |
+| 2.1.1 Клавиатура                         | Все прикладные действия доступны с клавиатуры; порядок меняется кнопками                                       | Компонентные и сквозные сценарии                  | покрыто      |
+| 2.1.2 Отсутствие ловушки фокуса          | Наложения Mantine закрываются и возвращают фокус                                                               | Тесты модальных окон и панелей                    | покрыто      |
+| 2.1.4 Одноклавишные сокращения           | Такие сокращения отсутствуют                                                                                   | Проверка кода                                     | не применимо |
+| 2.2.1–2.2.2 Ограничения времени          | Ограничения времени, движение и автоматическое обновление содержимого отсутствуют                              | Перечень поведения                                | не применимо |
+| 2.3.1 Три вспышки                        | Мигающее содержимое отсутствует                                                                                | Перечень содержимого                              | не применимо |
+| 2.4.1 Пропуск блоков                     | Первый клавиатурный элемент — ссылка перехода к `main`                                                         | Тест приложения и сквозной тест                   | покрыто      |
+| 2.4.2 Заголовок страницы                 | Каждый маршрут задаёт локализованный заголовок документа                                                       | Тесты страниц                                     | покрыто      |
+| 2.4.3 Порядок фокуса                     | Порядок Tab следует DOM и сохраняется при перестроении                                                         | Сквозная и ручная проверка                        | вручную      |
+| 2.4.4 Назначение ссылки                  | Ссылки имеют предметные подписи или доступный контекст                                                         | Проверка компонентов и axe                        | покрыто      |
+| 2.4.5 Несколько способов                 | Основные страницы доступны через навигацию, детали — через каталоги, списки и историю браузера                 | Перечень маршрутов                                | покрыто      |
+| 2.4.6 Заголовки и подписи                | На странице один H1, подписи описывают назначение элементов                                                    | Тесты приложения и axe                            | покрыто      |
+| 2.4.7 Видимый фокус                      | Общий высококонтрастный индикатор `:focus-visible`                                                             | CSS и ручная проверка тем                         | покрыто      |
+| 2.4.11 Фокус не скрыт                    | Отступы прокрутки и управление наложениями не позволяют полностью скрыть фокус                                 | Адаптивный клавиатурный тест                      | покрыто      |
+| 2.5.1 Жесты указателя                    | Сложные жесты не нужны; у графа есть кнопки и поиск                                                            | Перечень взаимодействий                           | покрыто      |
+| 2.5.2 Отмена указателя                   | Действия выполняются стандартным событием отпускания кнопки                                                    | Компонентные тесты                                | покрыто      |
+| 2.5.3 Подпись в доступном имени          | Видимые подписи кнопок, ссылок и полей входят в доступное имя                                                  | Проверка компонентов и axe                        | покрыто      |
+| 2.5.4 Управление движением               | Управление движением устройства отсутствует                                                                    | Перечень взаимодействий                           | не применимо |
+| 2.5.7 Перетаскивание                     | Прикладные функции используют кнопки; перетаскивание узлов графа отключено                                     | Тесты графа, галереи и правил                     | покрыто      |
+| 2.5.8 Размер цели                        | Значки управления не меньше 24 пикселей; основные мобильные действия крупнее                                   | CSS, компоненты и Playwright                      | покрыто      |
+| 3.1.1 Язык страницы                      | `<html lang>` синхронизирован с русской или английской локалью                                                 | Тесты приложения                                  | покрыто      |
+| 3.1.2 Язык частей                        | Интерфейс переключает локаль целиком; известные смешанные фрагменты не используются                            | Перечень содержимого                              | покрыто      |
+| 3.2.1 При получении фокуса               | Фокус сам не меняет маршрут, данные или контекст                                                               | Проверка взаимодействий                           | покрыто      |
+| 3.2.2 При вводе                          | Изменяющие контекст элементы предсказуемы и подписаны; опасные действия подтверждаются                         | Тесты возможностей                                | покрыто      |
+| 3.2.3 Последовательная навигация         | Общая модель широкой и мобильной навигации неизменна между маршрутами                                          | Тесты приложения                                  | покрыто      |
+| 3.2.4 Последовательное обозначение       | Общие действия, значки и подписи одинаковы между экранами                                                      | Перечень общих элементов                          | покрыто      |
+| 3.2.6 Последовательная помощь            | Постоянный механизм помощи пока отсутствует                                                                    | Перечень продукта                                 | не применимо |
+| 3.3.1 Определение ошибки                 | Ошибки поля и запроса обозначаются текстом, а не только цветом                                                 | Тесты форм и ошибок                               | покрыто      |
+| 3.3.2 Подписи и инструкции               | Формы содержат подписи, обязательность, помощь и формат                                                        | Тесты форм                                        | покрыто      |
+| 3.3.3 Предложение исправления            | Исправимые ошибки содержат безопасное объяснение и сведения о поле                                             | Тесты форм и ошибок                               | покрыто      |
+| 3.3.4 Предотвращение ошибок              | Безвозвратное удаление и другие опасные действия требуют подтверждения                                         | Модальные и сквозные тесты                        | покрыто      |
+| 3.3.7 Повторный ввод                     | Повторный ввод персональных сведений отсутствует                                                               | Перечень форм                                     | не применимо |
+| 3.3.8 Доступная аутентификация           | Действующая аутентификация и её интерфейс пока отсутствуют                                                     | Ограничение безопасности                          | не применимо |
+| 4.1.1 Синтаксический разбор              | React и TypeScript создают корректную структуру DOM; повторяющиеся ID проверяются при просмотре кода и тестами | Сборка, тесты компонентов и axe                   | покрыто      |
+| 4.1.2 Имя, роль, значение                | Используются собственные семантические элементы и Mantine; ARIA только дополняет их                            | Тесты компонентов и axe                           | покрыто      |
+| 4.1.3 Сообщения состояния                | Загрузка, проверка, конфликт, результат и уведомления используют области `status`, `alert` и `live`            | Общие и предметные тесты                          | покрыто      |
 
-- [x] Chromium: 320 x 568, 360 x 800, tablet and desktop, light/dark, portrait/landscape.
-- [x] Firefox: representative 320 px and desktop keyboard journeys.
-- [x] Safari/WebKit: representative 320 px and desktop keyboard journeys.
-- [ ] Safari + VoiceOver: navigation, domain selection, one form, graph details, configurator and destructive modal.
-- [ ] Browser zoom 200% and equivalent 320 CSS px reflow on every route group.
-- [ ] Text spacing: line height 1.5, paragraph spacing 2, letter spacing 0.12 and word spacing 0.16 of font size.
-- [ ] Light/dark contrast sampling for text, focus, inputs, badges, alerts, graph nodes and disabled states.
-- [ ] Keyboard: skip link, navigation, menus, dialogs/drawers, forms, tables/cards, gallery, graph and configurator.
+## Ручной контрольный список
 
-## Known follow-ups
+- [x] Chromium: 320 × 568, 360 × 800, планшет и широкий экран, светлая и тёмная темы, обе ориентации.
+- [x] Firefox: представительные сценарии при ширине 320 пикселей и работа с клавиатуры на широком экране.
+- [x] Safari/WebKit: представительные сценарии при ширине 320 пикселей и работа с клавиатуры на широком экране.
+- [ ] Safari и VoiceOver: навигация, выбор области, одна форма, описание графа, конфигуратор и окно опасного действия.
+- [ ] Увеличение браузера до 200% и перестроение при эквиваленте 320 CSS-пикселей во всех группах маршрутов.
+- [ ] Интервалы: высота строки 1,5, между абзацами 2, между буквами 0,12 и между словами 0,16 размера шрифта.
+- [ ] Контраст текста, фокуса, полей, меток, предупреждений, узлов графа и отключённых состояний в обеих темах.
+- [ ] Клавиатура: ссылка пропуска, навигация, меню, диалоги, панели, формы, таблицы, карточки, галерея, граф и конфигуратор.
 
-- Axe automation не заменяет оставшиеся ручные проверки VoiceOver, zoom, text spacing, contrast semantics и focus.
-- Authentication criteria must be reopened when runtime authentication/authorization and auth UI are implemented.
-- Formal conformance requires an independent manual audit against released content and environment.
+## Оставшиеся действия
+
+- Axe не заменяет ручные проверки VoiceOver, увеличения, интервалов, смысловой контрастности и фокуса.
+- Критерии аутентификации нужно повторно открыть после появления действующей аутентификации, авторизации и интерфейса
+  входа.
+- Формальное заявление о соответствии требует независимой ручной проверки выпущенной версии в поддерживаемой среде.

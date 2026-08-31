@@ -1,45 +1,54 @@
-# Release checklist — v1.2.0
+# Контрольный список выпуска v1.2.0
 
-Дата подготовки: 2026-08-31. Цель: minor release trusted-local Windows/macOS продукта с изменениями CON1-138…142.
+Дата подготовки: 2026-08-31. Цель: дополнительный выпуск локального продукта для одного доверенного пользователя на
+Windows и macOS с изменениями CON1-138…142.
 
-## Product и scope
+## Возможности и границы
 
-- [x] Системные имена атрибутов уникальны в пределах области, а V8 безопасно объединяет только совместимые прежние дубликаты.
-- [x] Компоненты получили заглавное изображение и PNG-превью; удаление изображений переживает временную недоступность MinIO.
+- [x] Системные имена атрибутов уникальны в пределах области, а V8 безопасно объединяет только совместимые прежние
+      дубликаты.
+- [x] Компоненты получили заглавное изображение и PNG-превью; удаление изображений переживает временную недоступность
+      MinIO.
 - [x] Редактор конфигураций сохраняет контекст при замене и остаётся доступным на узких экранах.
-- [x] Область можно рекурсивно удалить только без сохранённых конфигураций; иначе API возвращает `409 DOMAIN_HAS_CONFIGURATIONS`.
-- [x] Backup format v1, канал `stable`, loopback-only delivery и строгая остановка после failed Update/Restore сохранены.
-- [x] Выпущенные теги, exact images и assets не перемещаются и не перезаписываются.
+- [x] Область можно рекурсивно удалить только при отсутствии сохранённых конфигураций; иначе API возвращает
+      `409 DOMAIN_HAS_CONFIGURATIONS`.
+- [x] Формат резервной копии v1, канал `stable`, работа только через локальный адрес и строгая остановка после ошибки
+      `Update` или `Restore` сохранены.
+- [x] Выпущенные теги, образы точных версий и файлы выпусков не перемещаются и не перезаписываются.
 
-## Source of truth и версии
+## Источники истины и версии
 
-- [x] Gradle default — `1.2.0-SNAPSHOT`; tag build использует `-PreleaseVersion=1.2.0`.
-- [x] `configurator-web/package.json` и lockfile — `1.2.0`.
-- [x] OpenAPI `info.version` — `1.2.0`; generated backend/frontend files не редактировались вручную.
-- [x] Schema/Flyway изменены новыми V8 и V9; jOOQ generation выполняется Gradle lifecycle.
+- [x] Версия Gradle по умолчанию — `1.2.0-SNAPSHOT`; сборка по тегу использует `-PreleaseVersion=1.2.0`.
+- [x] `configurator-web/package.json` и файл закреплённых зависимостей — `1.2.0`.
+- [x] `info.version` в OpenAPI — `1.2.0`; автоматически созданные файлы серверной части и интерфейса вручную не
+      изменялись.
+- [x] Схема БД и Flyway изменены новыми миграциями V8 и V9; jOOQ создаётся в обычном цикле Gradle.
 - [x] Архитектурная цепочка `controller → facade → service → port → infrastructure` сохранена.
 
 ## Документация
 
-- [x] README, CHANGELOG, local delivery guide и issue template синхронизированы с `v1.2.0`.
-- [x] Release notes, audit и Git runbook созданы для `v1.2.0`; исторические документы сохранены.
+- [x] README, CHANGELOG, руководство по локальной поставке и шаблон сообщения об ошибке синхронизированы с `v1.2.0`.
+- [x] Заметки, отчёт и инструкция Git созданы для `v1.2.0`; исторические документы сохранены.
 
-## Проверки release candidate
+## Проверки кандидата на выпуск
 
 - [x] `./gradlew --no-daemon clean build -PreleaseVersion=1.2.0 -PspotlessRatchetFrom=origin/develop`.
-- [x] `./gradlew --no-daemon :configurator-integration-tests:externalIntegrationTest -PreleaseVersion=1.2.0` against full Compose.
+- [x] `./gradlew --no-daemon :configurator-integration-tests:externalIntegrationTest -PreleaseVersion=1.2.0` против
+      полного Compose.
 - [x] `npm ci`, `npm run check` и `npm run test:coverage`.
 - [x] `npm run test:e2e`, `npm run test:accessibility`, `npm run test:visual` и `npm run test:delivery`.
-- [x] Шесть delivery/release/lifecycle contracts.
-- [ ] Native Windows PowerShell 5.1 и clean-machine Windows/macOS smoke.
+- [x] Шесть контрактных проверок поставки, выпуска и жизненного цикла.
+- [ ] Проверка в настоящем Windows PowerShell 5.1 и пробный запуск на чистых Windows и macOS.
 
 ## GitHub и публикация владельцем
 
-- [ ] PR `feature/CON1-143` → `develop` влит с зелёным CI.
-- [ ] Release PR `develop` → `master` влит с зелёным CI.
-- [ ] Annotated tag `v1.2.0` создан guarded-скриптом на commit, совпадающем с `origin/master`.
-- [ ] Tag workflow завершён; exact/sha/stable images, checksums, attestations и anonymous pulls проверены.
-- [ ] Draft release просмотрен, clean-machine smoke завершён и draft опубликован вручную.
+- [x] Запрос `feature/CON1-143` в `develop` влит.
+- [x] Релизный запрос `develop` в `master` влит.
+- [x] Аннотированный тег `v1.2.0` создан на коммите из `master`.
+- [ ] Подготовка по тегу завершена; образы точной версии, коммита и канала `stable`, контрольные суммы, аттестации и
+      анонимная загрузка проверены владельцем.
+- [ ] Черновик выпуска просмотрен, пробный запуск на чистых компьютерах завершён, выпуск опубликован вручную.
 
-Результаты и блокеры: [`RELEASE_AUDIT_v1.2.0.md`](RELEASE_AUDIT_v1.2.0.md). Git-команды:
+Неподтверждённые внешние действия остаются незакрытыми до проверки владельцем. Результаты и препятствия:
+[`RELEASE_AUDIT_v1.2.0.md`](RELEASE_AUDIT_v1.2.0.md). Команды Git:
 [`GIT_RELEASE_v1.2.0.md`](GIT_RELEASE_v1.2.0.md).
