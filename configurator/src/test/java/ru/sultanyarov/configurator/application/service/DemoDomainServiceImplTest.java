@@ -3,10 +3,14 @@ package ru.sultanyarov.configurator.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,10 +66,16 @@ class DemoDomainServiceImplTest {
             });
     when(componentTypeService.create(any()))
         .thenAnswer(invocation -> savedType(invocation.getArgument(0), typeIds.getAndIncrement()));
-    when(attributeService.create(any()))
+    var definitions = new HashMap<Long, AttributeDefinition>();
+    when(attributeService.createInDomain(eq(1L), any()))
         .thenAnswer(
-            invocation ->
-                savedAttribute(invocation.getArgument(0), attributeIds.getAndIncrement()));
+            invocation -> {
+              var saved = savedAttribute(invocation.getArgument(1), attributeIds.getAndIncrement());
+              definitions.put(saved.id(), saved);
+              return saved;
+            });
+    when(attributeService.attachToComponentType(anyLong(), anyLong(), eq(true), anyInt()))
+        .thenAnswer(invocation -> definitions.get(invocation.getArgument(1)));
     when(componentService.create(any()))
         .thenAnswer(
             invocation -> {
@@ -108,13 +118,16 @@ class DemoDomainServiceImplTest {
 
     ArgumentCaptor<AttributeDefinition> attributeCaptor =
         ArgumentCaptor.forClass(AttributeDefinition.class);
-    verify(attributeService, times(12)).create(attributeCaptor.capture());
+    verify(attributeService, times(9)).createInDomain(eq(1L), attributeCaptor.capture());
     assertThat(attributeCaptor.getAllValues())
-        .allSatisfy(
-            attribute -> {
-              assertThat(attribute.isRequired()).isTrue();
-              assertThat(attribute.orderIndex()).isNotNegative();
-            });
+        .extracting(AttributeDefinition::name)
+        .doesNotHaveDuplicates();
+    ArgumentCaptor<Long> linkedIds = ArgumentCaptor.forClass(Long.class);
+    ArgumentCaptor<Integer> orders = ArgumentCaptor.forClass(Integer.class);
+    verify(attributeService, times(12))
+        .attachToComponentType(anyLong(), linkedIds.capture(), eq(true), orders.capture());
+    assertThat(linkedIds.getAllValues().stream().distinct()).hasSize(9);
+    assertThat(orders.getAllValues()).containsExactly(0, 1, 0, 1, 2, 0, 1, 0, 1, 0, 0, 1);
 
     ArgumentCaptor<Component> componentCaptor = ArgumentCaptor.forClass(Component.class);
     verify(componentService, times(12)).create(componentCaptor.capture());
@@ -142,6 +155,13 @@ class DemoDomainServiceImplTest {
             CompatibilityRuleOperator.LTE,
             CompatibilityRuleOperator.LTE);
     assertThat(ruleCaptor.getAllValues()).allSatisfy(rule -> assertThat(rule.enabled()).isTrue());
+    assertThat(ruleCaptor.getAllValues().subList(0, 3))
+        .allSatisfy(
+            rule -> {
+              var condition = rule.conditions().getFirst();
+              assertThat(condition.leftAttributeDefinitionId())
+                  .isEqualTo(condition.rightAttributeDefinitionId());
+            });
 
     ArgumentCaptor<CompatibilityLink> linkCaptor = ArgumentCaptor.forClass(CompatibilityLink.class);
     verify(compatibilityService, times(2)).create(linkCaptor.capture());
@@ -192,6 +212,7 @@ class DemoDomainServiceImplTest {
   private static AttributeDefinition savedAttribute(AttributeDefinition source, Long id) {
     return AttributeDefinition.builder()
         .id(id)
+        .domainId(source.domainId())
         .componentTypeId(source.componentTypeId())
         .name(source.name())
         .label(source.label())

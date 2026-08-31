@@ -973,7 +973,7 @@ export const resources = {
           createTitle: 'Новый атрибут',
           editTitle: 'Редактирование атрибута',
           name: 'Системное имя',
-          nameHint: 'Стабильное имя для API и правил совместимости',
+          nameHint: 'Уникальное в области имя для API и правил совместимости (с учётом регистра)',
           namePlaceholder: 'Например, memory_size',
           label: 'Название для пользователя',
           labelPlaceholder: 'Например, Объём памяти',
@@ -985,6 +985,8 @@ export const resources = {
           orderIndex: 'Индекс порядка',
           orderIndexHint: 'Меньшие значения показываются раньше',
           validation: {
+            nameUnique:
+              'Атрибут с таким системным именем уже есть в области. Подключите существующий атрибут к типу.',
             nameRequired: 'Введите системное имя',
             nameTooLong: 'Системное имя должно содержать не более 255 символов',
             labelRequired: 'Введите название для пользователя',
@@ -1005,6 +1007,7 @@ export const resources = {
           attribute: 'Атрибут из каталога',
           placeholder: 'Выберите атрибут',
           empty: 'Подходящих атрибутов нет',
+          alreadyLinked: 'уже подключён',
         },
         detach: {
           title: 'Убрать атрибут из типа?',
@@ -2055,7 +2058,8 @@ export const resources = {
           createTitle: 'New attribute',
           editTitle: 'Edit attribute',
           name: 'System name',
-          nameHint: 'A stable name for the API and compatibility rules',
+          nameHint:
+            'A case-sensitive name unique within the domain, used by the API and compatibility rules',
           namePlaceholder: 'For example, memory_size',
           label: 'User-facing name',
           labelPlaceholder: 'For example, Memory size',
@@ -2067,6 +2071,8 @@ export const resources = {
           orderIndex: 'Order index',
           orderIndexHint: 'Lower values are shown first',
           validation: {
+            nameUnique:
+              'An attribute with this system name already exists in the domain. Attach the existing attribute to the type.',
             nameRequired: 'Enter a system name',
             nameTooLong: 'The system name must contain no more than 255 characters',
             labelRequired: 'Enter a user-facing name',
@@ -2087,6 +2093,7 @@ export const resources = {
           attribute: 'Catalog attribute',
           placeholder: 'Select an attribute',
           empty: 'No suitable attributes',
+          alreadyLinked: 'already attached',
         },
         detach: {
           title: 'Remove attribute from this type?',

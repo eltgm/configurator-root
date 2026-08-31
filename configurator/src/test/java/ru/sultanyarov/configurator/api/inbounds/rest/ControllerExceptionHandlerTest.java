@@ -29,6 +29,7 @@ import ru.sultanyarov.configurator.api.inbounds.rest.advice.ControllerExceptionH
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorDetail;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ErrorResponse;
+import ru.sultanyarov.configurator.domain.exception.AttributeNameConflictException;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
 import ru.sultanyarov.configurator.domain.exception.ComponentArchivedException;
 import ru.sultanyarov.configurator.domain.exception.ConfigurationConflictException;
@@ -94,6 +95,17 @@ class ControllerExceptionHandlerTest {
         HttpStatus.CONFLICT,
         ApiErrorCode.CONFIGURATION_CONFLICT,
         "incompatible");
+  }
+
+  @Test
+  void attributeNameConflict_shouldIdentifyTheNameField() {
+    var exception = new AttributeNameConflictException(1L, "socket");
+    assertErrorResponse(
+        handler.handleEntityAlreadyExistsException(exception, request),
+        HttpStatus.CONFLICT,
+        ApiErrorCode.ENTITY_ALREADY_EXISTS,
+        exception.getMessage(),
+        List.of(new ApiErrorDetail("ENTITY_ALREADY_EXISTS", exception.getMessage()).field("name")));
   }
 
   @Test

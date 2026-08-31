@@ -13,8 +13,8 @@ import ru.sultanyarov.configurator.application.port.out.CompatibilityRuleReposit
 import ru.sultanyarov.configurator.application.port.out.ComponentTypeAttributeRepository;
 import ru.sultanyarov.configurator.application.port.out.ComponentTypeRepository;
 import ru.sultanyarov.configurator.application.port.out.DomainRepository;
+import ru.sultanyarov.configurator.domain.exception.AttributeNameConflictException;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
-import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
 import ru.sultanyarov.configurator.domain.exception.EntityHasRelatedEntitiesException;
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
@@ -39,7 +39,6 @@ public class AttributeServiceImpl implements AttributeService {
   public AttributeDefinition create(AttributeDefinition attributeDefinition) {
     log.debug("create and attach attribute definition {}", attributeDefinition);
     ComponentType componentType = getComponentType(attributeDefinition.componentTypeId());
-    validateNoAttributeWithSameName(componentType.id(), attributeDefinition.name());
 
     AttributeDefinition created = createInDomain(componentType.domainId(), attributeDefinition);
     ComponentTypeAttribute link =
@@ -56,6 +55,7 @@ public class AttributeServiceImpl implements AttributeService {
       Long domainId, AttributeDefinition attributeDefinition) {
     log.debug("create catalog attribute definition in domain {}", domainId);
     ensureDomainExists(domainId);
+    validateNoAttributeWithSameName(domainId, attributeDefinition.name(), null);
     validateIsDataTypeCorrect(attributeDefinition);
     AttributeDefinition catalogDefinition =
         AttributeDefinition.builder()
@@ -81,9 +81,6 @@ public class AttributeServiceImpl implements AttributeService {
           "Attribute definition with id {} does not belong to component type domain {}",
           attributeDefinitionId,
           componentType.domainId());
-    }
-    if (!componentTypeAttributeRepository.exists(componentTypeId, attributeDefinitionId)) {
-      validateNoAttributeWithSameName(componentTypeId, definition.name());
     }
     return withLink(
         definition, saveLink(componentTypeId, attributeDefinitionId, isRequired, orderIndex));
@@ -111,12 +108,7 @@ public class AttributeServiceImpl implements AttributeService {
     log.debug("update attribute definition {} with id {}", attributeDefinition, id);
     AttributeDefinition existing = getById(id);
     AttributeDefinition updated = merge(existing, attributeDefinition);
-    if (!Objects.equals(existing.name(), updated.name())) {
-      componentTypeAttributeRepository
-          .getComponentTypeIdsByAttributeDefinitionId(id)
-          .forEach(
-              componentTypeId -> validateNoAttributeWithSameName(componentTypeId, updated.name()));
-    }
+    validateNoAttributeWithSameName(existing.domainId(), updated.name(), id);
     validateIsDataTypeCorrect(updated);
     validateDataTypeCanBeChanged(existing, updated);
 
@@ -186,12 +178,9 @@ public class AttributeServiceImpl implements AttributeService {
     }
   }
 
-  private void validateNoAttributeWithSameName(Long componentTypeId, String name) {
-    if (attributeRepository.hasByComponentTypeIdAndName(componentTypeId, name)) {
-      throw new EntityAlreadyExistsException(
-          "Attribute definition with name {} already exists for component type with id {}",
-          name,
-          componentTypeId);
+  private void validateNoAttributeWithSameName(Long domainId, String name, Long excludingId) {
+    if (attributeRepository.existsByDomainIdAndName(domainId, name, excludingId)) {
+      throw new AttributeNameConflictException(domainId, name);
     }
   }
 

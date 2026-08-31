@@ -23,6 +23,7 @@ import {
 } from '@/features/attributes/api/attributes';
 import {
   getFieldErrors,
+  normalizeApiError,
   type AttributeDefinition,
   type CreateAttributeDefinitionRequest,
 } from '@/shared/api';
@@ -202,6 +203,7 @@ export function AttributeFormModal({
       onClose();
     } catch (error) {
       const fieldErrors = getFieldErrors(error);
+      const normalizedError = normalizeApiError(error);
       for (const field of [
         'name',
         'label',
@@ -212,7 +214,12 @@ export function AttributeFormModal({
       ] as const) {
         const messages = Object.entries(fieldErrors).find(([path]) => path.includes(field))?.[1];
         if (messages?.[0]) {
-          form.setError(field, { message: messages[0] });
+          form.setError(field, {
+            message:
+              field === 'name' && normalizedError.code === 'ENTITY_ALREADY_EXISTS'
+                ? t('attributes.form.validation.nameUnique')
+                : messages[0],
+          });
         }
       }
     }

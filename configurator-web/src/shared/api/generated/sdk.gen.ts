@@ -416,6 +416,8 @@ export const getDomainsByDomainIdAttributes = <ThrowOnError extends boolean = fa
 
 /**
  * Create a catalog attribute definition in a domain
+ *
+ * Rejects a name already present anywhere in this domain. Reuse existing definitions by ID.
  */
 export const postDomainsByDomainIdAttributes = <ThrowOnError extends boolean = false>(
   options: Options<PostDomainsByDomainIdAttributesData, ThrowOnError>,
@@ -460,6 +462,8 @@ export const getComponentTypesByIdAttributes = <ThrowOnError extends boolean = f
 
 /**
  * Create attribute definition for a component type
+ *
+ * Atomically creates a domain catalog definition and attaches it to the type. Names are unique across the domain.
  */
 export const postComponentTypesByIdAttributes = <ThrowOnError extends boolean = false>(
   options: Options<PostComponentTypesByIdAttributesData, ThrowOnError>,

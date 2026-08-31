@@ -293,6 +293,7 @@ components:
           nullable: true
         name:
           type: string
+          description: Case-sensitive system name, unique within the domain across all component types.
         label:
           type: string
         dataType:
@@ -327,6 +328,7 @@ components:
       properties:
         name:
           type: string
+          description: Case-sensitive system name, unique within the domain across all component types.
         label:
           type: string
         dataType:
@@ -1790,6 +1792,7 @@ paths:
     post:
       tags: [ Attributes ]
       summary: Create a catalog attribute definition in a domain
+      description: Rejects a name already present anywhere in this domain. Reuse existing definitions by ID.
       operationId: postDomainsByDomainIdAttributes
       parameters:
         - name: domainId
@@ -1819,6 +1822,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Domain not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Attribute name already exists in this domain; details identifies the name field
           content:
             application/json:
               schema:
@@ -1855,6 +1864,7 @@ paths:
     post:
       tags: [ Attributes ]
       summary: Create attribute definition for a component type
+      description: Atomically creates a domain catalog definition and attaches it to the type. Names are unique across the domain.
       operationId: postComponentTypesByIdAttributes
       parameters:
         - name: id
@@ -1889,7 +1899,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Attribute name conflict
+          description: Attribute name already exists in this domain; details identifies the name field
           content:
             application/json:
               schema:
@@ -2005,6 +2015,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Another attribute definition already has this name in the domain; details identifies the name field
           content:
             application/json:
               schema:

@@ -26,14 +26,14 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
     insertComponentType(20L, 1L, "Switch");
     insertAttributeDefinition(101L, 10L, "socket", DataType.STRING);
     insertAttributeDefinition(102L, 10L, "layout", DataType.STRING);
-    insertAttributeDefinition(201L, 20L, "socket", DataType.STRING);
-    insertAttributeDefinition(202L, 20L, "layout", DataType.STRING);
+    attachAttribute(101L, 20L);
+    attachAttribute(102L, 20L);
 
     insertDomain(2L, "Foreign domain");
     insertComponentType(30L, 2L, "Foreign board");
     insertComponentType(40L, 2L, "Foreign switch");
     insertAttributeDefinition(301L, 30L, "socket", DataType.STRING);
-    insertAttributeDefinition(401L, 40L, "socket", DataType.STRING);
+    attachAttribute(301L, 40L);
   }
 
   @Test
@@ -48,8 +48,8 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                     20L,
                     true,
                     List.of(
-                        condition(102L, CompatibilityRuleOperator.EQUALS, 202L, null),
-                        condition(101L, CompatibilityRuleOperator.EQUALS, 201L, 1))))
+                        condition(102L, CompatibilityRuleOperator.EQUALS, 102L, null),
+                        condition(101L, CompatibilityRuleOperator.EQUALS, 101L, 1))))
             .orElseThrow();
 
     assertThat(created.id()).isNotNull();
@@ -80,7 +80,7 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
             10L,
             20L,
             true,
-            List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 201L, 0)));
+            List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 101L, 0)));
 
     assertThat(repository.create(ruleSet)).isPresent();
     assertThat(repository.create(ruleSet)).isEmpty();
@@ -99,7 +99,7 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                     30L,
                     40L,
                     true,
-                    List.of(condition(301L, CompatibilityRuleOperator.EQUALS, 401L, 0))))
+                    List.of(condition(301L, CompatibilityRuleOperator.EQUALS, 301L, 0))))
             .orElseThrow();
 
     assertThat(repository.getByIdAndDomainId(created.id(), 1L)).isEmpty();
@@ -117,7 +117,7 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                     10L,
                     20L,
                     true,
-                    List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 201L, 0))))
+                    List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 101L, 0))))
             .orElseThrow();
     CompatibilityRuleSet second =
         repository
@@ -128,7 +128,7 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                     10L,
                     20L,
                     false,
-                    List.of(condition(102L, CompatibilityRuleOperator.NOT_EQUALS, 202L, 0))))
+                    List.of(condition(102L, CompatibilityRuleOperator.NOT_EQUALS, 102L, 0))))
             .orElseThrow();
     repository
         .create(
@@ -138,7 +138,7 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                 30L,
                 40L,
                 true,
-                List.of(condition(301L, CompatibilityRuleOperator.EQUALS, 401L, 0))))
+                List.of(condition(301L, CompatibilityRuleOperator.EQUALS, 301L, 0))))
         .orElseThrow();
 
     assertThat(repository.getAllByDomainId(1L))
@@ -157,7 +157,7 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                     10L,
                     20L,
                     true,
-                    List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 201L, 0))))
+                    List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 101L, 0))))
             .orElseThrow();
     repository
         .create(
@@ -167,7 +167,7 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                 10L,
                 20L,
                 false,
-                List.of(condition(102L, CompatibilityRuleOperator.EQUALS, 202L, 0))))
+                List.of(condition(102L, CompatibilityRuleOperator.EQUALS, 102L, 0))))
         .orElseThrow();
     repository
         .create(
@@ -177,7 +177,7 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                 30L,
                 40L,
                 true,
-                List.of(condition(301L, CompatibilityRuleOperator.EQUALS, 401L, 0))))
+                List.of(condition(301L, CompatibilityRuleOperator.EQUALS, 301L, 0))))
         .orElseThrow();
 
     assertThat(repository.getEnabledByDomainIdAndComponentTypeId(1L, 10L)).containsExactly(first);
@@ -196,7 +196,7 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                     10L,
                     20L,
                     true,
-                    List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 201L, 0))))
+                    List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 101L, 0))))
             .orElseThrow();
     repository
         .create(
@@ -206,7 +206,7 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                 10L,
                 20L,
                 false,
-                List.of(condition(102L, CompatibilityRuleOperator.EQUALS, 202L, 0))))
+                List.of(condition(102L, CompatibilityRuleOperator.EQUALS, 102L, 0))))
         .orElseThrow();
     repository
         .create(
@@ -216,7 +216,7 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                 30L,
                 40L,
                 true,
-                List.of(condition(301L, CompatibilityRuleOperator.EQUALS, 401L, 0))))
+                List.of(condition(301L, CompatibilityRuleOperator.EQUALS, 301L, 0))))
         .orElseThrow();
 
     assertThat(repository.getEnabledByDomainId(1L)).containsExactly(first);
@@ -234,8 +234,8 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                     20L,
                     true,
                     List.of(
-                        condition(101L, CompatibilityRuleOperator.EQUALS, 201L, 0),
-                        condition(102L, CompatibilityRuleOperator.EQUALS, 202L, 1))))
+                        condition(101L, CompatibilityRuleOperator.EQUALS, 101L, 0),
+                        condition(102L, CompatibilityRuleOperator.EQUALS, 102L, 1))))
             .orElseThrow();
     List<Long> originalConditionIds =
         created.conditions().stream().map(CompatibilityRuleCondition::id).toList();
@@ -251,7 +251,7 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                     10L,
                     20L,
                     false,
-                    List.of(condition(101L, CompatibilityRuleOperator.NOT_EQUALS, 201L, 5))))
+                    List.of(condition(101L, CompatibilityRuleOperator.NOT_EQUALS, 101L, 5))))
             .orElseThrow();
 
     assertThat(updated.id()).isEqualTo(created.id());
@@ -285,7 +285,7 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                     10L,
                     20L,
                     true,
-                    List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 201L, 0))))
+                    List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 101L, 0))))
             .orElseThrow();
 
     assertThat(
@@ -305,7 +305,7 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                 10L,
                 20L,
                 true,
-                List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 201L, 0))))
+                List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 101L, 0))))
         .orElseThrow();
     CompatibilityRuleSet second =
         repository
@@ -316,7 +316,7 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                     10L,
                     20L,
                     true,
-                    List.of(condition(102L, CompatibilityRuleOperator.EQUALS, 202L, 0))))
+                    List.of(condition(102L, CompatibilityRuleOperator.EQUALS, 102L, 0))))
             .orElseThrow();
 
     assertThatThrownBy(
@@ -330,7 +330,7 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                         10L,
                         20L,
                         true,
-                        List.of(condition(102L, CompatibilityRuleOperator.EQUALS, 202L, 0)))))
+                        List.of(condition(102L, CompatibilityRuleOperator.EQUALS, 102L, 0)))))
         .isInstanceOf(EntityAlreadyExistsException.class)
         .hasMessage(
             "Compatibility rule set 'First' already exists for component types 10 and 20 in domain 1");
@@ -347,7 +347,7 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                     10L,
                     20L,
                     true,
-                    List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 201L, 0))))
+                    List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 101L, 0))))
             .orElseThrow();
 
     assertThat(repository.deleteByIdAndDomainId(created.id(), 2L)).isFalse();
@@ -366,7 +366,7 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                 10L,
                 20L,
                 true,
-                List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 201L, 0))))
+                List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 101L, 0))))
         .orElseThrow();
 
     assertThat(repository.hasByComponentTypeId(10L)).isTrue();
@@ -385,7 +385,7 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                     10L,
                     20L,
                     true,
-                    List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 201L, 0))))
+                    List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 101L, 0))))
             .orElseThrow();
 
     assertThat(repository.existsByBusinessKey(1L, 10L, 20L, "Socket", null)).isTrue();
@@ -404,14 +404,14 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
                         20L,
                         10L,
                         true,
-                        List.of(condition(201L, CompatibilityRuleOperator.EQUALS, 101L, 0)))))
+                        List.of(condition(101L, CompatibilityRuleOperator.EQUALS, 101L, 0)))))
         .isInstanceOf(DataAccessException.class);
   }
 
   @Test
   void schema_shouldRejectDuplicateConditions() {
     CompatibilityRuleCondition condition =
-        condition(101L, CompatibilityRuleOperator.EQUALS, 201L, 0);
+        condition(101L, CompatibilityRuleOperator.EQUALS, 101L, 0);
 
     assertThatThrownBy(
             () ->
@@ -484,6 +484,10 @@ class CompatibilityRuleRepositoryImplTest extends AbstractJooqRepositoryTest {
         .set(Tables.ATTRIBUTE_DEFINITION.LABEL, name)
         .set(Tables.ATTRIBUTE_DEFINITION.DATA_TYPE, dataType.name())
         .execute();
+    attachAttribute(id, componentTypeId);
+  }
+
+  private void attachAttribute(Long id, Long componentTypeId) {
     dslContext
         .insertInto(Tables.COMPONENT_TYPE_ATTRIBUTE)
         .set(Tables.COMPONENT_TYPE_ATTRIBUTE.COMPONENT_TYPE_ID, componentTypeId)

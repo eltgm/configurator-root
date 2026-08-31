@@ -1,15 +1,19 @@
 package ru.sultanyarov.configurator.infrastructure.persistence.jooq;
 
+import java.sql.SQLException;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.jooq.RecordMapper;
+import org.postgresql.util.PSQLException;
 import org.springframework.stereotype.Repository;
 import ru.sultanyarov.configurator.application.port.out.AttributeRepository;
 import ru.sultanyarov.configurator.domain.entity.jooq.Tables;
 import ru.sultanyarov.configurator.domain.entity.jooq.tables.records.AttributeDefinitionRecord;
+import ru.sultanyarov.configurator.domain.exception.AttributeNameConflictException;
 import ru.sultanyarov.configurator.domain.model.AttributeDefinition;
 import ru.sultanyarov.configurator.domain.model.DataType;
 import ru.sultanyarov.configurator.infrastructure.persistence.jooq.config.StringToListConverter;
@@ -32,44 +36,53 @@ public class AttributeRepositoryImpl implements AttributeRepository {
   }
 
   @Override
-  public boolean hasByComponentTypeIdAndName(Long id, String name) {
+  public boolean existsByDomainIdAndName(Long domainId, String name, Long excludingId) {
     return dslContext.fetchExists(
         dslContext
             .selectOne()
-            .from(CTA)
-            .join(AD)
-            .on(AD.ID.eq(CTA.ATTRIBUTE_DEFINITION_ID))
-            .where(CTA.COMPONENT_TYPE_ID.eq(id))
-            .and(AD.NAME.eq(name)));
+            .from(AD)
+            .where(AD.DOMAIN_ID.eq(domainId))
+            .and(AD.NAME.eq(name))
+            .and(excludingId == null ? org.jooq.impl.DSL.noCondition() : AD.ID.ne(excludingId)));
   }
 
   @Override
   public Optional<AttributeDefinition> createAttributeDefinition(
       AttributeDefinition attributeDefinition) {
-    return dslContext
-        .insertInto(AD)
-        .set(AD.DOMAIN_ID, attributeDefinition.domainId())
-        .set(AD.NAME, attributeDefinition.name())
-        .set(AD.LABEL, attributeDefinition.label())
-        .set(AD.DATA_TYPE, attributeDefinition.dataType().name())
-        .set(AD.ENUM_VALUES_JSON, enumValuesConverter.to(attributeDefinition.enumValues()))
-        .returning()
-        .fetchOptional(getAttributeDefinitionRecordMapper());
+    try {
+      return dslContext
+          .insertInto(AD)
+          .set(AD.DOMAIN_ID, attributeDefinition.domainId())
+          .set(AD.NAME, attributeDefinition.name())
+          .set(AD.LABEL, attributeDefinition.label())
+          .set(AD.DATA_TYPE, attributeDefinition.dataType().name())
+          .set(AD.ENUM_VALUES_JSON, enumValuesConverter.to(attributeDefinition.enumValues()))
+          .returning()
+          .fetchOptional(getAttributeDefinitionRecordMapper());
+    } catch (org.jooq.exception.DataAccessException
+        | org.springframework.dao.DataAccessException exception) {
+      throw translateNameConflict(exception, attributeDefinition);
+    }
   }
 
   @Override
   public Optional<AttributeDefinition> updateAttribute(
       Long id, AttributeDefinition attributeDefinition) {
-    return dslContext
-        .update(AD)
-        .set(AD.NAME, attributeDefinition.name())
-        .set(AD.LABEL, attributeDefinition.label())
-        .set(AD.DATA_TYPE, attributeDefinition.dataType().name())
-        .set(AD.ENUM_VALUES_JSON, enumValuesConverter.to(attributeDefinition.enumValues()))
-        .set(AD.CREATED_AT, attributeDefinition.createdAt())
-        .where(AD.ID.eq(id))
-        .returning()
-        .fetchOptional(getAttributeDefinitionRecordMapper());
+    try {
+      return dslContext
+          .update(AD)
+          .set(AD.NAME, attributeDefinition.name())
+          .set(AD.LABEL, attributeDefinition.label())
+          .set(AD.DATA_TYPE, attributeDefinition.dataType().name())
+          .set(AD.ENUM_VALUES_JSON, enumValuesConverter.to(attributeDefinition.enumValues()))
+          .set(AD.CREATED_AT, attributeDefinition.createdAt())
+          .where(AD.ID.eq(id))
+          .returning()
+          .fetchOptional(getAttributeDefinitionRecordMapper());
+    } catch (org.jooq.exception.DataAccessException
+        | org.springframework.dao.DataAccessException exception) {
+      throw translateNameConflict(exception, attributeDefinition);
+    }
   }
 
   @Override
@@ -125,6 +138,33 @@ public class AttributeRepositoryImpl implements AttributeRepository {
         .selectFrom(AD)
         .where(AD.ID.eq(id))
         .fetchOptional(getAttributeDefinitionRecordMapper());
+  }
+
+  private RuntimeException translateNameConflict(
+      RuntimeException exception, AttributeDefinition definition) {
+    for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+      if (cause instanceof SQLException sqlException
+          && "23505".equals(sqlException.getSQLState())) {
+        boolean nameConstraint;
+        if (sqlException instanceof PSQLException postgresException) {
+          var error = postgresException.getServerErrorMessage();
+          nameConstraint =
+              error != null && "ux_attribute_definition_domain_name".equals(error.getConstraint());
+        } else {
+          // H2 names the backing unique index with an _INDEX suffix in repository tests.
+          nameConstraint =
+              sqlException.getMessage() != null
+                  && sqlException
+                      .getMessage()
+                      .toLowerCase(Locale.ROOT)
+                      .contains("ux_attribute_definition_domain_name");
+        }
+        if (nameConstraint) {
+          return new AttributeNameConflictException(definition.domainId(), definition.name());
+        }
+      }
+    }
+    return exception;
   }
 
   private RecordMapper<AttributeDefinitionRecord, AttributeDefinition>
