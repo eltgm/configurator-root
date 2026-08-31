@@ -1,5 +1,6 @@
 import { Alert, Badge, Button, Group, Paper, Stack, Text, Title } from '@mantine/core';
 import { IconAlertTriangle, IconArchive, IconRefresh, IconTrash } from '@tabler/icons-react';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
@@ -9,12 +10,16 @@ import type {
   ConfigurationEditorEligibility,
 } from '@/features/configurations/model/configuration-editor';
 
+import classes from './configuration-editor.module.css';
+
 interface ConfigurationAssemblyEditorProps {
   components: ReadonlyArray<ConfigurationEditorComponent>;
   eligibility: ConfigurationEditorEligibility;
   replacementComponentId: number | null;
   onRemove: (componentId: number) => void;
   onReplace: (componentId: number) => void;
+  onReplaceButtonRef: (componentId: number, element: HTMLButtonElement | null) => void;
+  actions: ReactNode;
 }
 
 function eligibilityKey(reason: ConfigurationEditorBlockReason) {
@@ -27,12 +32,20 @@ export function ConfigurationAssemblyEditor({
   replacementComponentId,
   onRemove,
   onReplace,
+  onReplaceButtonRef,
+  actions,
 }: ConfigurationAssemblyEditorProps) {
   const { t } = useTranslation();
 
   return (
-    <Paper component="section" aria-labelledby="configuration-composition-title" p="lg" withBorder>
-      <Stack gap="md">
+    <Paper
+      component="section"
+      aria-labelledby="configuration-composition-title"
+      className={classes.assembly}
+      p="lg"
+      withBorder
+    >
+      <Stack gap="md" className={classes['assembly-header']}>
         <Stack gap={2}>
           <Title id="configuration-composition-title" order={2} size="h3">
             {t('configurations.editor.compositionTitle')}
@@ -55,7 +68,9 @@ export function ConfigurationAssemblyEditor({
             {t(eligibilityKey(eligibility.reason))}
           </Alert>
         )}
+      </Stack>
 
+      <Stack gap="sm" className={classes['component-list']}>
         {components.length === 0 ? (
           <Text c="dimmed">{t('configurations.editor.emptyComposition')}</Text>
         ) : null}
@@ -63,6 +78,7 @@ export function ConfigurationAssemblyEditor({
         {components.map((component) => (
           <Paper
             key={component.id}
+            className={classes.component}
             p="sm"
             withBorder
             data-replacement-target={replacementComponentId === component.id || undefined}
@@ -89,7 +105,10 @@ export function ConfigurationAssemblyEditor({
               </Stack>
               <Group gap="xs">
                 <Button
+                  ref={(element) => onReplaceButtonRef(component.id, element)}
                   size="xs"
+                  aria-pressed={replacementComponentId === component.id}
+                  aria-controls="available-components-browser"
                   variant={replacementComponentId === component.id ? 'filled' : 'light'}
                   leftSection={<IconRefresh size={14} aria-hidden="true" />}
                   onClick={() => onReplace(component.id)}
@@ -109,6 +128,9 @@ export function ConfigurationAssemblyEditor({
             </Group>
           </Paper>
         ))}
+      </Stack>
+      <Stack gap="md" className={classes['assembly-actions']}>
+        {actions}
       </Stack>
     </Paper>
   );

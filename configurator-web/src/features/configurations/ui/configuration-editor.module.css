@@ -1,0 +1,83 @@
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(19rem, 2fr);
+  grid-template-areas: 'browser assembly';
+  gap: var(--mantine-spacing-lg);
+  align-items: start;
+}
+
+.browser {
+  grid-area: browser;
+  min-width: 0;
+}
+
+.assembly {
+  grid-area: assembly;
+  min-width: 0;
+  position: sticky;
+  top: calc(var(--app-shell-header-height) + var(--mantine-spacing-md));
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+}
+
+.assembly-header,
+.assembly-actions {
+  flex-shrink: 0;
+}
+
+.component-list {
+  min-height: 0;
+}
+
+.component {
+  flex-shrink: 0;
+  overflow-wrap: anywhere;
+}
+
+.component[data-replacement-target] {
+  border-color: var(--mantine-primary-color-filled);
+}
+
+.component button {
+  scroll-margin-block: var(--mantine-spacing-xs);
+}
+
+.assembly-actions {
+  padding-top: var(--mantine-spacing-md);
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+
+@media (width > 62em) and (height > 40em) {
+  .assembly {
+    max-height: calc(100dvh - var(--app-shell-header-height) - var(--mantine-spacing-md) * 2);
+  }
+
+  .component-list {
+    overflow-y: auto;
+    padding: 2px;
+    scrollbar-gutter: stable;
+  }
+}
+
+@media (width <= 62em) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'assembly'
+      'browser';
+  }
+
+  .browser[data-replacing] {
+    min-height: calc(
+      100dvh - var(--app-shell-header-height) - var(--app-shell-footer-height, 0px) -
+        var(--mantine-spacing-md)
+    );
+  }
+}
+
+@media (width <= 62em), (height <= 40em) {
+  .assembly {
+    position: static;
+  }
+}
