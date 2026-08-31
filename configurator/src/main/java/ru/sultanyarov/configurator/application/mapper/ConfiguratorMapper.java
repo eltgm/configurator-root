@@ -10,7 +10,7 @@ import ru.sultanyarov.configurator.domain.model.ConfiguratorCandidatesResult;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorIntersectionResult;
 import ru.sultanyarov.configurator.domain.model.ConfiguratorResult;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = ComponentMapper.class)
 public interface ConfiguratorMapper {
   ConfiguratorResponse toDto(ConfiguratorResult result);
 

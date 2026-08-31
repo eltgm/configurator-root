@@ -625,6 +625,107 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         "image.webp" | "image/webp" | webpBytes()
     }
 
+    def "should append uploads after legacy unordered images without changing the primary image"() {
+        given:
+        prepareComponentImagesReadData()
+        def before = objectMapper.readValue(get("/components/1").body, Component)
+
+        when:
+        def uploaded = postMultipart("/components/1/images", "new.png", "image/png", pngBytes(), null)
+
+        then:
+        uploaded.status == 201
+        def after = objectMapper.readValue(get("/components/1").body, Component)
+        after.primaryImage.id == before.primaryImage.id
+        after.images.take(before.images.size())*.id == before.images*.id
+        after.images.last().id == objectMapper.readValue(uploaded.body, ComponentImage).id
+    }
+
+    def "should expose primary image in list and details and promote the next after deletion"() {
+        given:
+        prepareComponentImageData()
+        def first = objectMapper.readValue(postMultipart("/components/1/images", "first.png", "image/png", pngBytes(), null).body, ComponentImage)
+        def second = objectMapper.readValue(postMultipart("/components/1/images", "second.png", "image/png", pngBytes(), null).body, ComponentImage)
+
+        expect:
+        objectMapper.readTree(get("/components/1").body).primaryImage.id.asLong() == first.id
+        objectMapper.readTree(get("/domains/1/components").body).items.find { it.id.asLong() == 1L }.primaryImage.id.asLong() == first.id
+
+        when:
+        def reordered = put("/components/1/images/order", [imageIds: [second.id, first.id]])
+
+        then:
+        reordered.status == 200
+        objectMapper.readTree(get("/components/1").body).primaryImage.id.asLong() == second.id
+        objectMapper.readTree(get("/domains/1/components").body).items.find { it.id.asLong() == 1L }.primaryImage.thumbnailUrl.asText() == second.thumbnailUrl
+
+        when:
+        def deleted = delete("/component-images/${second.id}")
+
+        then:
+        deleted.status == 204
+        getBinary(second.thumbnailUrl).status == 404
+        objectMapper.readTree(get("/components/1").body).primaryImage.id.asLong() == first.id
+
+        when:
+        delete("/component-images/${first.id}")
+
+        then:
+        objectMapper.readTree(get("/components/1").body).primaryImage.isNull()
+    }
+
+    def "should serve reduced PNG for #contentType while retaining the original"() {
+        given:
+        prepareComponentImageData()
+        def upload = postMultipart("/components/1/images", filename, contentType, content, null)
+        def image = objectMapper.readValue(upload.body, ComponentImage)
+
+        when:
+        def result = getBinary(image.thumbnailUrl)
+
+        then:
+        upload.status == 201
+        image.thumbnailUrl == "/component-images/${image.id}/thumbnail"
+        result.status == 200
+        result.headers["Content-Type"] == "image/png"
+        result.headers["Content-Disposition"] == "inline"
+        def decoded = javax.imageio.ImageIO.read(new ByteArrayInputStream(result.body))
+        decoded.width == width
+        decoded.height == height
+        getBinary(image.url).body == content
+        getBinary(image.thumbnailUrl).body == result.body
+
+        when:
+        delete("/components/1")
+
+        then:
+        getBinary(image.thumbnailUrl).status == 200
+
+        where:
+        filename | contentType | content | width | height
+        "image.png" | "image/png" | pngBytes() | 512 | 384
+        "image.jpg" | "image/jpeg" | jpegBytes() | 512 | 384
+        "image.webp" | "image/webp" | webpBytes() | 1 | 1
+    }
+
+    def "should reject invalid thumbnail identifiers and unavailable originals"() {
+        given:
+        prepareComponentUpdateData()
+
+        expect:
+        getBinary("/component-images/0/thumbnail").status == 400
+        getBinary("/component-images/999999/thumbnail").status == 404
+        getBinary("/component-images/501/thumbnail").status == 503
+    }
+
+    def "should reject corrupted image content even with a valid PNG signature"() {
+        given:
+        prepareComponentImageData()
+
+        expect:
+        postMultipart("/components/1/images", "broken.png", "image/png", Arrays.copyOf(pngBytes(), 12), null).status == 415
+    }
+
     def "should return original uploaded component image content"() {
         given:
         prepareComponentImageData()
@@ -1244,21 +1345,21 @@ abstract class AbstractComponentControllerContract extends Specification impleme
     }
 
     private static byte[] jpegBytes() {
-        return new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x00}
+        def image = new java.awt.image.BufferedImage(1024, 768, java.awt.image.BufferedImage.TYPE_INT_RGB)
+        def output = new ByteArrayOutputStream()
+        javax.imageio.ImageIO.write(image, "jpeg", output)
+        return output.toByteArray()
     }
 
     private static byte[] pngBytes() {
-        return new byte[]{
-                (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
-        }
+        def image = new java.awt.image.BufferedImage(1024, 768, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+        def output = new ByteArrayOutputStream()
+        javax.imageio.ImageIO.write(image, "png", output)
+        return output.toByteArray()
     }
 
     private static byte[] webpBytes() {
-        return new byte[]{
-                0x52, 0x49, 0x46, 0x46,
-                0, 0, 0, 0,
-                0x57, 0x45, 0x42, 0x50
-        }
+        return Base64.decoder.decode("UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAAAfQ//73v/+BiOh/AAA=")
     }
 
     private static byte[] oversizedPng() {

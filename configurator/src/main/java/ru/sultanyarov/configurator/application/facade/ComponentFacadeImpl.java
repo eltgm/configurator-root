@@ -86,6 +86,11 @@ public class ComponentFacadeImpl implements ComponentFacade {
   }
 
   @Override
+  public ComponentImageContent getComponentImageThumbnail(Long imageId) {
+    return componentService.getImageThumbnail(imageId);
+  }
+
+  @Override
   public void deleteComponentImage(Long imageId) {
     log.info("Deleting component image with id {}", imageId);
     componentService.deleteImage(imageId);

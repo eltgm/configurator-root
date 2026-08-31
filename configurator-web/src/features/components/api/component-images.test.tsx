@@ -20,11 +20,13 @@ const componentId = 101;
 const firstImage: ComponentImage = {
   id: 11,
   url: '/component-images/11/content',
+  thumbnailUrl: '/component-images/11/thumbnail',
   orderIndex: 0,
 };
 const secondImage: ComponentImage = {
   id: 12,
   url: '/component-images/12/content',
+  thumbnailUrl: '/component-images/12/thumbnail',
   orderIndex: 1,
 };
 
@@ -73,6 +75,24 @@ describe('component image API', () => {
     );
     const queryClient = createQueryClient();
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+    const otherDomainKey = [
+      'domains',
+      8,
+      'configurator',
+      'compatibility',
+      'candidates',
+      [1],
+    ] as const;
+    const sameDomainKey = [
+      'domains',
+      domainId,
+      'configurator',
+      'compatibility',
+      'candidates',
+      [1],
+    ] as const;
+    queryClient.setQueryData(otherDomainKey, {});
+    queryClient.setQueryData(sameDomainKey, {});
     queryClient.setQueryData(componentImageKeys.byComponent(domainId, componentId), [firstImage]);
     queryClient.setQueryData<Component>(componentKeys.detail(domainId, componentId), {
       id: componentId,
@@ -95,6 +115,12 @@ describe('component image API', () => {
     });
     expect(upload.result.current.error).toBeNull();
 
+    expect(queryClient.getQueryState(sameDomainKey)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(otherDomainKey)?.isInvalidated).toBe(false);
+    expect(
+      queryClient.getQueryData<Component>(componentKeys.detail(domainId, componentId))
+        ?.primaryImage,
+    ).toEqual(firstImage);
     expect(submittedContentType).toMatch(/^multipart\/form-data; boundary=/);
     expect(queryClient.getQueryData(componentImageKeys.byComponent(domainId, componentId))).toEqual(
       [firstImage, secondImage],
@@ -136,6 +162,10 @@ describe('component image API', () => {
     await waitFor(() => expect(remove.result.current.isSuccess).toBe(true));
 
     expect(deletedImageId).toBe(String(firstImage.id));
+    expect(
+      queryClient.getQueryData<Component>(componentKeys.detail(domainId, componentId))
+        ?.primaryImage,
+    ).toEqual(secondImage);
     expect(queryClient.getQueryData(componentImageKeys.byComponent(domainId, componentId))).toEqual(
       [secondImage],
     );

@@ -180,6 +180,10 @@ export type ComponentImage = {
    * Relative backend URL for retrieving the image content
    */
   url: string;
+  /**
+   * Relative backend URL for a cached PNG preview, at most 512 pixels per side
+   */
+  thumbnailUrl?: string;
   orderIndex?: number | null;
 };
 
@@ -194,6 +198,10 @@ export type ReorderComponentImagesRequest = {
 };
 
 export type Component = {
+  /**
+   * First image by orderIndex ascending (nulls last), then id ascending; null when no images exist
+   */
+  primaryImage?: ComponentImage | null;
   id: number;
   componentTypeId: number;
   name: string;
@@ -364,6 +372,10 @@ export type CompatibilityExplanation = {
 };
 
 export type ConfiguratorCompatibleComponent = {
+  /**
+   * First image by orderIndex ascending (nulls last), then id ascending; null when no images exist
+   */
+  primaryImage?: ComponentImage | null;
   id: number;
   name: string;
   brand?: string | null;
@@ -423,6 +435,10 @@ export type ConfiguratorBaseCompatibility = {
 };
 
 export type ConfiguratorIntersectionCompatibleComponent = {
+  /**
+   * First image by orderIndex ascending (nulls last), then id ascending; null when no images exist
+   */
+  primaryImage?: ComponentImage | null;
   id: number;
   name: string;
   brand?: string | null;
@@ -499,6 +515,10 @@ export type ConfiguratorAssemblyPairDecision = {
 };
 
 export type ConfiguratorAssemblyCandidate = {
+  /**
+   * First image by orderIndex ascending (nulls last), then id ascending; null when no images exist
+   */
+  primaryImage?: ComponentImage | null;
   id: number;
   name: string;
   brand?: string | null;
@@ -613,6 +633,116 @@ export type ConfigurationExport = {
   schemaVersion: number;
   exportedAt: string;
   configuration: SavedConfiguration;
+};
+
+export type ComponentPageWritable = {
+  items: Array<ComponentWritable>;
+  page: number;
+  size: number;
+  totalItems: number;
+};
+
+export type ComponentWritable = {
+  id: number;
+  componentTypeId: number;
+  name: string;
+  brand?: string | null;
+  description?: string | null;
+  archived: boolean;
+  createdAt: string;
+  attributes?: Array<AttributeValue>;
+  images?: Array<ComponentImage>;
+};
+
+export type ConfiguratorCompatibleComponentWritable = {
+  id: number;
+  name: string;
+  brand?: string | null;
+  componentTypeId: number;
+  /**
+   * All manual links and enabled automatic rule sets that matched
+   */
+  explanations: Array<CompatibilityExplanation>;
+};
+
+export type ConfiguratorTypeGroupWritable = {
+  componentTypeId: number;
+  componentTypeName: string;
+  components: Array<ConfiguratorCompatibleComponentWritable>;
+};
+
+export type ConfiguratorResponseWritable = {
+  baseComponentId: number;
+  compatibleByType: Array<ConfiguratorTypeGroupWritable>;
+};
+
+export type ConfiguratorBatchSearchResponseWritable = {
+  /**
+   * Independent compatibility results in componentIds request order
+   */
+  results: Array<ConfiguratorResponseWritable>;
+};
+
+export type ConfiguratorIntersectionCompatibleComponentWritable = {
+  id: number;
+  name: string;
+  brand?: string | null;
+  componentTypeId: number;
+  /**
+   * Compatibility evidence for every selected base component in request order
+   */
+  compatibilityByBase: Array<ConfiguratorBaseCompatibility>;
+};
+
+export type ConfiguratorIntersectionTypeGroupWritable = {
+  componentTypeId: number;
+  componentTypeName: string;
+  components: Array<ConfiguratorIntersectionCompatibleComponentWritable>;
+};
+
+export type ConfiguratorIntersectionResponseWritable = {
+  /**
+   * Selected base component identifiers in request order
+   */
+  componentIds: Array<number>;
+  /**
+   * Components compatible with every selected base component
+   */
+  compatibleByType: Array<ConfiguratorIntersectionTypeGroupWritable>;
+};
+
+export type ConfiguratorAssemblyCandidateWritable = {
+  id: number;
+  name: string;
+  brand?: string | null;
+  componentTypeId: number;
+  status: ConfiguratorCandidateStatus;
+  /**
+   * Pair decisions in componentIds request order
+   */
+  compatibilityByBase: Array<ConfiguratorCandidateBaseDecision>;
+};
+
+export type ConfiguratorCandidateTypeGroupWritable = {
+  componentTypeId: number;
+  componentTypeName: string;
+  components: Array<ConfiguratorAssemblyCandidateWritable>;
+};
+
+export type ConfiguratorCandidatesResponseWritable = {
+  /**
+   * Selected assembly component identifiers in request order
+   */
+  componentIds: Array<number>;
+  /**
+   * All other active domain components classified for this assembly
+   */
+  candidatesByType: Array<ConfiguratorCandidateTypeGroupWritable>;
+  assemblyStatus: ConfiguratorAssemblyStatus;
+  /**
+   * Direct pair decisions for selected components in deterministic pair order
+   */
+  assemblyDecisions: Array<ConfiguratorAssemblyPairDecision>;
 };
 
 export type PostAuthRegisterData = {
@@ -1543,6 +1673,43 @@ export type GetComponentImagesByIdContentResponses = {
 export type GetComponentImagesByIdContentResponse =
   GetComponentImagesByIdContentResponses[keyof GetComponentImagesByIdContentResponses];
 
+export type GetComponentImagesByIdThumbnailData = {
+  body?: never;
+  path: {
+    id: number;
+  };
+  query?: never;
+  url: '/component-images/{id}/thumbnail';
+};
+
+export type GetComponentImagesByIdThumbnailErrors = {
+  /**
+   * Invalid component image identifier
+   */
+  400: ErrorResponse;
+  /**
+   * Component image not found
+   */
+  404: ErrorResponse;
+  /**
+   * External object storage is unavailable
+   */
+  503: ErrorResponse;
+};
+
+export type GetComponentImagesByIdThumbnailError =
+  GetComponentImagesByIdThumbnailErrors[keyof GetComponentImagesByIdThumbnailErrors];
+
+export type GetComponentImagesByIdThumbnailResponses = {
+  /**
+   * Reduced image content
+   */
+  200: Blob | File;
+};
+
+export type GetComponentImagesByIdThumbnailResponse =
+  GetComponentImagesByIdThumbnailResponses[keyof GetComponentImagesByIdThumbnailResponses];
+
 export type GetComponentsByIdImagesData = {
   body?: never;
   path: {
@@ -1579,7 +1746,7 @@ export type GetComponentsByIdImagesResponse =
 export type PostComponentsByIdImagesData = {
   body: {
     /**
-     * JPEG, PNG, or WebP image with a maximum size of 10 MiB
+     * Decodable JPEG, PNG, or WebP image, at most 10 MiB and 40 megapixels
      */
     file: Blob | File;
     /**

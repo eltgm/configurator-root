@@ -406,6 +406,10 @@ components:
           type: string
           description: Relative backend URL for retrieving the image content
           example: /component-images/42/content
+        thumbnailUrl:
+          type: string
+          description: Relative backend URL for a cached PNG preview, at most 512 pixels per side
+          example: /component-images/42/thumbnail
         orderIndex:
           type: integer
           nullable: true
@@ -431,6 +435,12 @@ components:
     Component:
       type: object
       properties:
+        primaryImage:
+          nullable: true
+          readOnly: true
+          description: First image by orderIndex ascending (nulls last), then id ascending; null when no images exist
+          allOf:
+            - $ref: '#/components/schemas/ComponentImage'
         id:
           type: integer
           format: int64
@@ -858,6 +868,12 @@ components:
     ConfiguratorCompatibleComponent:
       type: object
       properties:
+        primaryImage:
+          nullable: true
+          readOnly: true
+          description: First image by orderIndex ascending (nulls last), then id ascending; null when no images exist
+          allOf:
+            - $ref: '#/components/schemas/ComponentImage'
         id:
           type: integer
           format: int64
@@ -978,6 +994,12 @@ components:
     ConfiguratorIntersectionCompatibleComponent:
       type: object
       properties:
+        primaryImage:
+          nullable: true
+          readOnly: true
+          description: First image by orderIndex ascending (nulls last), then id ascending; null when no images exist
+          allOf:
+            - $ref: '#/components/schemas/ComponentImage'
         id:
           type: integer
           format: int64
@@ -1141,6 +1163,12 @@ components:
     ConfiguratorAssemblyCandidate:
       type: object
       properties:
+        primaryImage:
+          nullable: true
+          readOnly: true
+          description: First image by orderIndex ascending (nulls last), then id ascending; null when no images exist
+          allOf:
+            - $ref: '#/components/schemas/ComponentImage'
         id:
           type: integer
           format: int64
@@ -2403,14 +2431,74 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /component-images/{id}/thumbnail:
+    get:
+      tags: [ Component Images ]
+      summary: Get component image thumbnail
+      operationId: getComponentImagesByIdThumbnail
+      description: |
+        Returns a cached PNG preview fitting within 512 by 512 pixels without upscaling or cropping.
+        Existing images are processed on first request. Original image bytes remain unchanged.
+        Object storage remains private; archived component images remain available.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '200':
+          description: Reduced image content
+          headers:
+            Cache-Control:
+              description: Private response that must be revalidated before reuse
+              schema:
+                type: string
+                example: private, no-cache
+            Content-Disposition:
+              description: Displays the image inline
+              schema:
+                type: string
+                example: inline
+            Content-Length:
+              description: Image size in bytes
+              schema:
+                type: integer
+                format: int64
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid component image identifier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Component image not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: External object storage is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /components/{id}/images:
     post:
       tags: [ Components ]
       summary: Upload image for component
       operationId: postComponentsByIdImages
       description: |
-        Uploads a JPEG, PNG, or WebP image up to 10 MiB to external object storage
-        and attaches it to an active component. If orderIndex is omitted, the image
+        Uploads a decodable JPEG, PNG, or WebP image up to 10 MiB and 40 megapixels to external object storage
+        and generates a PNG preview before attaching it to an active component. If orderIndex is omitted, the image
         is placed after all existing component images.
       parameters:
         - name: id
@@ -2431,7 +2519,7 @@ paths:
                   type: string
                   format: binary
                   maxLength: 10485760
-                  description: JPEG, PNG, or WebP image with a maximum size of 10 MiB
+                  description: Decodable JPEG, PNG, or WebP image, at most 10 MiB and 40 megapixels
                 orderIndex:
                   type: integer
                   minimum: 0
@@ -2529,7 +2617,8 @@ paths:
       description: |
         Atomically replaces the display order of all images attached to an active component.
         The request must contain every current image identifier exactly once and no foreign image
-        identifiers. The first identifier receives orderIndex 0, the second 1, and so on.
+        identifiers. The first identifier receives orderIndex 0 and becomes the primary image,
+        the second receives 1, and so on. Deleting the first image promotes the next image.
       parameters:
         - name: id
           in: path

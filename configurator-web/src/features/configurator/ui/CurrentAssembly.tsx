@@ -1,31 +1,10 @@
-import {
-  Alert,
-  Badge,
-  Button,
-  Group,
-  Image,
-  Paper,
-  Skeleton,
-  Stack,
-  Text,
-  ThemeIcon,
-  Title,
-} from '@mantine/core';
-import {
-  IconAlertTriangle,
-  IconArrowsExchange,
-  IconPhotoOff,
-  IconRefresh,
-  IconTrash,
-} from '@tabler/icons-react';
+import { Alert, Badge, Button, Group, Paper, Skeleton, Stack, Text, Title } from '@mantine/core';
+import { IconAlertTriangle, IconArrowsExchange, IconRefresh, IconTrash } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 
-import {
-  getPrimaryComponentImage,
-  toComponentImageUrl,
-} from '@/features/components/model/catalog-preferences';
+import { ComponentThumbnail } from '@/features/components/ui/ComponentThumbnail';
 import type { ConfiguratorDraftSlot } from '@/features/configurator/model/use-configurator-draft';
 import type { ConfiguratorPairResult } from '@/features/configurator/model/configurator-compatibility';
 import {
@@ -198,24 +177,11 @@ export function CurrentAssembly({
                   );
                 }
                 const component = slot.component;
-                const image = getPrimaryComponentImage(component.images);
                 return (
                   <Paper key={component.id} className={classes['assembly-card']} p="sm" withBorder>
                     <Group align="center" wrap="nowrap">
                       <div className={classes.preview}>
-                        {image ? (
-                          <Image
-                            src={toComponentImageUrl(image.url)}
-                            alt=""
-                            fit="cover"
-                            h="100%"
-                            w="100%"
-                          />
-                        ) : (
-                          <ThemeIcon size={40} radius="xl" variant="light" aria-hidden="true">
-                            <IconPhotoOff size={22} />
-                          </ThemeIcon>
-                        )}
+                        <ComponentThumbnail image={component.primaryImage} />
                       </div>
                       <Stack gap={3} flex={1} miw={0}>
                         <Group gap="xs" wrap="nowrap">

@@ -130,6 +130,7 @@ public class ComponentServiceImpl implements ComponentService {
         attributeValueService.replaceAttributeValues(targetAttributes, id));
     updatedComponent.setImages(
         existingComponent.getImages() == null ? List.of() : existingComponent.getImages());
+    updatedComponent.setPrimaryImage(existingComponent.getPrimaryImage());
     return updatedComponent;
   }
 
@@ -163,6 +164,7 @@ public class ComponentServiceImpl implements ComponentService {
   }
 
   @Override
+  @Transactional
   public ComponentImage uploadImage(Long id, ComponentImageUpload image, Integer orderIndex) {
     log.debug("upload image for component with id {}", id);
     Component component = getById(id);
@@ -172,6 +174,16 @@ public class ComponentServiceImpl implements ComponentService {
     }
 
     componentImageValidator.validate(image, orderIndex);
+    // Legacy null indexes sort last. Normalize their existing order before appending so a new
+    // upload cannot replace an unordered primary image or jump ahead of unordered images.
+    if (orderIndex == null
+        && component.getImages() != null
+        && component.getImages().stream().anyMatch(existing -> existing.orderIndex() == null)) {
+      List<Long> existingOrder = component.getImages().stream().map(ComponentImage::id).toList();
+      if (componentRepository.updateImageOrder(id, existingOrder) != existingOrder.size()) {
+        throw new BusinessException("Failed to normalize image order for component with id {}", id);
+      }
+    }
     int resolvedOrderIndex =
         orderIndex == null ? componentRepository.getNextImageOrderIndex(id) : orderIndex;
     StoredImage storedImage = componentImageStorage.store(id, image);
@@ -209,6 +221,15 @@ public class ComponentServiceImpl implements ComponentService {
             .getImageById(id)
             .orElseThrow(() -> new NotFoundException("Component image with id {} not found", id));
     return componentImageStorage.read(image.objectKey());
+  }
+
+  @Override
+  public ComponentImageContent getImageThumbnail(Long id) {
+    ComponentImage image =
+        componentRepository
+            .getImageById(id)
+            .orElseThrow(() -> new NotFoundException("Component image with id {} not found", id));
+    return componentImageStorage.readThumbnail(image.objectKey());
   }
 
   @Override

@@ -7,6 +7,7 @@ import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
+import io.minio.errors.ErrorResponseException;
 import java.io.ByteArrayInputStream;
 import java.util.Set;
 import java.util.UUID;
@@ -28,6 +29,7 @@ public class MinioComponentImageStorage implements ComponentImageStorage {
   private final MinioClient minioClient;
   private final ComponentImageStorageProperties properties;
 
+  private final ComponentImageThumbnailer thumbnailer = new ComponentImageThumbnailer();
   private volatile boolean bucketReady;
 
   @Override
@@ -36,14 +38,21 @@ public class MinioComponentImageStorage implements ComponentImageStorage {
         "components/%d/%s.%s"
             .formatted(componentId, UUID.randomUUID(), extensionFor(image.contentType()));
     byte[] content = image.content();
+    ComponentImageContent thumbnail = thumbnailer.create(content);
 
     try {
       ensureBucket();
-      minioClient.putObject(
-          PutObjectArgs.builder().bucket(properties.bucket()).object(objectKey).stream(
-                  new ByteArrayInputStream(content), (long) content.length, -1L)
-              .contentType(image.contentType())
-              .build());
+      put(objectKey, new ComponentImageContent(content, image.contentType()));
+      try {
+        put(thumbnailKey(objectKey), thumbnail);
+      } catch (Exception exception) {
+        try {
+          delete(objectKey);
+        } catch (RuntimeException cleanupException) {
+          exception.addSuppressed(cleanupException);
+        }
+        throw exception;
+      }
       return new StoredImage(objectKey);
     } catch (Exception exception) {
       throw new ExternalStorageException(
@@ -72,11 +81,56 @@ public class MinioComponentImageStorage implements ComponentImageStorage {
   public void delete(String objectKey) {
     try {
       minioClient.removeObject(
+          RemoveObjectArgs.builder()
+              .bucket(properties.bucket())
+              .object(thumbnailKey(objectKey))
+              .build());
+      minioClient.removeObject(
           RemoveObjectArgs.builder().bucket(properties.bucket()).object(objectKey).build());
     } catch (Exception exception) {
       throw new ExternalStorageException(
           exception, "Failed to remove component image from external storage");
     }
+  }
+
+  @Override
+  public ComponentImageContent readThumbnail(String objectKey) {
+    try {
+      try (GetObjectResponse response =
+          minioClient.getObject(
+              GetObjectArgs.builder()
+                  .bucket(properties.bucket())
+                  .object(thumbnailKey(objectKey))
+                  .build())) {
+        if (!"image/png".equals(response.headers().get("Content-Type"))) {
+          throw new IllegalStateException("Unexpected thumbnail content type");
+        }
+        return new ComponentImageContent(response.readAllBytes(), "image/png");
+      } catch (ErrorResponseException exception) {
+        if (!"NoSuchKey".equals(exception.errorResponse().code())) {
+          throw exception;
+        }
+        ComponentImageContent thumbnail = thumbnailer.create(read(objectKey).content());
+        put(thumbnailKey(objectKey), thumbnail);
+        return thumbnail;
+      }
+    } catch (Exception exception) {
+      throw new ExternalStorageException(
+          exception, "Failed to read component image thumbnail from external storage");
+    }
+  }
+
+  private static String thumbnailKey(String objectKey) {
+    return objectKey + ".thumbnail-v1.png";
+  }
+
+  private void put(String objectKey, ComponentImageContent image) throws Exception {
+    byte[] content = image.content();
+    minioClient.putObject(
+        PutObjectArgs.builder().bucket(properties.bucket()).object(objectKey).stream(
+                new ByteArrayInputStream(content), (long) content.length, -1L)
+            .contentType(image.contentType())
+            .build());
   }
 
   private void ensureBucket() throws Exception {

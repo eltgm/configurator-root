@@ -94,6 +94,8 @@ public interface ComponentFacade {
    */
   ComponentImageContent getComponentImageContent(Long imageId);
 
+  ComponentImageContent getComponentImageThumbnail(Long imageId);
+
   /**
    * Permanently deletes a component image.
    *

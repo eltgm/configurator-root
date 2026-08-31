@@ -203,6 +203,7 @@ class CompatibilityGraphSearchEngine {
                 .name(component.getName())
                 .brand(component.getBrand())
                 .componentTypeId(component.getComponentTypeId())
+                .primaryImage(component.getPrimaryImage())
                 .explanations(List.copyOf(explanations))
                 .build());
   }

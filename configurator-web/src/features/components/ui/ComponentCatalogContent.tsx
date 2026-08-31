@@ -3,23 +3,18 @@ import {
   Box,
   Button,
   Group,
-  Image,
   Paper,
   SimpleGrid,
   Stack,
   Table,
   Text,
-  ThemeIcon,
   Title,
 } from '@mantine/core';
-import { IconArchive, IconPhotoOff, IconRestore } from '@tabler/icons-react';
+import { IconArchive, IconRestore } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
-import {
-  getPrimaryComponentImage,
-  toComponentImageUrl,
-} from '@/features/components/model/catalog-preferences';
+import { ComponentThumbnail } from '@/features/components/ui/ComponentThumbnail';
 import type { Component, ComponentType } from '@/shared/api';
 
 import classes from './component-catalog-content.module.css';
@@ -41,16 +36,9 @@ function ComponentPreview({
   component: Component;
   compact?: boolean;
 }) {
-  const image = getPrimaryComponentImage(component.images);
   return (
     <Box className={compact ? classes['preview-compact'] : classes.preview}>
-      {image ? (
-        <Image src={toComponentImageUrl(image.url)} alt="" fit="cover" h="100%" w="100%" />
-      ) : (
-        <ThemeIcon size={compact ? 34 : 56} radius="xl" variant="light" aria-hidden="true">
-          <IconPhotoOff size={compact ? 18 : 28} stroke={1.6} />
-        </ThemeIcon>
-      )}
+      <ComponentThumbnail image={component.primaryImage} />
     </Box>
   );
 }

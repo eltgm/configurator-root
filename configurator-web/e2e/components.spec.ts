@@ -161,3 +161,28 @@ test('manages the component image gallery on desktop and mobile', async ({ page 
   expect(filePickerBox).not.toBeNull();
   expect(filePickerBox!.x + filePickerBox!.width).toBeLessThanOrEqual(390);
 });
+
+test('uses the selected thumbnail across the catalog and configurator without loading originals', async ({
+  page,
+}) => {
+  const originalRequests: string[] = [];
+  page.on('request', (request) => {
+    if (/\/component-images\/\d+\/content$/.test(request.url()))
+      originalRequests.push(request.url());
+  });
+  await page.goto('/components/101');
+  await page.getByRole('button', { name: 'Сделать изображение 2 заглавным' }).click();
+  await expect(page.getByText('Заглавное изображение изменено')).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Открыть изображение 1' }).locator('img'),
+  ).toHaveAttribute('src', '/api/component-images/9002/thumbnail');
+  await page.getByRole('link', { name: 'К каталогу' }).click();
+  await expect(
+    page.locator('img[src="/api/component-images/9002/thumbnail"]').first(),
+  ).toBeVisible();
+  await page.getByRole('link', { name: 'Конфигуратор', exact: true }).first().click();
+  await expect(
+    page.locator('img[src="/api/component-images/9002/thumbnail"]').first(),
+  ).toBeVisible();
+  expect(originalRequests).toEqual([]);
+});
