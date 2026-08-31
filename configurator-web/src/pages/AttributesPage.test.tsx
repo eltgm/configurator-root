@@ -21,6 +21,26 @@ function renderPage() {
 afterEach(() => notifications.clean());
 
 describe('attribute catalog page', () => {
+  it('renders every catalog record with the same name and label', async () => {
+    server.use(
+      http.get(`${testApiBaseUrl}/domains/:domainId/attributes`, () =>
+        HttpResponse.json(
+          [501, 502].map((id) => ({
+            id,
+            domainId,
+            name: 'socket',
+            label: 'Сокет',
+            dataType: 'STRING',
+            componentTypeIds: [],
+          })),
+        ),
+      ),
+    );
+    renderPage();
+    expect(await screen.findAllByRole('heading', { name: 'Сокет' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Редактировать атрибут Сокет' })).toHaveLength(2);
+  });
+
   it('creates and deletes catalog attributes with destructive confirmation', async () => {
     const user = userEvent.setup();
     const catalog: Array<AttributeDefinition> = [];

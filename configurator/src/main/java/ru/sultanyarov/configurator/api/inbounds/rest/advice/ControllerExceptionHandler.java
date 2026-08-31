@@ -9,6 +9,7 @@ import static org.springframework.http.HttpStatus.UNSUPPORTED_MEDIA_TYPE;
 import static ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode.BUSINESS_ERROR;
 import static ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode.COMPONENT_ARCHIVED;
 import static ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode.CONFIGURATION_CONFLICT;
+import static ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode.DOMAIN_HAS_CONFIGURATIONS;
 import static ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode.ENTITY_ALREADY_EXISTS;
 import static ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode.ENTITY_HAS_RELATED_ENTITIES;
 import static ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode.EXTERNAL_STORAGE_UNAVAILABLE;
@@ -42,9 +43,11 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorDetail;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ErrorResponse;
+import ru.sultanyarov.configurator.domain.exception.AttributeNameConflictException;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
 import ru.sultanyarov.configurator.domain.exception.ComponentArchivedException;
 import ru.sultanyarov.configurator.domain.exception.ConfigurationConflictException;
+import ru.sultanyarov.configurator.domain.exception.DomainHasConfigurationsException;
 import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
 import ru.sultanyarov.configurator.domain.exception.EntityHasRelatedEntitiesException;
 import ru.sultanyarov.configurator.domain.exception.ExternalStorageException;
@@ -83,12 +86,18 @@ public class ControllerExceptionHandler {
   @ExceptionHandler({
     EntityAlreadyExistsException.class,
     EntityHasRelatedEntitiesException.class,
+    DomainHasConfigurationsException.class,
     ComponentArchivedException.class,
     ConfigurationConflictException.class
   })
   public ResponseEntity<ErrorResponse> handleEntityAlreadyExistsException(
       Exception exception, HttpServletRequest request) {
-    return getBody(CONFLICT, conflictCode(exception), exception.getLocalizedMessage(), request);
+    List<ApiErrorDetail> details =
+        exception instanceof AttributeNameConflictException
+            ? List.of(detail("name", "ENTITY_ALREADY_EXISTS", exception.getLocalizedMessage()))
+            : List.of();
+    return getBody(
+        CONFLICT, conflictCode(exception), exception.getLocalizedMessage(), request, details);
   }
 
   @ExceptionHandler({
@@ -133,6 +142,9 @@ public class ControllerExceptionHandler {
   }
 
   private static ApiErrorCode conflictCode(Exception exception) {
+    if (exception instanceof DomainHasConfigurationsException) {
+      return DOMAIN_HAS_CONFIGURATIONS;
+    }
     if (exception instanceof EntityAlreadyExistsException) {
       return ENTITY_ALREADY_EXISTS;
     }

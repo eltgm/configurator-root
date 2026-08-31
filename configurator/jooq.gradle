@@ -19,6 +19,10 @@ jooq {
                         value = 'src/main/resources/db/migration'
                     }
                     property {
+                        key = 'parseIgnoreComments'
+                        value = 'true'
+                    }
+                    property {
                         key = 'sort'
                         value = 'flyway'
                     }

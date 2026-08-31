@@ -30,6 +30,12 @@ import ru.sultanyarov.configurator.domain.model.PairCompatibilityStatus;
 class ConfiguratorMapperTest {
   private final ConfiguratorMapper mapper = Mappers.getMapper(ConfiguratorMapper.class);
 
+  @org.junit.jupiter.api.BeforeEach
+  void wireImageMapper() {
+    org.springframework.test.util.ReflectionTestUtils.setField(
+        mapper, "componentMapper", Mappers.getMapper(ComponentMapper.class));
+  }
+
   @Test
   void toDto_shouldMapNestedCompatibleComponents() {
     ConfiguratorResult result =
@@ -45,6 +51,7 @@ class ConfiguratorMapperTest {
                             "Board",
                             "Brand",
                             20L,
+                            null,
                             List.of(
                                 CompatibilityExplanation.builder()
                                     .source(CompatibilityExplanationSource.MANUAL)
@@ -149,6 +156,7 @@ class ConfiguratorMapperTest {
                             "Board",
                             "Brand",
                             20L,
+                            null,
                             List.of(
                                 new BaseComponentCompatibility(3L, List.of()),
                                 new BaseComponentCompatibility(1L, List.of())))))));
@@ -184,6 +192,7 @@ class ConfiguratorMapperTest {
                             "Board",
                             "Brand",
                             20L,
+                            null,
                             ConfiguratorCandidateStatus.BLOCKED,
                             List.of(
                                 new ConfiguratorCandidateBaseDecision(

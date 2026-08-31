@@ -11,7 +11,7 @@ import {
   Title,
 } from '@mantine/core';
 import { IconArrowLeft, IconDeviceFloppy } from '@tabler/icons-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -44,6 +44,8 @@ import { useRegisterDomainChangeGuard } from '@/features/domains/model/use-domai
 import { showSuccessNotification } from '@/shared/notifications/notifications';
 import { ErrorState, PageHeader } from '@/shared/ui';
 
+import classes from './configuration-editor.module.css';
+
 interface ConfigurationEditorProps {
   configuration: Configuration;
   componentTypes: ReadonlyArray<ComponentType>;
@@ -75,6 +77,40 @@ export function ConfigurationEditor({ configuration, componentTypes }: Configura
   );
   const [components, setComponents] = useState<ConfigurationEditorComponent[]>(baselineComponents);
   const [replacementComponentId, setReplacementComponentId] = useState<number | null>(null);
+  const browserHeadingRef = useRef<HTMLHeadingElement>(null);
+  const replacementButtonsRef = useRef(new Map<number, HTMLButtonElement>());
+  const [focusRequest, setFocusRequest] = useState<
+    { target: 'browser' } | { target: 'component'; componentId: number } | null
+  >(null);
+
+  useEffect(() => {
+    if (!focusRequest) return;
+    const target =
+      focusRequest.target === 'browser'
+        ? browserHeadingRef.current
+        : replacementButtonsRef.current.get(focusRequest.componentId);
+    if (!target) return;
+
+    target.focus({ preventScroll: true });
+    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'instant'
+      : 'smooth';
+    if (focusRequest.target === 'component') {
+      target.scrollIntoView({ behavior, block: 'nearest', inline: 'nearest' });
+    } else {
+      const bounds = target.getBoundingClientRect();
+      const style = window.getComputedStyle(document.documentElement);
+      const topInset = Number.parseFloat(style.scrollPaddingTop) || 0;
+      const bottomInset = Number.parseFloat(style.scrollPaddingBottom) || 0;
+      if (
+        window.matchMedia('(max-width: 62em)').matches ||
+        bounds.top < topInset ||
+        bounds.bottom > window.innerHeight - bottomInset
+      ) {
+        target.scrollIntoView({ behavior, block: 'start', inline: 'nearest' });
+      }
+    }
+  }, [focusRequest]);
   const componentIds = configurationComponentIds(components);
   const hasArchivedComponents = components.some((component) => component.archived);
   const assemblyQuery = useAssemblyCandidatesQuery(
@@ -137,6 +173,9 @@ export function ConfigurationEditor({ configuration, componentTypes }: Configura
         : addConfigurationEditorComponent(current, component),
     );
     setReplacementComponentId(null);
+    if (replacementTarget) {
+      setFocusRequest({ target: 'component', componentId: component.id });
+    }
     resetServerError();
   };
 
@@ -208,50 +247,72 @@ export function ConfigurationEditor({ configuration, componentTypes }: Configura
               </Stack>
             </Paper>
 
-            <ConfigurationAssemblyEditor
-              components={components}
-              eligibility={eligibility}
-              replacementComponentId={replacementComponentId}
-              onReplace={(componentId) => {
-                setReplacementComponentId(componentId);
-                resetServerError();
-              }}
-              onRemove={(componentId) => {
-                setComponents((current) =>
-                  removeConfigurationEditorComponent(current, componentId),
-                );
-                setReplacementComponentId((current) => (current === componentId ? null : current));
-                resetServerError();
-              }}
-            />
+            <div className={classes.workspace}>
+              <ConfigurationAssemblyEditor
+                components={components}
+                eligibility={eligibility}
+                replacementComponentId={replacementComponentId}
+                onReplace={(componentId) => {
+                  setReplacementComponentId(componentId);
+                  setFocusRequest({ target: 'browser' });
+                  resetServerError();
+                }}
+                onReplaceButtonRef={(componentId, element) => {
+                  if (element) replacementButtonsRef.current.set(componentId, element);
+                  else replacementButtonsRef.current.delete(componentId);
+                }}
+                onRemove={(componentId) => {
+                  setComponents((current) =>
+                    removeConfigurationEditorComponent(current, componentId),
+                  );
+                  setReplacementComponentId((current) =>
+                    current === componentId ? null : current,
+                  );
+                  resetServerError();
+                }}
+                actions={
+                  <>
+                    {updateMutation.error ? <ErrorState error={updateMutation.error} /> : null}
+                    <Button
+                      type="submit"
+                      leftSection={<IconDeviceFloppy size={16} aria-hidden="true" />}
+                      loading={updateMutation.isPending}
+                      disabled={!eligibility.allowed || !isDirty}
+                      fullWidth
+                    >
+                      {t('configurations.editor.save')}
+                    </Button>
+                  </>
+                }
+              />
 
-            {updateMutation.error ? <ErrorState error={updateMutation.error} /> : null}
-
-            <AvailableComponentBrowser
-              domainId={configuration.domainId}
-              componentTypes={componentTypes}
-              componentTypesLoading={false}
-              componentTypesUnavailable={false}
-              selectedItems={selectedItems}
-              baseComponentIds={baseComponentIds}
-              baseComponentNames={baseComponentNames}
-              includeTransitive={false}
-              compatibilityBlocked={browserBlocked}
-              {...(replacementTarget ? { replacementTarget } : {})}
-              onCancelReplacement={() => setReplacementComponentId(null)}
-              onSelect={selectComponent}
-            />
-
-            <Group justify="flex-end">
-              <Button
-                type="submit"
-                leftSection={<IconDeviceFloppy size={16} aria-hidden="true" />}
-                loading={updateMutation.isPending}
-                disabled={!eligibility.allowed || !isDirty}
+              <div
+                className={classes.browser}
+                data-replacing={Boolean(replacementTarget) || undefined}
               >
-                {t('configurations.editor.save')}
-              </Button>
-            </Group>
+                <AvailableComponentBrowser
+                  key={replacementComponentId ?? 'add'}
+                  headingRef={browserHeadingRef}
+                  domainId={configuration.domainId}
+                  componentTypes={componentTypes}
+                  componentTypesLoading={false}
+                  componentTypesUnavailable={false}
+                  selectedItems={selectedItems}
+                  baseComponentIds={baseComponentIds}
+                  baseComponentNames={baseComponentNames}
+                  includeTransitive={false}
+                  compatibilityBlocked={browserBlocked}
+                  {...(replacementTarget ? { replacementTarget } : {})}
+                  onCancelReplacement={() => {
+                    if (replacementComponentId !== null) {
+                      setFocusRequest({ target: 'component', componentId: replacementComponentId });
+                    }
+                    setReplacementComponentId(null);
+                  }}
+                  onSelect={selectComponent}
+                />
+              </div>
+            </div>
           </Stack>
         </form>
       </Stack>

@@ -58,6 +58,7 @@ components:
         - NOT_FOUND
         - ENTITY_ALREADY_EXISTS
         - ENTITY_HAS_RELATED_ENTITIES
+        - DOMAIN_HAS_CONFIGURATIONS
         - COMPONENT_ARCHIVED
         - CONFIGURATION_CONFLICT
         - VALIDATION_ERROR
@@ -293,6 +294,7 @@ components:
           nullable: true
         name:
           type: string
+          description: Case-sensitive system name, unique within the domain across all component types.
         label:
           type: string
         dataType:
@@ -327,6 +329,7 @@ components:
       properties:
         name:
           type: string
+          description: Case-sensitive system name, unique within the domain across all component types.
         label:
           type: string
         dataType:
@@ -404,6 +407,10 @@ components:
           type: string
           description: Relative backend URL for retrieving the image content
           example: /component-images/42/content
+        thumbnailUrl:
+          type: string
+          description: Relative backend URL for a cached PNG preview, at most 512 pixels per side
+          example: /component-images/42/thumbnail
         orderIndex:
           type: integer
           nullable: true
@@ -429,6 +436,12 @@ components:
     Component:
       type: object
       properties:
+        primaryImage:
+          nullable: true
+          readOnly: true
+          description: First image by orderIndex ascending (nulls last), then id ascending; null when no images exist
+          allOf:
+            - $ref: '#/components/schemas/ComponentImage'
         id:
           type: integer
           format: int64
@@ -856,6 +869,12 @@ components:
     ConfiguratorCompatibleComponent:
       type: object
       properties:
+        primaryImage:
+          nullable: true
+          readOnly: true
+          description: First image by orderIndex ascending (nulls last), then id ascending; null when no images exist
+          allOf:
+            - $ref: '#/components/schemas/ComponentImage'
         id:
           type: integer
           format: int64
@@ -976,6 +995,12 @@ components:
     ConfiguratorIntersectionCompatibleComponent:
       type: object
       properties:
+        primaryImage:
+          nullable: true
+          readOnly: true
+          description: First image by orderIndex ascending (nulls last), then id ascending; null when no images exist
+          allOf:
+            - $ref: '#/components/schemas/ComponentImage'
         id:
           type: integer
           format: int64
@@ -1139,6 +1164,12 @@ components:
     ConfiguratorAssemblyCandidate:
       type: object
       properties:
+        primaryImage:
+          nullable: true
+          readOnly: true
+          description: First image by orderIndex ascending (nulls last), then id ascending; null when no images exist
+          allOf:
+            - $ref: '#/components/schemas/ComponentImage'
         id:
           type: integer
           format: int64
@@ -1573,6 +1604,12 @@ paths:
       tags: [ Domains ]
       summary: Delete domain
       operationId: deleteDomainsById
+      description: >-
+        Permanently deletes the domain and all remaining catalog data, including active and
+        archived components, attributes, images and compatibility rules/links. Any saved
+        configuration in the domain, regardless of owner or component state, prevents deletion.
+        Database changes are atomic; image files and thumbnails are cleaned up asynchronously
+        with durable retries. No configuration is deleted by this operation.
       parameters:
         - name: id
           in: path
@@ -1590,7 +1627,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Domain has dependent entities
+          description: Domain has configurations; delete all configurations first (DOMAIN_HAS_CONFIGURATIONS)
           content:
             application/json:
               schema:
@@ -1790,6 +1827,7 @@ paths:
     post:
       tags: [ Attributes ]
       summary: Create a catalog attribute definition in a domain
+      description: Rejects a name already present anywhere in this domain. Reuse existing definitions by ID.
       operationId: postDomainsByDomainIdAttributes
       parameters:
         - name: domainId
@@ -1819,6 +1857,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Domain not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Attribute name already exists in this domain; details identifies the name field
           content:
             application/json:
               schema:
@@ -1855,6 +1899,7 @@ paths:
     post:
       tags: [ Attributes ]
       summary: Create attribute definition for a component type
+      description: Atomically creates a domain catalog definition and attaches it to the type. Names are unique across the domain.
       operationId: postComponentTypesByIdAttributes
       parameters:
         - name: id
@@ -1889,7 +1934,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Attribute name conflict
+          description: Attribute name already exists in this domain; details identifies the name field
           content:
             application/json:
               schema:
@@ -2005,6 +2050,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Another attribute definition already has this name in the domain; details identifies the name field
           content:
             application/json:
               schema:
@@ -2387,14 +2438,74 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /component-images/{id}/thumbnail:
+    get:
+      tags: [ Component Images ]
+      summary: Get component image thumbnail
+      operationId: getComponentImagesByIdThumbnail
+      description: |
+        Returns a cached PNG preview fitting within 512 by 512 pixels without upscaling or cropping.
+        Existing images are processed on first request. Original image bytes remain unchanged.
+        Object storage remains private; archived component images remain available.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '200':
+          description: Reduced image content
+          headers:
+            Cache-Control:
+              description: Private response that must be revalidated before reuse
+              schema:
+                type: string
+                example: private, no-cache
+            Content-Disposition:
+              description: Displays the image inline
+              schema:
+                type: string
+                example: inline
+            Content-Length:
+              description: Image size in bytes
+              schema:
+                type: integer
+                format: int64
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid component image identifier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Component image not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: External object storage is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /components/{id}/images:
     post:
       tags: [ Components ]
       summary: Upload image for component
       operationId: postComponentsByIdImages
       description: |
-        Uploads a JPEG, PNG, or WebP image up to 10 MiB to external object storage
-        and attaches it to an active component. If orderIndex is omitted, the image
+        Uploads a decodable JPEG, PNG, or WebP image up to 10 MiB and 40 megapixels to external object storage
+        and generates a PNG preview before attaching it to an active component. If orderIndex is omitted, the image
         is placed after all existing component images.
       parameters:
         - name: id
@@ -2415,7 +2526,7 @@ paths:
                   type: string
                   format: binary
                   maxLength: 10485760
-                  description: JPEG, PNG, or WebP image with a maximum size of 10 MiB
+                  description: Decodable JPEG, PNG, or WebP image, at most 10 MiB and 40 megapixels
                 orderIndex:
                   type: integer
                   minimum: 0
@@ -2513,7 +2624,8 @@ paths:
       description: |
         Atomically replaces the display order of all images attached to an active component.
         The request must contain every current image identifier exactly once and no foreign image
-        identifiers. The first identifier receives orderIndex 0, the second 1, and so on.
+        identifiers. The first identifier receives orderIndex 0 and becomes the primary image,
+        the second receives 1, and so on. Deleting the first image promotes the next image.
       parameters:
         - name: id
           in: path

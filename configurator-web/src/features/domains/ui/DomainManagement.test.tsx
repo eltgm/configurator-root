@@ -8,6 +8,7 @@ import { createMemoryRouter } from 'react-router-dom';
 import { App } from '@/app/App';
 import { appRoutes } from '@/app/router/routes';
 import type { CreateDomainRequest, Domain, DomainPage, ErrorResponse } from '@/shared/api';
+import { queryClient } from '@/shared/query/query-client';
 import { selectedDomainStorageKey } from '@/shared/config/preferences';
 import { server, testApiBaseUrl } from '@/test/server';
 
@@ -287,6 +288,19 @@ describe('domain first run and management', () => {
     );
     const dialog = await screen.findByRole('dialog', { name: 'Удалить предметную область?' });
     expect(within(dialog).getByText(/Действие необратимо/)).toBeInTheDocument();
+    const input = within(dialog).getByRole('textbox', { name: /Название области/ });
+    const confirm = within(dialog).getByRole('button', { name: 'Удалить' });
+    expect(confirm).toBeDisabled();
+    await user.type(input, 'рабочая станция{Enter}');
+    expect(confirm).toBeDisabled();
+    expect(domains).toHaveLength(2);
+    await user.clear(input);
+    queryClient.setQueryData(['domains', 1, 'components'], ['deleted catalog']);
+    queryClient.setQueryData(['domains', 2, 'components'], ['retained catalog']);
+    await user.type(
+      within(dialog).getByRole('textbox', { name: /Название области/ }),
+      firstDomain.name,
+    );
     await user.click(within(dialog).getByRole('button', { name: 'Удалить' }));
 
     await waitFor(() => {
@@ -296,6 +310,66 @@ describe('domain first run and management', () => {
       screen.getByRole('button', { name: 'Предметная область: Домашний сервер' }),
     ).toBeInTheDocument();
     expect(window.localStorage.getItem(selectedDomainStorageKey)).toBe('2');
+    expect(queryClient.getQueryData(['domains', 1, 'components'])).toBeUndefined();
+    expect(queryClient.getQueryData(['domains', 2, 'components'])).toEqual(['retained catalog']);
+  });
+
+  it('resets confirmation when cancelled and when another domain is opened', async () => {
+    const user = userEvent.setup();
+    const remove = vi.fn(() => new HttpResponse(null, { status: 204 }));
+    useDomainHandlers([{ ...firstDomain }, { ...secondDomain }], { remove });
+    renderRoute('/settings/domain');
+    await user.click(
+      await screen.findByRole('button', { name: 'Удалить область Рабочая станция' }),
+    );
+    let dialog = await screen.findByRole('dialog', { name: 'Удалить предметную область?' });
+    await user.type(
+      within(dialog).getByRole('textbox', { name: /Название области/ }),
+      firstDomain.name,
+    );
+    await user.click(within(dialog).getByRole('button', { name: 'Отмена' }));
+    await user.click(screen.getByRole('button', { name: 'Удалить область Домашний сервер' }));
+    dialog = await screen.findByRole('dialog', { name: 'Удалить предметную область?' });
+    expect(within(dialog).getByRole('textbox', { name: /Название области/ })).toHaveValue('');
+    expect(within(dialog).getByRole('button', { name: 'Удалить' })).toBeDisabled();
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('blocks repeated submission and closing while deletion is pending', async () => {
+    const user = userEvent.setup();
+    const domains = [{ ...firstDomain }];
+    let releaseRequest = () => {};
+    const requestGate = new Promise<void>((resolve) => {
+      releaseRequest = resolve;
+    });
+    const remove = vi.fn(async () => {
+      await requestGate;
+      domains.splice(0, 1);
+      return new HttpResponse(null, { status: 204 });
+    });
+    useDomainHandlers(domains, { remove });
+    renderRoute('/settings/domain');
+    await user.click(
+      await screen.findByRole('button', { name: 'Удалить область Рабочая станция' }),
+    );
+    const dialog = await screen.findByRole('dialog', { name: 'Удалить предметную область?' });
+    await user.type(
+      within(dialog).getByRole('textbox', { name: /Название области/ }),
+      firstDomain.name,
+    );
+    await user.click(within(dialog).getByRole('button', { name: 'Удалить' }));
+    try {
+      await waitFor(() => expect(remove).toHaveBeenCalledTimes(1));
+      expect(within(dialog).getByRole('textbox', { name: /Название области/ })).toBeDisabled();
+      expect(within(dialog).getByRole('button', { name: 'Отмена' })).toBeDisabled();
+      expect(within(dialog).getByRole('button', { name: 'Закрыть' })).toBeDisabled();
+      await user.keyboard('{Escape}{Enter}');
+      expect(dialog).toBeInTheDocument();
+      expect(remove).toHaveBeenCalledTimes(1);
+    } finally {
+      releaseRequest();
+    }
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
   it('returns to first run after deleting the last domain', async () => {
@@ -309,6 +383,10 @@ describe('domain first run and management', () => {
       await screen.findByRole('button', { name: 'Удалить область Рабочая станция' }),
     );
     const dialog = await screen.findByRole('dialog', { name: 'Удалить предметную область?' });
+    await user.type(
+      within(dialog).getByRole('textbox', { name: /Название области/ }),
+      firstDomain.name,
+    );
     await user.click(within(dialog).getByRole('button', { name: 'Удалить' }));
 
     await user.click(screen.getByRole('link', { name: 'Конфигуратор компонентов' }));
@@ -318,14 +396,14 @@ describe('domain first run and management', () => {
     expect(window.localStorage.getItem(selectedDomainStorageKey)).toBeNull();
   });
 
-  it('keeps the domain when backend rejects deletion of related data', async () => {
+  it('keeps the domain and explains that configurations must be deleted first', async () => {
     const user = userEvent.setup();
     const conflict: ErrorResponse = {
       timestamp: '2026-08-09T12:00:00Z',
       status: 409,
       error: 'Conflict',
-      code: 'ENTITY_HAS_RELATED_ENTITIES',
-      message: 'Domain has related entities',
+      code: 'DOMAIN_HAS_CONFIGURATIONS',
+      message: 'Delete all configurations first',
       path: '/domains/1',
       details: [],
     };
@@ -342,9 +420,17 @@ describe('domain first run and management', () => {
     const deleteDialog = await screen.findByRole('dialog', {
       name: 'Удалить предметную область?',
     });
+    await user.type(
+      within(deleteDialog).getByRole('textbox', { name: /Название области/ }),
+      firstDomain.name,
+    );
     await user.click(within(deleteDialog).getByRole('button', { name: 'Удалить' }));
 
-    expect(await screen.findByText('Запись используется другими данными')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        'Невозможно удалить область: в ней есть конфигурации. Сначала удалите все конфигурации.',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Рабочая станция' })).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });

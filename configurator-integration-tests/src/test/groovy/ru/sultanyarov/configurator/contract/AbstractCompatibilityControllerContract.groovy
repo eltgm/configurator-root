@@ -588,7 +588,7 @@ abstract class AbstractCompatibilityControllerContract extends Specification imp
         def result = put(
                 "/domains/1/compatibility/rules/${second.id}",
                 ruleRequest("First", 20L, 10L, new CompatibilityRuleConditionInput(
-                        201L,
+                        101L,
                         CompatibilityRuleOperator.EQUALS,
                         101L
                 ))
@@ -611,11 +611,11 @@ abstract class AbstractCompatibilityControllerContract extends Specification imp
         ruleRequest("Foreign type", 10L, 30L, stringEqualityCondition())                           | 400
         ruleRequest("Missing type", 10L, 999999L, stringEqualityCondition())                        | 404
         ruleRequest("Wrong side", 10L, 20L, new CompatibilityRuleConditionInput(
-                201L, CompatibilityRuleOperator.EQUALS, 101L))                                     | 400
+                202L, CompatibilityRuleOperator.EQUALS, 102L))                                     | 400
         ruleRequest("Mismatched types", 10L, 20L, new CompatibilityRuleConditionInput(
                 101L, CompatibilityRuleOperator.EQUALS, 202L))                                     | 400
         ruleRequest("Invalid operator", 10L, 20L, new CompatibilityRuleConditionInput(
-                101L, CompatibilityRuleOperator.GT, 201L))                                         | 400
+                101L, CompatibilityRuleOperator.GT, 101L))                                         | 400
         new SaveCompatibilityRuleSetRequest(
                 "Duplicate conditions",
                 10L,
@@ -641,7 +641,7 @@ abstract class AbstractCompatibilityControllerContract extends Specification imp
                         conditions      : [[
                                 leftAttributeDefinitionId : 101L,
                                 operator                  : "EQUALS",
-                                rightAttributeDefinitionId: 201L
+                                rightAttributeDefinitionId: 101L
                         ]]
                 ],
                 [
@@ -652,7 +652,7 @@ abstract class AbstractCompatibilityControllerContract extends Specification imp
                         conditions      : [[
                                 leftAttributeDefinitionId : 101L,
                                 operator                  : "EQUALS",
-                                rightAttributeDefinitionId: 201L
+                                rightAttributeDefinitionId: 101L
                         ]]
                 ],
                 [
@@ -663,7 +663,7 @@ abstract class AbstractCompatibilityControllerContract extends Specification imp
                         conditions      : [[
                                 leftAttributeDefinitionId : 101L,
                                 operator                  : "EQUALS",
-                                rightAttributeDefinitionId: 201L
+                                rightAttributeDefinitionId: 101L
                         ]]
                 ],
                 [
@@ -681,7 +681,7 @@ abstract class AbstractCompatibilityControllerContract extends Specification imp
                         conditions      : [[
                                 leftAttributeDefinitionId : 101L,
                                 operator                  : "EQUALS",
-                                rightAttributeDefinitionId: 201L,
+                                rightAttributeDefinitionId: 101L,
                                 orderIndex                : -1
                         ]]
                 ]
@@ -753,7 +753,7 @@ abstract class AbstractCompatibilityControllerContract extends Specification imp
         return new CompatibilityRuleConditionInput(
                 101L,
                 CompatibilityRuleOperator.EQUALS,
-                201L
+                101L
         )
     }
 

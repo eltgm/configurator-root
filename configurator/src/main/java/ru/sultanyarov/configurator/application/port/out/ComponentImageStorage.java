@@ -23,6 +23,9 @@ public interface ComponentImageStorage {
    */
   ComponentImageContent read(String objectKey);
 
+  /** Reads or generates a cached reduced copy; never substitutes the original. */
+  ComponentImageContent readThumbnail(String objectKey);
+
   /**
    * Removes a previously stored object during compensating cleanup.
    *

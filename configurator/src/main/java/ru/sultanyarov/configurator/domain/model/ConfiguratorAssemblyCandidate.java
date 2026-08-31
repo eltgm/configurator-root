@@ -9,5 +9,6 @@ public record ConfiguratorAssemblyCandidate(
     String name,
     String brand,
     Long componentTypeId,
+    ComponentImage primaryImage,
     ConfiguratorCandidateStatus status,
     List<ConfiguratorCandidateBaseDecision> compatibilityByBase) {}

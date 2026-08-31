@@ -12,6 +12,30 @@ import spock.lang.Specification
 
 abstract class AbstractConfiguratorControllerContract extends Specification implements ApiTestSupport {
 
+    def "should include the same ordered primary images in all configurator read models"() {
+        given:
+        prepareConfiguratorData()
+        runSqlScripts("/sql/insert-configurator-image-data.sql")
+
+        when:
+        def direct = objectMapper.readTree(get("/domains/1/configurator/compatible", [componentId: 1L]).body)
+        def batch = objectMapper.readTree(post("/domains/1/configurator/compatible/search", [componentIds: [1L], includeTransitive: true]).body)
+        def intersection = objectMapper.readTree(post("/domains/1/configurator/compatible/intersection", [componentIds: [1L, 2L], includeTransitive: true]).body)
+        def candidates = objectMapper.readTree(post("/domains/1/configurator/candidates", [componentIds: [1L]]).body)
+
+        then:
+        def board = direct.compatibleByType.collectMany { it.components.toList() }.find { it.id.asLong() == 2L }
+        board.primaryImage.id.asLong() == 902L
+        board.primaryImage.thumbnailUrl.asText() == "/component-images/902/thumbnail"
+        def batchedBoard = batch.results[0].compatibleByType.collectMany { it.components.toList() }.find { it.id.asLong() == 2L }
+        batchedBoard.primaryImage == board.primaryImage
+        def assemblyBoard = candidates.candidatesByType.collectMany { it.components.toList() }.find { it.id.asLong() == 2L }
+        assemblyBoard.primaryImage == board.primaryImage
+        def intersected = intersection.compatibleByType.collectMany { it.components.toList() }
+        !intersected.isEmpty()
+        intersected.every { it.primaryImage.isNull() || it.primaryImage.thumbnailUrl.asText().endsWith('/thumbnail') }
+    }
+
     def "should return union of direct manual and automatic compatibility grouped in type order"() {
         given:
         prepareConfiguratorData()
@@ -47,7 +71,7 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
             conditions*.leftAttributeName == ["socket", "power"]
             conditions*.leftValue == ["AM5", "100"]
             conditions*.operator*.toString() == ["EQUALS", "LTE"]
-            conditions*.rightAttributeDefinitionId == [201L, 202L]
+            conditions*.rightAttributeDefinitionId == [101L, 202L]
             conditions*.rightAttributeName == ["socket", "power_limit"]
             conditions*.rightValue == ["AM5", "200"]
         }

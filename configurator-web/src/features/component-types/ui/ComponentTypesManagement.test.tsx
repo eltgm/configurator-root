@@ -157,6 +157,17 @@ afterEach(() => {
 });
 
 describe('component types and attributes management', () => {
+  it('renders same-name attribute records independently by ID', async () => {
+    useHandlers(
+      [processorType],
+      new Map([[11, [coresAttribute, { ...coresAttribute, id: 9999 }]]]),
+    );
+    renderPage();
+    expect(
+      await screen.findAllByRole('button', { name: 'Редактировать атрибут Количество ядер' }),
+    ).toHaveLength(2);
+  });
+
   it('creates the first component type with validation and trimmed optional values', async () => {
     const user = userEvent.setup();
     const componentTypes: Array<ComponentType> = [];

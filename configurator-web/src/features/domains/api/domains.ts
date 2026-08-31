@@ -101,6 +101,8 @@ export function useDeleteDomainMutation() {
     mutationFn: (id: number) =>
       apiData(deleteDomainsById({ client, path: { id }, throwOnError: true })),
     onSuccess: async (_data, deletedDomainId) => {
+      await queryClient.cancelQueries({ queryKey: ['domains', deletedDomainId] });
+      queryClient.removeQueries({ queryKey: ['domains', deletedDomainId] });
       queryClient.setQueryData<Array<Domain>>(domainKeys.all, (domains = []) =>
         domains.filter((domain) => domain.id !== deletedDomainId),
       );

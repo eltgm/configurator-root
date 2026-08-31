@@ -32,7 +32,20 @@ const ryzen: Component = {
       value: '8',
     },
   ],
-  images: [{ id: 5001, url: '/component-images/5001/content', orderIndex: 0 }],
+  primaryImage: {
+    id: 5001,
+    url: '/component-images/5001/content',
+    thumbnailUrl: '/component-images/5001/thumbnail',
+    orderIndex: 0,
+  },
+  images: [
+    {
+      id: 5001,
+      url: '/component-images/5001/content',
+      thumbnailUrl: '/component-images/5001/thumbnail',
+      orderIndex: 0,
+    },
+  ],
 };
 const radeon: Component = {
   id: 102,
@@ -130,7 +143,7 @@ describe('component catalog', () => {
     expect(screen.getAllByText('Процессор').length).toBeGreaterThan(0);
     expect(container.querySelector('img')).toHaveAttribute(
       'src',
-      '/api/component-images/5001/content',
+      '/api/component-images/5001/thumbnail',
     );
   });
 

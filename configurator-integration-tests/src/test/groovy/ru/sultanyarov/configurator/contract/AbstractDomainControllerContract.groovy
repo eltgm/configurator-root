@@ -32,7 +32,7 @@ abstract class AbstractDomainControllerContract extends Specification implements
         domain.description
         domain.createdAt != null
 
-        and: "the catalog contains six ordered types and twelve attribute definitions"
+        and: "the catalog contains six ordered types and twelve attribute links"
         def typesResult = get("/domains/${domain.id}/component-types")
         typesResult.status == 200
         def types = objectMapper.readerForListOf(ComponentType).readValue(typesResult.body)
@@ -45,6 +45,16 @@ abstract class AbstractDomainControllerContract extends Specification implements
         }
         attributes.size() == 12
         attributes.every { it.getIsRequired() }
+        def catalog = objectMapper.readerForListOf(AttributeDefinition).readValue(get("/domains/${domain.id}/attributes").body)
+        catalog.size() == 9
+        catalog*.name.toSet().size() == 9
+        ["socket", "memory_standard", "form_factor"].every { name ->
+            def shared = attributes.findAll { it.name == name }
+            shared.size() == 2 && shared*.id.toSet().size() == 1 &&
+                catalog.find { it.name == name }.componentTypeIds.size() == 2
+        }
+        attributes.findAll { it.name == "memory_standard" }*.orderIndex == [1, 0]
+        attributes.findAll { it.name == "form_factor" }*.orderIndex == [2, 0]
 
         and: "the catalog contains compatible and intentionally incompatible components"
         def componentResult = get("/domains/${domain.id}/components", [page: 0, size: 100])
@@ -68,6 +78,9 @@ abstract class AbstractDomainControllerContract extends Specification implements
         rules.size() == 6
         rules.every { it.enabled && it.conditions.size() == 1 }
         rules*.conditions*.operator.flatten().count(CompatibilityRuleOperator.EQUALS) == 3
+        rules.collectMany { it.conditions }.findAll { it.operator == CompatibilityRuleOperator.EQUALS }.every {
+            it.leftAttributeDefinitionId == it.rightAttributeDefinitionId
+        }
         rules*.conditions*.operator.flatten().count(CompatibilityRuleOperator.LTE) == 3
         def graphResult = get("/domains/${domain.id}/compatibility/graph")
         graphResult.status == 200
@@ -229,6 +242,73 @@ abstract class AbstractDomainControllerContract extends Specification implements
     def "should return not found when deleting non-existent domain"() {
         expect:
         delete("/domains/999999").status == 404
+    }
+
+    def "should recursively delete a populated domain without configurations and retain other domains"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql", "/sql/insert-configurator-test-data.sql", "/sql/insert-configurator-image-data.sql")
+        def retainedDomain = get("/domains/2").body
+        def retainedComponent = get("/components/7").body
+
+        when:
+        def result = delete("/domains/1")
+
+        then:
+        result.status == 204
+        get("/domains/1").status == 404
+        [1, 2, 3, 4, 5, 6, 8, 9].every { get("/components/${it}").status == 404 }
+        [10, 20, 30].every { delete("/component-types/${it}").status == 404 }
+        [101, 102, 103, 202].every { delete("/attributes/${it}").status == 404 }
+        get("/components/2/images").status == 404
+        get("/domains/2").body == retainedDomain
+        get("/components/7").body == retainedComponent
+        delete("/domains/1").status == 404
+    }
+
+    def "should reject every remaining configuration including archived components and empty foreign builds"() {
+        given:
+        runSqlScripts("/sql/clear-db.sql", "/sql/insert-configurator-test-data.sql",
+                "/sql/insert-configurator-image-data.sql", "/sql/insert-domain-deletion-configurations.sql")
+        def paths = ["/domains/1", "/components/1", "/components/4", "/components/2/images",
+                "/domains/1/attributes", "/domains/1/compatibility/rules", "/domains/1/compatibility/graph"]
+        def before = paths.collectEntries { [(it): get(it).body] }
+
+        expect:
+        rejectsDomainWithConfigurations()
+        paths.every { get(it).body == before[it] }
+
+        when: "only the archived-component build and an empty foreign build remain"
+        def removedActive = delete("/configurations/900")
+
+        then:
+        removedActive.status == 204
+        rejectsDomainWithConfigurations()
+        get("/configurations/901").status == 200
+        paths.every { get(it).body == before[it] }
+
+        when: "only an empty configuration belonging to another user remains"
+        def removedArchived = delete("/configurations/901")
+
+        then:
+        removedArchived.status == 204
+        rejectsDomainWithConfigurations()
+        paths.every { get(it).body == before[it] }
+
+        when: "all configurations have been removed"
+        runSqlScripts("/sql/remove-domain-deletion-configurations.sql")
+
+        then:
+        delete("/domains/1").status == 204
+    }
+
+    protected boolean rejectsDomainWithConfigurations() {
+        def result = delete("/domains/1")
+        assert result.status == 409
+        def error = objectMapper.readValue(result.body, ErrorResponse)
+        assert error.code == ApiErrorCode.DOMAIN_HAS_CONFIGURATIONS
+        assert error.message.contains("Delete all configurations first")
+        assert error.details.isEmpty()
+        true
     }
 
     def "should get domains with pagination"() {

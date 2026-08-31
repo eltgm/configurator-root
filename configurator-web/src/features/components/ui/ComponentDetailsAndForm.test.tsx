@@ -84,7 +84,14 @@ const component: Component = {
       value: '120',
     },
   ],
-  images: [{ id: 9001, url: '/component-images/9001/content', orderIndex: 0 }],
+  images: [
+    {
+      id: 9001,
+      url: '/component-images/9001/content',
+      thumbnailUrl: '/component-images/9001/thumbnail',
+      orderIndex: 0,
+    },
+  ],
 };
 
 function useHandlers(overrides?: { component?: Component }) {
@@ -103,6 +110,7 @@ function useHandlers(overrides?: { component?: Component }) {
       const createdImage = {
         id: 9002,
         url: '/component-images/9002/content',
+        thumbnailUrl: '/component-images/9002/thumbnail',
         orderIndex: currentImages.length,
       };
       currentImages = [...currentImages, createdImage];
@@ -155,6 +163,20 @@ afterEach(() => {
 });
 
 describe('component details and form', () => {
+  it('shows separate value fields for each attribute ID even with identical names', async () => {
+    useHandlers();
+    server.use(
+      http.get(`${testApiBaseUrl}/component-types/11/attributes`, () =>
+        HttpResponse.json([attributes[0]!, { ...attributes[0]!, id: 9999 }]),
+      ),
+    );
+    renderRoute('/components/501/edit');
+    const fields = await screen.findAllByRole('textbox', { name: 'Сокет' }, { timeout: 5_000 });
+    expect(fields).toHaveLength(2);
+    expect(fields[0]).toHaveValue('AM5');
+    expect(fields[1]).toHaveValue('');
+  });
+
   it('creates a component with fields for every attribute data type', async () => {
     const user = userEvent.setup();
     let submittedBody: unknown;
@@ -237,7 +259,7 @@ describe('component details and form', () => {
     await waitFor(() =>
       expect(container.querySelector('img')).toHaveAttribute(
         'src',
-        '/api/component-images/9001/content',
+        '/api/component-images/9001/thumbnail',
       ),
     );
 
@@ -283,7 +305,12 @@ describe('component details and form', () => {
       http.post(testApiBaseUrl + '/components/:id/images', ({ request }) => {
         uploadContentType = request.headers.get('content-type');
         return HttpResponse.json(
-          { id: 9002, url: '/component-images/9002/content', orderIndex: 1 },
+          {
+            id: 9002,
+            url: '/component-images/9002/content',
+            thumbnailUrl: '/component-images/9002/thumbnail',
+            orderIndex: 1,
+          },
           { status: 201 },
         );
       }),
@@ -320,8 +347,18 @@ describe('component details and form', () => {
       component: {
         ...component,
         images: [
-          { id: 9001, url: '/component-images/9001/content', orderIndex: 0 },
-          { id: 9002, url: '/component-images/9002/content', orderIndex: 1 },
+          {
+            id: 9001,
+            url: '/component-images/9001/content',
+            thumbnailUrl: '/component-images/9001/thumbnail',
+            orderIndex: 0,
+          },
+          {
+            id: 9002,
+            url: '/component-images/9002/content',
+            thumbnailUrl: '/component-images/9002/thumbnail',
+            orderIndex: 1,
+          },
         ],
       },
     });
@@ -329,8 +366,18 @@ describe('component details and form', () => {
       http.put(testApiBaseUrl + '/components/:id/images/order', async ({ request }) => {
         submittedOrder = await request.json();
         return HttpResponse.json([
-          { id: 9002, url: '/component-images/9002/content', orderIndex: 0 },
-          { id: 9001, url: '/component-images/9001/content', orderIndex: 1 },
+          {
+            id: 9002,
+            url: '/component-images/9002/content',
+            thumbnailUrl: '/component-images/9002/thumbnail',
+            orderIndex: 0,
+          },
+          {
+            id: 9001,
+            url: '/component-images/9001/content',
+            thumbnailUrl: '/component-images/9001/thumbnail',
+            orderIndex: 1,
+          },
         ]);
       }),
     );
@@ -349,6 +396,63 @@ describe('component details and form', () => {
 
     expect(await screen.findByText('Порядок изображений сохранён')).toBeInTheDocument();
     expect(submittedOrder).toEqual({ imageIds: [9002, 9001] });
+  });
+
+  it('makes a chosen image primary and preserves the relative order of the other images', async () => {
+    const user = userEvent.setup();
+    const images = [1, 2, 3].map((n) => ({
+      id: 9000 + n,
+      url: `/component-images/${9000 + n}/content`,
+      thumbnailUrl: `/component-images/${9000 + n}/thumbnail`,
+      orderIndex: n - 1,
+    }));
+    useHandlers({ component: { ...component, images } });
+    let submittedOrder: unknown;
+    server.use(
+      http.put(testApiBaseUrl + '/components/:id/images/order', async ({ request }) => {
+        submittedOrder = await request.json();
+        return HttpResponse.json(
+          [images[2], images[0], images[1]].map((image, orderIndex) => ({ ...image, orderIndex })),
+        );
+      }),
+    );
+    renderRoute('/components/501');
+    await user.click(
+      await screen.findByRole('button', { name: 'Сделать изображение 3 заглавным' }),
+    );
+    expect(await screen.findByText('Заглавное изображение изменено')).toBeInTheDocument();
+    expect(submittedOrder).toEqual({ imageIds: [9003, 9001, 9002] });
+    expect(
+      within(screen.getByRole('button', { name: 'Открыть изображение 1' })).getByRole('img'),
+    ).toHaveAttribute('src', '/api/component-images/9003/thumbnail');
+    expect(screen.getByText('Заглавное', { exact: true })).toBeInTheDocument();
+  });
+
+  it('retains the saved primary image when the server rejects a stale selection', async () => {
+    const user = userEvent.setup();
+    const images = [1, 2].map((n) => ({
+      id: 9000 + n,
+      url: `/component-images/${9000 + n}/content`,
+      thumbnailUrl: `/component-images/${9000 + n}/thumbnail`,
+      orderIndex: n - 1,
+    }));
+    useHandlers({ component: { ...component, images } });
+    server.use(
+      http.put(testApiBaseUrl + '/components/:id/images/order', () =>
+        HttpResponse.json({ message: 'Image order changed' }, { status: 400 }),
+      ),
+    );
+    renderRoute('/components/501');
+    await user.click(
+      await screen.findByRole('button', { name: 'Сделать изображение 2 заглавным' }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Сделать изображение 2 заглавным' })).toBeEnabled(),
+    );
+    expect(
+      within(screen.getByRole('button', { name: 'Открыть изображение 1' })).getByRole('img'),
+    ).toHaveAttribute('src', '/api/component-images/9001/thumbnail');
+    expect(screen.queryByText('Заглавное изображение изменено')).not.toBeInTheDocument();
   });
 
   it('rejects unsupported files before upload', async () => {

@@ -25,6 +25,7 @@ import {
   IconInfoCircle,
   IconPhoto,
   IconPhotoOff,
+  IconStar,
   IconTrash,
   IconUpload,
   IconX,
@@ -50,6 +51,7 @@ import type { ComponentImage } from '@/shared/api';
 import { showSuccessNotification } from '@/shared/notifications/notifications';
 import { ErrorState, LoadingState } from '@/shared/ui';
 
+import { ComponentThumbnail } from './ComponentThumbnail';
 import classes from './component-image-gallery.module.css';
 
 interface ComponentImageGalleryProps {
@@ -134,6 +136,22 @@ export function ComponentImageGallery({
       showSuccessNotification(t('components.gallery.notifications.reordered'));
     } catch {
       setOrderDraft(null);
+      await galleryQuery.refetch();
+    }
+  };
+
+  const makePrimary = async (imageId: number) => {
+    try {
+      await reorderImages.mutateAsync({
+        domainId,
+        componentId,
+        imageIds: [
+          imageId,
+          ...serverImages.filter((image) => image.id !== imageId).map(({ id }) => id),
+        ],
+      });
+      showSuccessNotification(t('components.gallery.notifications.primaryChanged'));
+    } catch {
       await galleryQuery.refetch();
     }
   };
@@ -238,22 +256,42 @@ export function ComponentImageGallery({
                     aria-label={t('components.gallery.actions.view', { number: index + 1 })}
                     onClick={() => setPreviewImage(image)}
                   >
-                    <Image
-                      src={toComponentImageUrl(image.url)}
-                      alt={t('components.detail.imageAlt', {
-                        name: componentName,
-                        number: index + 1,
-                      })}
-                      radius="sm"
-                      className={classes.image}
-                    />
+                    <div className={classes.image}>
+                      <ComponentThumbnail
+                        image={image}
+                        alt={t('components.detail.imageAlt', {
+                          name: componentName,
+                          number: index + 1,
+                        })}
+                      />
+                    </div>
                   </UnstyledButton>
-                  <Group justify="space-between" wrap="nowrap">
+                  <Group justify="space-between" wrap="wrap" gap="xs">
                     <Badge variant="light">
-                      {t('components.gallery.imageNumber', { number: index + 1 })}
+                      {index === 0
+                        ? t(
+                            isOrdering
+                              ? 'components.gallery.primaryDraft'
+                              : 'components.gallery.primary',
+                          )
+                        : t('components.gallery.imageNumber', { number: index + 1 })}
                     </Badge>
                     {!archived ? (
                       <Group gap={4} wrap="nowrap">
+                        {!isOrdering && index > 0 ? (
+                          <Tooltip label={t('components.gallery.actions.makePrimary')}>
+                            <ActionIcon
+                              variant="subtle"
+                              disabled={mutationPending}
+                              aria-label={t('components.gallery.actions.makePrimaryNamed', {
+                                number: index + 1,
+                              })}
+                              onClick={() => void makePrimary(image.id)}
+                            >
+                              <IconStar size={16} aria-hidden="true" />
+                            </ActionIcon>
+                          </Tooltip>
+                        ) : null}
                         {isOrdering ? (
                           <>
                             <Tooltip label={t('components.gallery.actions.moveEarlier')}>
@@ -347,7 +385,9 @@ export function ComponentImageGallery({
         <Stack gap="md">
           <Text>{t('components.gallery.delete.description')}</Text>
           <Text size="sm" c="dimmed">
-            {t('components.gallery.delete.warning')}
+            {imageToDelete?.id === serverImages[0]?.id
+              ? t('components.gallery.delete.primaryWarning')
+              : t('components.gallery.delete.warning')}
           </Text>
           <Group justify="flex-end">
             <Button

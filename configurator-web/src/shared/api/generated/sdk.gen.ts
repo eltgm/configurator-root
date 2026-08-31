@@ -41,6 +41,9 @@ import type {
   GetComponentImagesByIdContentData,
   GetComponentImagesByIdContentErrors,
   GetComponentImagesByIdContentResponses,
+  GetComponentImagesByIdThumbnailData,
+  GetComponentImagesByIdThumbnailErrors,
+  GetComponentImagesByIdThumbnailResponses,
   GetComponentsByIdData,
   GetComponentsByIdErrors,
   GetComponentsByIdImagesData,
@@ -256,6 +259,8 @@ export const postDomainsDemo = <ThrowOnError extends boolean = false>(
 
 /**
  * Delete domain
+ *
+ * Permanently deletes the domain and all remaining catalog data, including active and archived components, attributes, images and compatibility rules/links. Any saved configuration in the domain, regardless of owner or component state, prevents deletion. Database changes are atomic; image files and thumbnails are cleaned up asynchronously with durable retries. No configuration is deleted by this operation.
  */
 export const deleteDomainsById = <ThrowOnError extends boolean = false>(
   options: Options<DeleteDomainsByIdData, ThrowOnError>,
@@ -416,6 +421,8 @@ export const getDomainsByDomainIdAttributes = <ThrowOnError extends boolean = fa
 
 /**
  * Create a catalog attribute definition in a domain
+ *
+ * Rejects a name already present anywhere in this domain. Reuse existing definitions by ID.
  */
 export const postDomainsByDomainIdAttributes = <ThrowOnError extends boolean = false>(
   options: Options<PostDomainsByDomainIdAttributesData, ThrowOnError>,
@@ -460,6 +467,8 @@ export const getComponentTypesByIdAttributes = <ThrowOnError extends boolean = f
 
 /**
  * Create attribute definition for a component type
+ *
+ * Atomically creates a domain catalog definition and attaches it to the type. Names are unique across the domain.
  */
 export const postComponentTypesByIdAttributes = <ThrowOnError extends boolean = false>(
   options: Options<PostComponentTypesByIdAttributesData, ThrowOnError>,
@@ -728,6 +737,31 @@ export const getComponentImagesByIdContent = <ThrowOnError extends boolean = fal
   });
 
 /**
+ * Get component image thumbnail
+ *
+ * Returns a cached PNG preview fitting within 512 by 512 pixels without upscaling or cropping.
+ * Existing images are processed on first request. Original image bytes remain unchanged.
+ * Object storage remains private; archived component images remain available.
+ *
+ */
+export const getComponentImagesByIdThumbnail = <ThrowOnError extends boolean = false>(
+  options: Options<GetComponentImagesByIdThumbnailData, ThrowOnError>,
+): RequestResult<
+  GetComponentImagesByIdThumbnailResponses,
+  GetComponentImagesByIdThumbnailErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).get<
+    GetComponentImagesByIdThumbnailResponses,
+    GetComponentImagesByIdThumbnailErrors,
+    ThrowOnError
+  >({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/component-images/{id}/thumbnail',
+    ...options,
+  });
+
+/**
  * Get images of component
  *
  * Returns all images of an existing component, including an archived component.
@@ -751,8 +785,8 @@ export const getComponentsByIdImages = <ThrowOnError extends boolean = false>(
 /**
  * Upload image for component
  *
- * Uploads a JPEG, PNG, or WebP image up to 10 MiB to external object storage
- * and attaches it to an active component. If orderIndex is omitted, the image
+ * Uploads a decodable JPEG, PNG, or WebP image up to 10 MiB and 40 megapixels to external object storage
+ * and generates a PNG preview before attaching it to an active component. If orderIndex is omitted, the image
  * is placed after all existing component images.
  *
  */
@@ -779,7 +813,8 @@ export const postComponentsByIdImages = <ThrowOnError extends boolean = false>(
  *
  * Atomically replaces the display order of all images attached to an active component.
  * The request must contain every current image identifier exactly once and no foreign image
- * identifiers. The first identifier receives orderIndex 0, the second 1, and so on.
+ * identifiers. The first identifier receives orderIndex 0 and becomes the primary image,
+ * the second receives 1, and so on. Deleting the first image promotes the next image.
  *
  */
 export const putComponentsByIdImagesOrder = <ThrowOnError extends boolean = false>(

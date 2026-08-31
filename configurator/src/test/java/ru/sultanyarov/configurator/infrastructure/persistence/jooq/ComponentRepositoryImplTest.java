@@ -141,6 +141,17 @@ class ComponentRepositoryImplTest extends AbstractJooqRepositoryTest {
     assertThat(component.getImages())
         .extracting(ComponentImage::id)
         .containsExactly(42L, 43L, 44L, 41L);
+    assertThat(component.getPrimaryImage().id()).isEqualTo(42L);
+    assertThat(
+            repository
+                .findPageByDomainIdComponentTypeIdNameArchived(1L, null, null, false, 0, 10)
+                .items()
+                .getFirst()
+                .getPrimaryImage()
+                .id())
+        .isEqualTo(42L);
+    repository.deleteImageById(42L);
+    assertThat(repository.getById(7L).orElseThrow().getPrimaryImage().id()).isEqualTo(43L);
   }
 
   @Test

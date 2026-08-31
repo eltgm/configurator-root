@@ -11,6 +11,15 @@
   min-width: 0;
 }
 
+.browser-heading {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.cancel-replacement {
+  flex-shrink: 0;
+}
+
 .assembly {
   grid-area: assembly;
   min-width: 0;

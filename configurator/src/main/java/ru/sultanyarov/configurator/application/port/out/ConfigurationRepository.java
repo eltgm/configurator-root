@@ -5,6 +5,9 @@ import ru.sultanyarov.configurator.domain.model.Configuration;
 import ru.sultanyarov.configurator.domain.model.Page;
 
 public interface ConfigurationRepository {
+  /** Includes every configuration in the domain, irrespective of its owner or component state. */
+  boolean existsByDomainId(Long domainId);
+
   Optional<Configuration> create(Configuration configuration);
 
   Optional<Configuration> update(Long id, Long userId, Configuration configuration);

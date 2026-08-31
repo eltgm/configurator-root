@@ -16,13 +16,13 @@ public interface AttributeService {
    * @throws ru.sultanyarov.configurator.domain.exception.NotFoundException if the component type
    *     does not exist
    * @throws ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException if an
-   *     attribute definition with the same name already exists for the component type
+   *     attribute definition with the same case-sensitive name already exists in the domain
    * @throws ru.sultanyarov.configurator.domain.exception.ValidationException if the data type
    *     validation fails (e.g., missing enum values for enum data type)
    */
   AttributeDefinition create(AttributeDefinition attributeDefinition);
 
-  /** Creates a catalog definition without attaching it to a component type. */
+  /** Creates a definition with a domain-unique name without attaching it to a component type. */
   AttributeDefinition createInDomain(Long domainId, AttributeDefinition attributeDefinition);
 
   /** Attaches an existing catalog definition or updates its settings for a component type. */
@@ -41,7 +41,7 @@ public interface AttributeService {
    * @throws ru.sultanyarov.configurator.domain.exception.NotFoundException if no attribute
    *     definition found with the given ID
    * @throws ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException if another
-   *     attribute definition with the same name already exists for the component type
+   *     attribute definition with the same case-sensitive name already exists in the domain
    * @throws ru.sultanyarov.configurator.domain.exception.ValidationException if the data type
    *     validation fails
    */

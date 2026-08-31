@@ -82,7 +82,10 @@ export const resources = {
           title: 'Удалить предметную область?',
           description: 'Область «{{name}}» будет удалена.',
           warning:
-            'Действие необратимо. Если в области есть связанные данные, сервер безопасно отклонит удаление.',
+            'Действие необратимо. Все типы, атрибуты, активные и архивные компоненты, изображения и связи совместимости будут удалены. Если есть конфигурации, сначала удалите их.',
+          confirmName: 'Название области для подтверждения',
+          confirmNameDescription: 'Введите «{{name}}» точно, с учётом регистра и пробелов.',
+          nameMismatch: 'Название должно точно совпадать с названием удаляемой области.',
         },
       },
       configurator: {
@@ -465,13 +468,16 @@ export const resources = {
           imageAlt: '{{name}}, изображение {{number}}',
         },
         gallery: {
-          activeHint: 'Добавляйте изображения и управляйте порядком их показа.',
+          activeHint:
+            'Первое изображение — заглавное: оно показывается в каталоге и конфигураторе.',
+          primary: 'Заглавное',
+          primaryDraft: 'Заглавное после сохранения',
           readOnlyHint: 'Архивная галерея доступна только для просмотра.',
-          imageNumber: 'Изображение {{number}}',
+          imageNumber: 'Фото {{number}}',
           file: {
             label: 'Новое изображение',
             placeholder: 'Выберите файл',
-            description: 'JPEG, PNG или WebP, не более 10 МиБ',
+            description: 'JPEG, PNG или WebP, не более 10 МиБ и 40 мегапикселей',
           },
           states: {
             loading: 'Загрузка галереи',
@@ -483,6 +489,8 @@ export const resources = {
             delete: 'Удалить',
             deleteImage: 'Удалить изображение {{number}}',
             reorder: 'Изменить порядок',
+            makePrimary: 'Сделать заглавным',
+            makePrimaryNamed: 'Сделать изображение {{number}} заглавным',
             moveEarlier: 'Переместить раньше',
             moveLater: 'Переместить позже',
             saveOrder: 'Сохранить порядок',
@@ -499,6 +507,8 @@ export const resources = {
           },
           delete: {
             title: 'Удалить изображение?',
+            primaryWarning:
+              'Заглавным станет следующее изображение. Если изображений не останется, будет показана заглушка.',
             description: 'Изображение будет безвозвратно удалено из галереи.',
             warning: 'Это действие нельзя отменить.',
           },
@@ -510,6 +520,7 @@ export const resources = {
           notifications: {
             uploaded: 'Изображение загружено',
             deleted: 'Изображение удалено',
+            primaryChanged: 'Заглавное изображение изменено',
             reordered: 'Порядок изображений сохранён',
           },
         },
@@ -973,7 +984,11 @@ export const resources = {
           createTitle: 'Новый атрибут',
           editTitle: 'Редактирование атрибута',
           name: 'Системное имя',
-          nameHint: 'Стабильное имя для API и правил совместимости',
+          nameHint: 'Уникальное в области имя для API и правил совместимости (с учётом регистра).',
+          nameAutoHint: 'Заполняется из названия, пока вы не измените его вручную.',
+          nameEditHint:
+            'Для замены сохранённого имени используйте ручной ввод или включите автозаполнение кнопкой ниже.',
+          fillNameFromLabel: 'Заполнять из названия',
           namePlaceholder: 'Например, memory_size',
           label: 'Название для пользователя',
           labelPlaceholder: 'Например, Объём памяти',
@@ -985,6 +1000,8 @@ export const resources = {
           orderIndex: 'Индекс порядка',
           orderIndexHint: 'Меньшие значения показываются раньше',
           validation: {
+            nameUnique:
+              'Атрибут с таким системным именем уже есть в области. Подключите существующий атрибут к типу.',
             nameRequired: 'Введите системное имя',
             nameTooLong: 'Системное имя должно содержать не более 255 символов',
             labelRequired: 'Введите название для пользователя',
@@ -1005,6 +1022,7 @@ export const resources = {
           attribute: 'Атрибут из каталога',
           placeholder: 'Выберите атрибут',
           empty: 'Подходящих атрибутов нет',
+          alreadyLinked: 'уже подключён',
         },
         detach: {
           title: 'Убрать атрибут из типа?',
@@ -1101,6 +1119,8 @@ export const resources = {
           NOT_FOUND: 'Данные не найдены',
           ENTITY_ALREADY_EXISTS: 'Такая запись уже существует',
           ENTITY_HAS_RELATED_ENTITIES: 'Запись используется другими данными',
+          DOMAIN_HAS_CONFIGURATIONS:
+            'Невозможно удалить область: в ней есть конфигурации. Сначала удалите все конфигурации.',
           COMPONENT_ARCHIVED: 'Компонент находится в архиве',
           CONFIGURATION_CONFLICT: 'Компоненты конфигурации несовместимы',
           VALIDATION_ERROR: 'Проверьте введённые данные',
@@ -1205,7 +1225,10 @@ export const resources = {
           title: 'Delete domain?',
           description: 'The “{{name}}” domain will be deleted.',
           warning:
-            'This action cannot be undone. If the domain has related data, the server will safely reject deletion.',
+            'This action cannot be undone. All types, attributes, active and archived components, images and compatibility rules and links will be deleted. Delete any configurations first.',
+          confirmName: 'Domain name for confirmation',
+          confirmNameDescription: 'Enter “{{name}}” exactly, including case and spaces.',
+          nameMismatch: 'The name must exactly match the domain being deleted.',
         },
       },
       configurator: {
@@ -1572,13 +1595,15 @@ export const resources = {
           imageAlt: '{{name}}, image {{number}}',
         },
         gallery: {
-          activeHint: 'Add images and manage their display order.',
+          activeHint: 'The first image is the primary image shown in the catalog and configurator.',
+          primary: 'Primary',
+          primaryDraft: 'Primary after saving',
           readOnlyHint: 'The archived gallery is available in read-only mode.',
           imageNumber: 'Image {{number}}',
           file: {
             label: 'New image',
             placeholder: 'Select a file',
-            description: 'JPEG, PNG, or WebP, up to 10 MiB',
+            description: 'JPEG, PNG, or WebP, up to 10 MiB and 40 megapixels',
           },
           states: {
             loading: 'Loading gallery',
@@ -1590,6 +1615,8 @@ export const resources = {
             delete: 'Delete',
             deleteImage: 'Delete image {{number}}',
             reorder: 'Change order',
+            makePrimary: 'Make primary',
+            makePrimaryNamed: 'Make image {{number}} primary',
             moveEarlier: 'Move earlier',
             moveLater: 'Move later',
             saveOrder: 'Save order',
@@ -1606,6 +1633,8 @@ export const resources = {
           },
           delete: {
             title: 'Delete image?',
+            primaryWarning:
+              'The next image will become primary. If none remain, a placeholder will be shown.',
             description: 'The image will be permanently removed from the gallery.',
             warning: 'This action cannot be undone.',
           },
@@ -1617,6 +1646,7 @@ export const resources = {
           notifications: {
             uploaded: 'Image uploaded',
             deleted: 'Image deleted',
+            primaryChanged: 'Primary image changed',
             reordered: 'Image order saved',
           },
         },
@@ -2055,8 +2085,13 @@ export const resources = {
           createTitle: 'New attribute',
           editTitle: 'Edit attribute',
           name: 'System name',
-          nameHint: 'A stable name for the API and compatibility rules',
+          nameHint:
+            'A case-sensitive name unique within the domain, used by the API and compatibility rules.',
           namePlaceholder: 'For example, memory_size',
+          nameAutoHint: 'Filled from the display name until you edit it manually.',
+          nameEditHint:
+            'To replace the saved name, edit it manually or enable autofill using the button below.',
+          fillNameFromLabel: 'Fill from display name',
           label: 'User-facing name',
           labelPlaceholder: 'For example, Memory size',
           dataType: 'Data type',
@@ -2067,6 +2102,8 @@ export const resources = {
           orderIndex: 'Order index',
           orderIndexHint: 'Lower values are shown first',
           validation: {
+            nameUnique:
+              'An attribute with this system name already exists in the domain. Attach the existing attribute to the type.',
             nameRequired: 'Enter a system name',
             nameTooLong: 'The system name must contain no more than 255 characters',
             labelRequired: 'Enter a user-facing name',
@@ -2087,6 +2124,7 @@ export const resources = {
           attribute: 'Catalog attribute',
           placeholder: 'Select an attribute',
           empty: 'No suitable attributes',
+          alreadyLinked: 'already attached',
         },
         detach: {
           title: 'Remove attribute from this type?',
@@ -2179,6 +2217,8 @@ export const resources = {
           NOT_FOUND: 'Data was not found',
           ENTITY_ALREADY_EXISTS: 'This record already exists',
           ENTITY_HAS_RELATED_ENTITIES: 'The record is used by other data',
+          DOMAIN_HAS_CONFIGURATIONS:
+            'Cannot delete the domain because it has configurations. Delete all configurations first.',
           COMPONENT_ARCHIVED: 'The component is archived',
           CONFIGURATION_CONFLICT: 'Configuration components are incompatible',
           VALIDATION_ERROR: 'Check the entered data',

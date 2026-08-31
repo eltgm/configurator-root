@@ -61,7 +61,7 @@ class AttributeServiceImplTest {
     assertThat(result.componentTypeId()).isEqualTo(10L);
     assertThat(result.isRequired()).isTrue();
     assertThat(result.orderIndex()).isEqualTo(2);
-    verify(attributeRepository).hasByComponentTypeIdAndName(10L, "socket");
+    verify(attributeRepository).existsByDomainIdAndName(1L, "socket", null);
   }
 
   @Test
@@ -76,9 +76,10 @@ class AttributeServiceImplTest {
   }
 
   @Test
-  void create_shouldRejectDuplicateNameInComponentType() {
+  void create_shouldRejectDuplicateNameAnywhereInDomain() {
     when(componentTypeRepository.getComponentTypeById(10L)).thenReturn(Optional.of(type(10L, 1L)));
-    when(attributeRepository.hasByComponentTypeIdAndName(10L, "socket")).thenReturn(true);
+    when(domainRepository.existsById(1L)).thenReturn(true);
+    when(attributeRepository.existsByDomainIdAndName(1L, "socket", null)).thenReturn(true);
 
     assertThatThrownBy(
             () -> attributeService.create(linkedRequest(10L, "socket", DataType.STRING, Set.of())))
@@ -118,7 +119,7 @@ class AttributeServiceImplTest {
     assertThat(result.componentTypeId()).isEqualTo(20L);
     assertThat(result.isRequired()).isFalse();
     assertThat(result.orderIndex()).isEqualTo(4);
-    verify(attributeRepository).hasByComponentTypeIdAndName(20L, "socket");
+    verify(attributeRepository, never()).createAttributeDefinition(any());
   }
 
   @Test
@@ -171,8 +172,6 @@ class AttributeServiceImplTest {
             .enumValues(Set.of())
             .build();
     when(attributeRepository.getById(101L)).thenReturn(Optional.of(existing));
-    when(componentTypeAttributeRepository.getComponentTypeIdsByAttributeDefinitionId(101L))
-        .thenReturn(List.of(10L, 20L));
     when(attributeRepository.updateAttribute(eq(101L), any()))
         .thenAnswer(invocation -> Optional.of(invocation.getArgument(1)));
 
@@ -181,8 +180,7 @@ class AttributeServiceImplTest {
     assertThat(result.id()).isEqualTo(101L);
     assertThat(result.domainId()).isEqualTo(1L);
     assertThat(result.name()).isEqualTo("connector");
-    verify(attributeRepository).hasByComponentTypeIdAndName(10L, "connector");
-    verify(attributeRepository).hasByComponentTypeIdAndName(20L, "connector");
+    verify(attributeRepository).existsByDomainIdAndName(1L, "connector", 101L);
   }
 
   @Test
@@ -246,6 +244,41 @@ class AttributeServiceImplTest {
         .thenReturn(List.of(10L, 20L));
 
     assertThat(attributeService.getComponentTypeIds(101L)).containsExactly(10L, 20L);
+  }
+
+  @Test
+  void catalogCreate_shouldRejectDuplicateWithoutAnyTypeLinks() {
+    when(domainRepository.existsById(1L)).thenReturn(true);
+    when(attributeRepository.existsByDomainIdAndName(1L, "socket", null)).thenReturn(true);
+    assertThatThrownBy(
+            () ->
+                attributeService.createInDomain(
+                    1L, catalogDefinition(null, 1L, "socket", DataType.STRING)))
+        .isInstanceOf(EntityAlreadyExistsException.class);
+    verify(attributeRepository, never()).createAttributeDefinition(any());
+    verify(componentTypeAttributeRepository, never()).save(any());
+  }
+
+  @Test
+  void update_shouldRejectDuplicateWithoutAnyTypeLinks() {
+    when(attributeRepository.getById(101L))
+        .thenReturn(Optional.of(catalogDefinition(101L, 1L, "socket", DataType.STRING)));
+    when(attributeRepository.existsByDomainIdAndName(1L, "connector", 101L)).thenReturn(true);
+    assertThatThrownBy(
+            () ->
+                attributeService.update(
+                    101L, catalogDefinition(null, 1L, "connector", DataType.STRING)))
+        .isInstanceOf(EntityAlreadyExistsException.class);
+    verify(attributeRepository, never()).updateAttribute(anyLong(), any());
+  }
+
+  @Test
+  void update_shouldAllowUnchangedNameAndExcludeItsOwnId() {
+    var definition = catalogDefinition(101L, 1L, "socket", DataType.STRING);
+    when(attributeRepository.getById(101L)).thenReturn(Optional.of(definition));
+    when(attributeRepository.updateAttribute(eq(101L), any())).thenReturn(Optional.of(definition));
+    assertThat(attributeService.update(101L, definition)).isEqualTo(definition);
+    verify(attributeRepository).existsByDomainIdAndName(1L, "socket", 101L);
   }
 
   private static AttributeDefinition linkedRequest(

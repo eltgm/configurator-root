@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -51,8 +52,10 @@ class MinioComponentImageStorageTest {
 
     verify(minioClient).makeBucket(any(MakeBucketArgs.class));
     ArgumentCaptor<PutObjectArgs> argsCaptor = ArgumentCaptor.forClass(PutObjectArgs.class);
-    verify(minioClient).putObject(argsCaptor.capture());
-    PutObjectArgs args = argsCaptor.getValue();
+    verify(minioClient, times(2)).putObject(argsCaptor.capture());
+    PutObjectArgs args = argsCaptor.getAllValues().getFirst();
+    assertThat(argsCaptor.getAllValues().getLast().object())
+        .isEqualTo(args.object() + ".thumbnail-v1.png");
     assertThat(args.bucket()).isEqualTo("configurator-components");
     assertThat(args.object()).startsWith("components/7/").endsWith(".png");
     assertThat(args.contentType().toString()).isEqualTo("image/png");
@@ -142,12 +145,71 @@ class MinioComponentImageStorageTest {
     storage.delete("components/7/image.webp");
 
     ArgumentCaptor<RemoveObjectArgs> argsCaptor = ArgumentCaptor.forClass(RemoveObjectArgs.class);
-    verify(minioClient).removeObject(argsCaptor.capture());
+    verify(minioClient, times(2)).removeObject(argsCaptor.capture());
+    assertThat(argsCaptor.getAllValues().getFirst().object())
+        .isEqualTo("components/7/image.webp.thumbnail-v1.png");
     assertThat(argsCaptor.getValue().bucket()).isEqualTo("configurator-components");
     assertThat(argsCaptor.getValue().object()).isEqualTo("components/7/image.webp");
   }
 
+  @Test
+  void thumbnail_shouldUseCachedObjectWithoutReadingOriginal() throws Exception {
+    when(minioClient.getObject(any(GetObjectArgs.class))).thenReturn(response(png()));
+    assertThat(storage.readThumbnail("components/7/image.png").content()).containsExactly(png());
+    var captor = ArgumentCaptor.forClass(GetObjectArgs.class);
+    verify(minioClient).getObject(captor.capture());
+    assertThat(captor.getValue().object()).endsWith(".thumbnail-v1.png");
+    verify(minioClient, never()).putObject(any(PutObjectArgs.class));
+  }
+
+  @Test
+  void thumbnail_shouldGenerateLegacyCopyOnlyForMissingKey() throws Exception {
+    var missing = org.mockito.Mockito.mock(io.minio.errors.ErrorResponseException.class);
+    var error = org.mockito.Mockito.mock(io.minio.messages.ErrorResponse.class);
+    when(missing.errorResponse()).thenReturn(error);
+    when(error.code()).thenReturn("NoSuchKey");
+    when(minioClient.getObject(any(GetObjectArgs.class)))
+        .thenThrow(missing)
+        .thenReturn(response(png()));
+    var result = storage.readThumbnail("components/7/image.png");
+    assertThat(result.contentType()).isEqualTo("image/png");
+    var putCaptor = ArgumentCaptor.forClass(PutObjectArgs.class);
+    verify(minioClient).putObject(putCaptor.capture());
+    assertThat(putCaptor.getValue().object()).isEqualTo("components/7/image.png.thumbnail-v1.png");
+  }
+
+  @Test
+  void thumbnail_shouldNotRegenerateOnStorageOutage() throws Exception {
+    when(minioClient.getObject(any(GetObjectArgs.class)))
+        .thenThrow(new IllegalStateException("unavailable"));
+    assertThatThrownBy(() -> storage.readThumbnail("components/7/image.png"))
+        .isInstanceOf(ExternalStorageException.class);
+    verify(minioClient, never()).putObject(any(PutObjectArgs.class));
+  }
+
+  @Test
+  void store_shouldRemoveBothObjectsWhenThumbnailUploadFails() throws Exception {
+    when(minioClient.bucketExists(any(BucketExistsArgs.class))).thenReturn(true);
+    when(minioClient.putObject(any(PutObjectArgs.class)))
+        .thenReturn(null)
+        .thenThrow(new IllegalStateException("unavailable"));
+    assertThatThrownBy(() -> storage.store(7L, new ComponentImageUpload(png(), "image/png")))
+        .isInstanceOf(ExternalStorageException.class);
+    verify(minioClient, times(2)).removeObject(any(RemoveObjectArgs.class));
+  }
+
+  private static GetObjectResponse response(byte[] bytes) {
+    return new GetObjectResponse(
+        new Headers.Builder().add("Content-Type", "image/png").build(),
+        "configurator-components",
+        null,
+        "image",
+        new ByteArrayInputStream(bytes));
+  }
+
   private static byte[] png() {
-    return new byte[] {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+    return java.util.Base64.getDecoder()
+        .decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
   }
 }

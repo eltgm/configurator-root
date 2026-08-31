@@ -1,6 +1,13 @@
 spring:
   datasource:
-    url: jdbc:tc:postgresql:16-alpine:///configurator
+    url: jdbc:tc:postgresql:17-alpine:///configurator
     driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
     username: configurator
     password: configurator
+
+# Persistence tests drive cleanup explicitly; background work must not race SQL fixtures.
+app:
+  storage:
+    component-images:
+      cleanup:
+        enabled: false

@@ -16,7 +16,7 @@ import {
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { IconAlertTriangle, IconSearch, IconX } from '@tabler/icons-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
@@ -50,6 +50,7 @@ import { EmptyState, ErrorState, LoadingState } from '@/shared/ui';
 import classes from './configurator-workspace.module.css';
 
 interface AvailableComponentBrowserProps {
+  headingRef?: Ref<HTMLHeadingElement>;
   domainId: number;
   componentTypes: ReadonlyArray<ComponentType>;
   componentTypesLoading: boolean;
@@ -65,6 +66,7 @@ interface AvailableComponentBrowserProps {
 }
 
 export function AvailableComponentBrowser({
+  headingRef,
   domainId,
   componentTypes,
   componentTypesLoading,
@@ -233,6 +235,7 @@ export function AvailableComponentBrowser({
   return (
     <>
       <Paper
+        id="available-components-browser"
         component="section"
         aria-labelledby="available-components-title"
         className={classes.browser}
@@ -240,9 +243,15 @@ export function AvailableComponentBrowser({
         withBorder
       >
         <Stack gap="lg">
-          <Group justify="space-between" align="flex-start" wrap="nowrap">
-            <Stack gap={4}>
-              <Title id="available-components-title" order={2} size="h3">
+          <Group justify="space-between" align="flex-start" wrap="wrap">
+            <Stack gap={4} className={classes['browser-heading']}>
+              <Title
+                ref={headingRef}
+                tabIndex={headingRef ? -1 : undefined}
+                id="available-components-title"
+                order={2}
+                size="h3"
+              >
                 {replacementTarget
                   ? t('configurator.browser.replacementTitle')
                   : t('configurator.browser.title')}
@@ -266,6 +275,7 @@ export function AvailableComponentBrowser({
             </Stack>
             {replacementTarget ? (
               <Button
+                className={classes['cancel-replacement']}
                 size="xs"
                 variant="subtle"
                 leftSection={<IconX size={14} />}

@@ -11,7 +11,51 @@ import { queryClient } from '@/shared/query/query-client';
 import { server, testApiBaseUrl } from '@/test/server';
 
 describe('AttachAttributeModal', () => {
-  it('filters linked definitions and attaches the selected catalog attribute with type settings', async () => {
+  it('shows every same-name record and disables only linked IDs', async () => {
+    const user = userEvent.setup();
+    const catalog = [501, 502, 503].map((id) => ({
+      id,
+      domainId: 101,
+      name: 'socket',
+      label: 'Сокет',
+      dataType: 'STRING' as const,
+      componentTypeIds: id === 503 ? [11] : [],
+    }));
+    server.use(
+      http.get(`${testApiBaseUrl}/domains/101/attributes`, () => HttpResponse.json(catalog)),
+    );
+    render(
+      <AppProviders>
+        <AttachAttributeModal
+          opened
+          domainId={101}
+          componentTypeId={11}
+          linkedAttributes={[catalog[0]!]}
+          onClose={vi.fn()}
+        />
+      </AppProviders>,
+    );
+    const select = await screen.findByRole('combobox', { name: 'Атрибут из каталога' });
+    await waitFor(() =>
+      expect(queryClient.getQueryData(attributeKeys.catalog(101))).toHaveLength(3),
+    );
+    await waitFor(() => expect(select).toBeEnabled());
+    await user.type(select, 'Сокет');
+    // JSDOM has no layout: Mantine's floating dropdown is hidden for a zero-width anchor.
+    // Browser E2E verifies visibility; here inspect all rendered options and keyboard selection.
+    expect(await screen.findAllByRole('option', { hidden: true })).toHaveLength(3);
+    const linked = screen.getAllByRole('option', {
+      name: 'Сокет (socket) — уже подключён',
+      hidden: true,
+    });
+    expect(linked).toHaveLength(2);
+    linked.forEach((option) => expect(option).toHaveAttribute('data-combobox-disabled', 'true'));
+    await user.keyboard('{ArrowDown}{Enter}');
+    expect(select).toHaveValue('Сокет (socket)');
+    expect(screen.getByRole('button', { name: 'Подключить' })).toBeEnabled();
+  });
+
+  it('marks linked definitions and attaches the selected catalog attribute with type settings', async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     let submitted: ComponentTypeAttributeSettingsRequest | undefined;

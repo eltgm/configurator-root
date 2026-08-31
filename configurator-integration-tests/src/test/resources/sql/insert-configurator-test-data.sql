@@ -19,17 +19,15 @@ INSERT INTO attribute_definition (
 VALUES (101, 1, 'socket', 'Socket', 'STRING', NOW()),
        (102, 1, 'power', 'Power', 'NUMBER', NOW()),
        (103, 1, 'feature', 'Feature', 'BOOLEAN', NOW()),
-       (201, 1, 'socket', 'Socket', 'STRING', NOW()),
-       (202, 1, 'power_limit', 'Power limit', 'NUMBER', NOW()),
-       (203, 1, 'feature', 'Feature', 'BOOLEAN', NOW());
+       (202, 1, 'power_limit', 'Power limit', 'NUMBER', NOW());
 
 INSERT INTO component_type_attribute (component_type_id, attribute_definition_id, is_required, order_index, created_at)
 VALUES (10, 101, true, 1, NOW()),
        (10, 102, true, 2, NOW()),
        (10, 103, false, 3, NOW()),
-       (20, 201, true, 1, NOW()),
+       (20, 101, true, 1, NOW()),
        (20, 202, true, 2, NOW()),
-       (20, 203, false, 3, NOW());
+       (20, 103, false, 3, NOW());
 
 INSERT INTO component (
     id,
@@ -61,18 +59,18 @@ INSERT INTO attribute_value (
 VALUES (1001, 1, 101, 'AM5', NULL, NULL),
        (1002, 1, 102, NULL, 100, NULL),
        (1003, 1, 103, NULL, NULL, true),
-       (2001, 2, 201, 'AM5', NULL, NULL),
+       (2001, 2, 101, 'AM5', NULL, NULL),
        (2002, 2, 202, NULL, 200, NULL),
-       (2003, 2, 203, NULL, NULL, true),
-       (3001, 3, 201, 'AM4', NULL, NULL),
+       (2003, 2, 103, NULL, NULL, true),
+       (3001, 3, 101, 'AM4', NULL, NULL),
        (3002, 3, 202, NULL, 200, NULL),
-       (3003, 3, 203, NULL, NULL, false),
-       (4001, 4, 201, 'AM5', NULL, NULL),
+       (3003, 3, 103, NULL, NULL, false),
+       (4001, 4, 101, 'AM5', NULL, NULL),
        (4002, 4, 202, NULL, 200, NULL),
-       (4003, 4, 203, NULL, NULL, true),
-       (6001, 6, 201, 'AM4', NULL, NULL),
+       (4003, 4, 103, NULL, NULL, true),
+       (6001, 6, 101, 'AM4', NULL, NULL),
        (6002, 6, 202, NULL, 200, NULL),
-       (6003, 6, 203, NULL, NULL, true);
+       (6003, 6, 103, NULL, NULL, true);
 
 INSERT INTO compatibility_rule_set (
     id,
@@ -95,9 +93,9 @@ INSERT INTO compatibility_rule_condition (
     order_index,
     created_at
 )
-VALUES (7101, 701, 101, 'EQUALS', 201, 0, NOW()),
+VALUES (7101, 701, 101, 'EQUALS', 101, 0, NOW()),
        (7102, 701, 102, 'LTE', 202, 1, NOW()),
-       (7201, 702, 103, 'EQUALS', 203, 0, NOW());
+       (7201, 702, 103, 'EQUALS', 103, 0, NOW());
 
 INSERT INTO compatibility_link (
     id,

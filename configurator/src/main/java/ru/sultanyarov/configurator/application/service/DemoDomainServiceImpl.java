@@ -87,8 +87,7 @@ public class DemoDomainServiceImpl implements DemoDomainService {
         createEnumAttribute(types.cpu(), "socket", "Сокет", Set.of("AM5", "LGA1700"), 0);
     AttributeDefinition cpuTdp = createNumberAttribute(types.cpu(), "tdp", "Теплопакет, Вт", 1);
 
-    AttributeDefinition motherboardSocket =
-        createEnumAttribute(types.motherboard(), "socket", "Сокет", Set.of("AM5", "LGA1700"), 0);
+    AttributeDefinition motherboardSocket = attachAttribute(types.motherboard(), cpuSocket, 0);
     AttributeDefinition motherboardMemory =
         createEnumAttribute(
             types.motherboard(), "memory_standard", "Стандарт памяти", Set.of("DDR4", "DDR5"), 1);
@@ -96,9 +95,7 @@ public class DemoDomainServiceImpl implements DemoDomainService {
         createEnumAttribute(
             types.motherboard(), "form_factor", "Форм-фактор", Set.of("ATX", "MICRO_ATX"), 2);
 
-    AttributeDefinition memoryStandard =
-        createEnumAttribute(
-            types.memory(), "memory_standard", "Стандарт памяти", Set.of("DDR4", "DDR5"), 0);
+    AttributeDefinition memoryStandard = attachAttribute(types.memory(), motherboardMemory, 0);
     AttributeDefinition memoryCapacity =
         createNumberAttribute(types.memory(), "capacity_gb", "Объём, ГБ", 1);
 
@@ -108,9 +105,7 @@ public class DemoDomainServiceImpl implements DemoDomainService {
 
     AttributeDefinition psuPower = createNumberAttribute(types.psu(), "power", "Мощность, Вт", 0);
 
-    AttributeDefinition caseFormFactor =
-        createEnumAttribute(
-            types.pcCase(), "form_factor", "Форм-фактор", Set.of("ATX", "MICRO_ATX"), 0);
+    AttributeDefinition caseFormFactor = attachAttribute(types.pcCase(), motherboardFormFactor, 0);
     AttributeDefinition caseMaxGpuLength =
         createNumberAttribute(
             types.pcCase(), "max_gpu_length_mm", "Максимальная длина видеокарты, мм", 1);
@@ -147,16 +142,22 @@ public class DemoDomainServiceImpl implements DemoDomainService {
       DataType dataType,
       Set<String> enumValues,
       int orderIndex) {
-    return attributeService.create(
-        AttributeDefinition.builder()
-            .componentTypeId(type.id())
-            .name(name)
-            .label(label)
-            .dataType(dataType)
-            .enumValues(enumValues)
-            .isRequired(true)
-            .orderIndex(orderIndex)
-            .build());
+    AttributeDefinition definition =
+        attributeService.createInDomain(
+            type.domainId(),
+            AttributeDefinition.builder()
+                .domainId(type.domainId())
+                .name(name)
+                .label(label)
+                .dataType(dataType)
+                .enumValues(enumValues)
+                .build());
+    return attachAttribute(type, definition, orderIndex);
+  }
+
+  private AttributeDefinition attachAttribute(
+      ComponentType type, AttributeDefinition definition, int orderIndex) {
+    return attributeService.attachToComponentType(type.id(), definition.id(), true, orderIndex);
   }
 
   private DemoComponents createComponents(DemoTypes types, DemoAttributes attributes) {

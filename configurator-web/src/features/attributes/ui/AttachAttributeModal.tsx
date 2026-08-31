@@ -30,14 +30,20 @@ export function AttachAttributeModal({
   const [attributeId, setAttributeId] = useState<string | null>(null);
   const [isRequired, setIsRequired] = useState(false);
   const [orderIndex, setOrderIndex] = useState<number | string>('');
-  const linkedNames = useMemo(
-    () => new Set(linkedAttributes.map((attribute) => attribute.name)),
+  const linkedIds = useMemo(
+    () => new Set(linkedAttributes.map((attribute) => attribute.id)),
     [linkedAttributes],
   );
-  const available = (catalogQuery.data ?? []).filter(
-    (attribute) =>
-      !attribute.componentTypeIds?.includes(componentTypeId) && !linkedNames.has(attribute.name),
-  );
+  const options = (catalogQuery.data ?? []).map((attribute) => {
+    const linked =
+      linkedIds.has(attribute.id) || attribute.componentTypeIds?.includes(componentTypeId);
+    return {
+      value: String(attribute.id),
+      label: `${attribute.label} (${attribute.name})${linked ? ` — ${t('attributes.attach.alreadyLinked')}` : ''}`,
+      disabled: Boolean(linked),
+    };
+  });
+  const canAttach = options.some((option) => option.value === attributeId && !option.disabled);
 
   const close = () => {
     if (!attachAttribute.isPending) {
@@ -49,7 +55,7 @@ export function AttachAttributeModal({
   };
 
   const submit = async () => {
-    if (!attributeId) {
+    if (!attributeId || !canAttach) {
       return;
     }
     try {
@@ -85,10 +91,7 @@ export function AttachAttributeModal({
         <Select
           label={t('attributes.attach.attribute')}
           placeholder={t('attributes.attach.placeholder')}
-          data={available.map((attribute) => ({
-            value: String(attribute.id),
-            label: `${attribute.label} (${attribute.name})`,
-          }))}
+          data={options}
           value={attributeId}
           onChange={setAttributeId}
           searchable
@@ -116,7 +119,7 @@ export function AttachAttributeModal({
           </Button>
           <Button
             onClick={() => void submit()}
-            disabled={!attributeId}
+            disabled={!canAttach}
             loading={attachAttribute.isPending}
           >
             {t('attributes.actions.attach')}

@@ -51,3 +51,47 @@ test('blocks requests outside the local frontend boundary', async ({ page }) => 
 
   expect(errorName).toBe('TypeError');
 });
+
+test('mock API rejects duplicate catalog names consistently including rename conflicts', async ({
+  page,
+}) => {
+  await page.goto('/settings/attributes');
+  const result = await page.evaluate(async () => {
+    const write = async (path: string, name: string, method = 'POST') => {
+      const response = await fetch('/api' + path, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, label: 'Same label', dataType: 'STRING' }),
+      });
+      return {
+        status: response.status,
+        body: (await response.json()) as { id: number; details?: Array<{ field: string }> },
+      };
+    };
+    const created = await write('/domains/101/attributes', 'shared');
+    const catalogConflict = await write('/domains/101/attributes', 'shared');
+    const typeConflict = await write('/component-types/12/attributes', 'shared');
+    const second = await write('/component-types/12/attributes', 'second');
+    const renameConflict = await write('/attributes/' + second.body.id, 'shared', 'PUT');
+    const ownName = await write('/attributes/' + created.body.id, 'shared', 'PUT');
+    const otherDomain = await write('/domains/202/attributes', 'shared');
+    const caseVariant = await write('/domains/101/attributes', 'Shared');
+    return {
+      statuses: [
+        created,
+        catalogConflict,
+        typeConflict,
+        second,
+        renameConflict,
+        ownName,
+        otherDomain,
+        caseVariant,
+      ].map((r) => r.status),
+      fields: [catalogConflict, typeConflict, renameConflict].map(
+        (r) => r.body.details?.[0]?.field,
+      ),
+    };
+  });
+  expect(result.statuses).toEqual([201, 409, 409, 201, 409, 200, 201, 201]);
+  expect(result.fields).toEqual(['name', 'name', 'name']);
+});

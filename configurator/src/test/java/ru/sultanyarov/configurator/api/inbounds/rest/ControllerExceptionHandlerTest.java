@@ -29,9 +29,11 @@ import ru.sultanyarov.configurator.api.inbounds.rest.advice.ControllerExceptionH
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorDetail;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ErrorResponse;
+import ru.sultanyarov.configurator.domain.exception.AttributeNameConflictException;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
 import ru.sultanyarov.configurator.domain.exception.ComponentArchivedException;
 import ru.sultanyarov.configurator.domain.exception.ConfigurationConflictException;
+import ru.sultanyarov.configurator.domain.exception.DomainHasConfigurationsException;
 import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
 import ru.sultanyarov.configurator.domain.exception.EntityHasRelatedEntitiesException;
 import ru.sultanyarov.configurator.domain.exception.ExternalStorageException;
@@ -94,6 +96,27 @@ class ControllerExceptionHandlerTest {
         HttpStatus.CONFLICT,
         ApiErrorCode.CONFIGURATION_CONFLICT,
         "incompatible");
+  }
+
+  @Test
+  void domainWithConfigurations_shouldReturnSpecificConflict() {
+    var exception = new DomainHasConfigurationsException(1L);
+    assertErrorResponse(
+        handler.handleEntityAlreadyExistsException(exception, request),
+        HttpStatus.CONFLICT,
+        ApiErrorCode.DOMAIN_HAS_CONFIGURATIONS,
+        exception.getMessage());
+  }
+
+  @Test
+  void attributeNameConflict_shouldIdentifyTheNameField() {
+    var exception = new AttributeNameConflictException(1L, "socket");
+    assertErrorResponse(
+        handler.handleEntityAlreadyExistsException(exception, request),
+        HttpStatus.CONFLICT,
+        ApiErrorCode.ENTITY_ALREADY_EXISTS,
+        exception.getMessage(),
+        List.of(new ApiErrorDetail("ENTITY_ALREADY_EXISTS", exception.getMessage()).field("name")));
   }
 
   @Test

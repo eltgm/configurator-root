@@ -51,6 +51,7 @@ public class ComponentRepositoryImpl implements ComponentRepository {
                 COMPONENT.CREATED_AT));
     fields.add(attributeValuesField());
     fields.add(imagesField());
+    fields.add(ComponentImageFields.primaryImage());
 
     return dslContext
         .select(fields)
@@ -180,7 +181,11 @@ public class ComponentRepositoryImpl implements ComponentRepository {
 
     return jooqPage(
         dslContext,
-        dslContext.selectFrom(COMPONENT).where(condition).orderBy(List.of(COMPONENT.ID)),
+        dslContext
+            .select(COMPONENT.asterisk(), ComponentImageFields.primaryImage())
+            .from(COMPONENT)
+            .where(condition)
+            .orderBy(List.of(COMPONENT.ID)),
         condition,
         COMPONENT,
         page,
@@ -200,6 +205,7 @@ public class ComponentRepositoryImpl implements ComponentRepository {
             .createdAt(componentRecord.get(COMPONENT.CREATED_AT))
             .attributes(JooqMapperUtils.getListOrNull(componentRecord, "attributes"))
             .images(JooqMapperUtils.getListOrNull(componentRecord, "images"))
+            .primaryImage(ComponentImageFields.readPrimaryImage(componentRecord))
             .build();
   }
 
