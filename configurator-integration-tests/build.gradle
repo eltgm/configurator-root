@@ -24,7 +24,7 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testImplementation 'org.springframework.boot:spring-boot-starter-web'
     testImplementation 'org.springframework:spring-jdbc'
-    testImplementation 'org.flywaydb:flyway-core:11.17.0'
+    testImplementation 'org.flywaydb:flyway-core:11.20.3'
     testImplementation "org.spockframework:spock-core:${spockVersion}"
     testImplementation "org.spockframework:spock-spring:${spockVersion}"
     testImplementation "org.testcontainers:testcontainers-spock:${testcontainersVersion}"
@@ -32,8 +32,8 @@ dependencies {
     testImplementation "org.testcontainers:testcontainers-postgresql:${testcontainersVersion}"
     testImplementation "org.testcontainers:testcontainers-junit-jupiter:${testcontainersVersion}"
 
-    externalTestImplementation 'io.rest-assured:rest-assured:5.5.0'
-    testImplementation 'org.apache.groovy:groovy-sql:4.0.24'
+    externalTestImplementation 'io.rest-assured:rest-assured:5.5.7'
+    testImplementation 'org.apache.groovy:groovy-sql:4.0.33'
 }
 
 java {
