@@ -10,7 +10,7 @@ import {
   TagsInput,
   TextInput,
 } from '@mantine/core';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
@@ -21,6 +21,7 @@ import {
   useCreateAttributeMutation,
   useUpdateAttributeMutation,
 } from '@/features/attributes/api/attributes';
+import { suggestAttributeName } from '@/features/attributes/model/suggestAttributeName';
 import {
   getFieldErrors,
   normalizeApiError,
@@ -28,6 +29,8 @@ import {
   type CreateAttributeDefinitionRequest,
 } from '@/shared/api';
 import { showSuccessNotification } from '@/shared/notifications/notifications';
+
+import styles from './attribute-form-modal.module.css';
 
 type AttributeDataType = CreateAttributeDefinitionRequest['dataType'];
 
@@ -148,9 +151,14 @@ export function AttributeFormModal({
     },
   });
   const dataType = useWatch({ control: form.control, name: 'dataType' });
+  const labelField = form.register('label');
+  const nameField = form.register('name');
+  // Track user intent separately from RHF dirty/touched state, including manual clearing.
+  const autoName = useRef(!attribute);
 
   useEffect(() => {
     if (opened) {
+      autoName.current = !attribute;
       form.reset({
         name: attribute?.name ?? '',
         label: attribute?.label ?? '',
@@ -160,7 +168,21 @@ export function AttributeFormModal({
         orderIndex: attribute?.orderIndex ?? '',
       });
     }
-  }, [attribute, form, opened]);
+  }, [attribute, catalogOnly, componentTypeId, domainId, form, opened]);
+
+  const fillNameFromLabel = (label: string) => {
+    const name = suggestAttributeName(label);
+    if (name === form.getValues('name')) {
+      return;
+    }
+    form.setValue('name', name, {
+      shouldDirty: true,
+      shouldValidate:
+        form.formState.isSubmitted ||
+        Boolean(form.getFieldState('name').error) ||
+        name.length > 255,
+    });
+  };
 
   const close = () => {
     if (!isPending) {
@@ -235,11 +257,13 @@ export function AttributeFormModal({
       opened={opened}
       onClose={close}
       title={isEditing ? t('attributes.form.editTitle') : t('attributes.form.createTitle')}
+      closeButtonProps={{ 'aria-label': t('common.close') }}
       centered
       closeOnClickOutside={!isPending}
       closeOnEscape={!isPending}
     >
       <form
+        className={styles.form}
         onSubmit={(event) => {
           void submit(event);
         }}
@@ -247,23 +271,53 @@ export function AttributeFormModal({
       >
         <Stack gap="md">
           <TextInput
-            label={t('attributes.form.name')}
-            description={t('attributes.form.nameHint')}
-            placeholder={t('attributes.form.namePlaceholder')}
-            withAsterisk
-            autoFocus
-            maxLength={255}
-            error={form.formState.errors.name?.message}
-            {...form.register('name')}
-          />
-          <TextInput
             label={t('attributes.form.label')}
             placeholder={t('attributes.form.labelPlaceholder')}
             withAsterisk
+            autoFocus
+            data-autofocus
             maxLength={255}
             error={form.formState.errors.label?.message}
-            {...form.register('label')}
+            {...labelField}
+            onChange={(event) => {
+              void labelField.onChange(event);
+              if (autoName.current) {
+                fillNameFromLabel(event.target.value);
+              }
+            }}
           />
+          <Stack gap="xs">
+            <TextInput
+              label={t('attributes.form.name')}
+              description={`${t('attributes.form.nameHint')} ${t(
+                isEditing ? 'attributes.form.nameEditHint' : 'attributes.form.nameAutoHint',
+              )}`}
+              placeholder={t('attributes.form.namePlaceholder')}
+              withAsterisk
+              maxLength={255}
+              error={form.formState.errors.name?.message}
+              {...nameField}
+              onChange={(event) => {
+                autoName.current = false;
+                void nameField.onChange(event);
+              }}
+            />
+            <Group>
+              <Button
+                type="button"
+                variant="subtle"
+                size="compact-sm"
+                disabled={isPending}
+                onClick={() => {
+                  autoName.current = true;
+                  fillNameFromLabel(form.getValues('label'));
+                  form.setFocus('name');
+                }}
+              >
+                {t('attributes.form.fillNameFromLabel')}
+              </Button>
+            </Group>
+          </Stack>
           <Controller
             name="dataType"
             control={form.control}
