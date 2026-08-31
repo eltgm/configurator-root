@@ -82,7 +82,10 @@ export const resources = {
           title: 'Удалить предметную область?',
           description: 'Область «{{name}}» будет удалена.',
           warning:
-            'Действие необратимо. Если в области есть связанные данные, сервер безопасно отклонит удаление.',
+            'Действие необратимо. Все типы, атрибуты, активные и архивные компоненты, изображения и связи совместимости будут удалены. Если есть конфигурации, сначала удалите их.',
+          confirmName: 'Название области для подтверждения',
+          confirmNameDescription: 'Введите «{{name}}» точно, с учётом регистра и пробелов.',
+          nameMismatch: 'Название должно точно совпадать с названием удаляемой области.',
         },
       },
       configurator: {
@@ -1116,6 +1119,8 @@ export const resources = {
           NOT_FOUND: 'Данные не найдены',
           ENTITY_ALREADY_EXISTS: 'Такая запись уже существует',
           ENTITY_HAS_RELATED_ENTITIES: 'Запись используется другими данными',
+          DOMAIN_HAS_CONFIGURATIONS:
+            'Невозможно удалить область: в ней есть конфигурации. Сначала удалите все конфигурации.',
           COMPONENT_ARCHIVED: 'Компонент находится в архиве',
           CONFIGURATION_CONFLICT: 'Компоненты конфигурации несовместимы',
           VALIDATION_ERROR: 'Проверьте введённые данные',
@@ -1220,7 +1225,10 @@ export const resources = {
           title: 'Delete domain?',
           description: 'The “{{name}}” domain will be deleted.',
           warning:
-            'This action cannot be undone. If the domain has related data, the server will safely reject deletion.',
+            'This action cannot be undone. All types, attributes, active and archived components, images and compatibility rules and links will be deleted. Delete any configurations first.',
+          confirmName: 'Domain name for confirmation',
+          confirmNameDescription: 'Enter “{{name}}” exactly, including case and spaces.',
+          nameMismatch: 'The name must exactly match the domain being deleted.',
         },
       },
       configurator: {
@@ -2209,6 +2217,8 @@ export const resources = {
           NOT_FOUND: 'Data was not found',
           ENTITY_ALREADY_EXISTS: 'This record already exists',
           ENTITY_HAS_RELATED_ENTITIES: 'The record is used by other data',
+          DOMAIN_HAS_CONFIGURATIONS:
+            'Cannot delete the domain because it has configurations. Delete all configurations first.',
           COMPONENT_ARCHIVED: 'The component is archived',
           CONFIGURATION_CONFLICT: 'Configuration components are incompatible',
           VALIDATION_ERROR: 'Check the entered data',

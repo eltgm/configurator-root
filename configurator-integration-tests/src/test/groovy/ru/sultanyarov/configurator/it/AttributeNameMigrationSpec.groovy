@@ -35,6 +35,24 @@ class AttributeNameMigrationSpec extends Specification {
                 .defaultSchema(schema).schemas(schema).target(target).load()
     }
 
+    def 'domain deletion migration preserves existing configurations and replaces cascade with restrict'() {
+        given:
+        flyway('8').migrate()
+        sql.execute("INSERT INTO domain (id, name, created_by_user_id) VALUES (1, 'Preserved', -1)")
+        sql.execute("INSERT INTO configuration (id, domain_id, name, created_by_user_id) VALUES (1, 1, 'Build', -1)")
+
+        when:
+        flyway().migrate()
+        sql.execute('DELETE FROM domain WHERE id = 1')
+
+        then:
+        def error = thrown(java.sql.SQLException)
+        error.SQLState == '23503'
+        sql.firstRow('SELECT count(*) AS n FROM configuration').n == 1
+        sql.firstRow('SELECT count(*) AS n FROM domain').n == 1
+        sql.firstRow('SELECT count(*) AS n FROM component_image_cleanup').n == 0
+    }
+
     def 'fresh install enforces exact domain scoped names at the database boundary'() {
         given:
         flyway().migrate()

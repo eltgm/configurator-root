@@ -31,6 +31,12 @@ public class ConfigurationRepositoryImpl implements ConfigurationRepository {
   private final DSLContext dslContext;
 
   @Override
+  public boolean existsByDomainId(Long domainId) {
+    return dslContext.fetchExists(
+        dslContext.selectOne().from(CONFIGURATION).where(CONFIGURATION.DOMAIN_ID.eq(domainId)));
+  }
+
+  @Override
   public Optional<Configuration> create(Configuration configuration) {
     Long configurationId =
         dslContext

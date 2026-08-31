@@ -27,6 +27,7 @@ export type ApiErrorCode =
   | 'NOT_FOUND'
   | 'ENTITY_ALREADY_EXISTS'
   | 'ENTITY_HAS_RELATED_ENTITIES'
+  | 'DOMAIN_HAS_CONFIGURATIONS'
   | 'COMPONENT_ARCHIVED'
   | 'CONFIGURATION_CONFLICT'
   | 'VALIDATION_ERROR'
@@ -891,7 +892,7 @@ export type DeleteDomainsByIdErrors = {
    */
   404: ErrorResponse;
   /**
-   * Domain has dependent entities
+   * Domain has configurations; delete all configurations first (DOMAIN_HAS_CONFIGURATIONS)
    */
   409: ErrorResponse;
 };

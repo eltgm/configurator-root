@@ -58,6 +58,7 @@ components:
         - NOT_FOUND
         - ENTITY_ALREADY_EXISTS
         - ENTITY_HAS_RELATED_ENTITIES
+        - DOMAIN_HAS_CONFIGURATIONS
         - COMPONENT_ARCHIVED
         - CONFIGURATION_CONFLICT
         - VALIDATION_ERROR
@@ -1603,6 +1604,12 @@ paths:
       tags: [ Domains ]
       summary: Delete domain
       operationId: deleteDomainsById
+      description: >-
+        Permanently deletes the domain and all remaining catalog data, including active and
+        archived components, attributes, images and compatibility rules/links. Any saved
+        configuration in the domain, regardless of owner or component state, prevents deletion.
+        Database changes are atomic; image files and thumbnails are cleaned up asynchronously
+        with durable retries. No configuration is deleted by this operation.
       parameters:
         - name: id
           in: path
@@ -1620,7 +1627,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Domain has dependent entities
+          description: Domain has configurations; delete all configurations first (DOMAIN_HAS_CONFIGURATIONS)
           content:
             application/json:
               schema:

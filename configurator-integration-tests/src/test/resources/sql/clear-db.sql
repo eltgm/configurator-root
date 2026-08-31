@@ -1,4 +1,5 @@
 DELETE FROM configuration_component;
+DELETE FROM component_image_cleanup;
 DELETE FROM configuration;
 DELETE FROM compatibility_rule_condition;
 DELETE FROM compatibility_rule_set;

@@ -83,6 +83,8 @@ test('creates, edits and permanently deletes a domain', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Удалить область Мобильные ПК' }).click();
   const deleteDialog = page.getByRole('dialog', { name: 'Удалить предметную область?' });
+  await expect(deleteDialog.getByRole('button', { name: 'Удалить' })).toBeDisabled();
+  await deleteDialog.getByRole('textbox', { name: /Название области/ }).fill('Мобильные ПК');
   await deleteDialog.getByRole('button', { name: 'Удалить' }).click();
   await expect(page.getByRole('heading', { level: 2, name: 'Мобильные ПК' })).toHaveCount(0);
 });

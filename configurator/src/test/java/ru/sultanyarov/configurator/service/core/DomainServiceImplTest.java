@@ -1,22 +1,5 @@
 package ru.sultanyarov.configurator.service.core;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import ru.sultanyarov.configurator.application.port.out.ComponentTypeRepository;
-import ru.sultanyarov.configurator.application.port.out.DomainRepository;
-import ru.sultanyarov.configurator.application.service.DomainServiceImpl;
-import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
-import ru.sultanyarov.configurator.domain.exception.NotFoundException;
-import ru.sultanyarov.configurator.domain.model.Domain;
-import ru.sultanyarov.configurator.domain.model.Page;
-import ru.sultanyarov.configurator.test.data.DomainTestData;
-
-import java.util.List;
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -26,177 +9,216 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+import java.util.Optional;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import ru.sultanyarov.configurator.application.port.out.ComponentImageCleanupRepository;
+import ru.sultanyarov.configurator.application.port.out.ConfigurationRepository;
+import ru.sultanyarov.configurator.application.port.out.DomainRepository;
+import ru.sultanyarov.configurator.application.service.DomainServiceImpl;
+import ru.sultanyarov.configurator.domain.exception.DomainHasConfigurationsException;
+import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
+import ru.sultanyarov.configurator.domain.exception.NotFoundException;
+import ru.sultanyarov.configurator.domain.model.Domain;
+import ru.sultanyarov.configurator.domain.model.Page;
+import ru.sultanyarov.configurator.test.data.DomainTestData;
+
 @ExtendWith(MockitoExtension.class)
 class DomainServiceImplTest {
-    @Mock
-    private DomainRepository domainRepository;
+  @Mock private DomainRepository domainRepository;
 
-    @Mock
-    private ComponentTypeRepository componentTypeRepository;
+  @Mock private ConfigurationRepository configurationRepository;
 
-    @InjectMocks
-    private DomainServiceImpl domainService;
+  @Mock private ComponentImageCleanupRepository imageCleanupRepository;
 
-    @Test
-    void getPage_shouldReturnPageOfDomains() {
-        // Arrange
-        int page = 0;
-        int pageSize = 10;
-        List<Domain> domains = List.of(DomainTestData.domain(), DomainTestData.domain());
-        Page<Domain> expectedPage = new Page<>(domains, page, pageSize, 2);
+  @InjectMocks private DomainServiceImpl domainService;
 
-        when(domainRepository.getDomains(page, pageSize)).thenReturn(expectedPage);
+  @Test
+  void getPage_shouldReturnPageOfDomains() {
+    // Arrange
+    int page = 0;
+    int pageSize = 10;
+    List<Domain> domains = List.of(DomainTestData.domain(), DomainTestData.domain());
+    Page<Domain> expectedPage = new Page<>(domains, page, pageSize, 2);
 
-        // Act
-        Page<Domain> result = domainService.getPage(page, pageSize);
+    when(domainRepository.getDomains(page, pageSize)).thenReturn(expectedPage);
 
-        // Assert
-        assertThat(result).isEqualTo(expectedPage);
-        verify(domainRepository).getDomains(page, pageSize);
-    }
+    // Act
+    Page<Domain> result = domainService.getPage(page, pageSize);
 
-    @Test
-    void getById_shouldReturnDomainWhenItExists() {
-        // Arrange
-        Long id = 1L;
-        Domain expectedDomain = DomainTestData.domainWithId(id);
+    // Assert
+    assertThat(result).isEqualTo(expectedPage);
+    verify(domainRepository).getDomains(page, pageSize);
+  }
 
-        when(domainRepository.getDomainById(id)).thenReturn(Optional.of(expectedDomain));
+  @Test
+  void getById_shouldReturnDomainWhenItExists() {
+    // Arrange
+    Long id = 1L;
+    Domain expectedDomain = DomainTestData.domainWithId(id);
 
-        // Act
-        Domain result = domainService.getById(id);
+    when(domainRepository.getDomainById(id)).thenReturn(Optional.of(expectedDomain));
 
-        // Assert
-        assertThat(result).isEqualTo(expectedDomain);
-        verify(domainRepository).getDomainById(id);
-    }
+    // Act
+    Domain result = domainService.getById(id);
 
-    @Test
-    void getById_shouldThrowNotFoundExceptionWhenDomainDoesNotExist() {
-        // Arrange
-        Long id = 1L;
+    // Assert
+    assertThat(result).isEqualTo(expectedDomain);
+    verify(domainRepository).getDomainById(id);
+  }
 
-        when(domainRepository.getDomainById(id)).thenReturn(Optional.empty());
+  @Test
+  void getById_shouldThrowNotFoundExceptionWhenDomainDoesNotExist() {
+    // Arrange
+    Long id = 1L;
 
-        // Act & Assert
-        assertThatThrownBy(() -> domainService.getById(id))
-                .isInstanceOf(NotFoundException.class);
+    when(domainRepository.getDomainById(id)).thenReturn(Optional.empty());
 
-        verify(domainRepository).getDomainById(anyLong());
-    }
+    // Act & Assert
+    assertThatThrownBy(() -> domainService.getById(id)).isInstanceOf(NotFoundException.class);
 
-    @Test
-    void deleteById_shouldDeleteDomainWhenItExists() {
-        // Arrange
-        Long id = 1L;
+    verify(domainRepository).getDomainById(anyLong());
+  }
 
-        when(domainRepository.getDomainById(id)).thenReturn(Optional.of(DomainTestData.domain()));
+  @Test
+  void deleteById_shouldLockValidateQueueAndDeleteInOrder() {
+    when(domainRepository.lockById(1L)).thenReturn(true);
+    domainService.deleteById(1L);
+    var order =
+        org.mockito.Mockito.inOrder(
+            domainRepository, configurationRepository, imageCleanupRepository);
+    order.verify(domainRepository).lockById(1L);
+    order.verify(configurationRepository).existsByDomainId(1L);
+    order.verify(domainRepository).lockContentsByDomainId(1L);
+    order.verify(imageCleanupRepository).enqueueByDomainId(1L);
+    order.verify(domainRepository).deleteContentsByDomainId(1L);
+    order.verify(domainRepository).deleteDomainById(1L);
+  }
 
-        // Act
-        domainService.deleteById(id);
+  @Test
+  void deleteById_shouldLeaveEverythingUntouchedWhenConfigurationsExist() {
+    when(domainRepository.lockById(1L)).thenReturn(true);
+    when(configurationRepository.existsByDomainId(1L)).thenReturn(true);
+    assertThatThrownBy(() -> domainService.deleteById(1L))
+        .isInstanceOf(DomainHasConfigurationsException.class)
+        .hasMessageContaining("Delete all configurations first");
+    org.mockito.Mockito.verifyNoInteractions(imageCleanupRepository);
+    verify(domainRepository, never()).lockContentsByDomainId(anyLong());
+    verify(domainRepository, never()).deleteContentsByDomainId(anyLong());
+    verify(domainRepository, never()).deleteDomainById(anyLong());
+  }
 
-        // Assert
-        verify(domainRepository).getDomainById(id);
-        verify(domainRepository).deleteDomainById(id);
-    }
+  @Test
+  void deleteById_shouldThrowNotFoundExceptionWhenDomainDoesNotExist() {
+    assertThatThrownBy(() -> domainService.deleteById(1L)).isInstanceOf(NotFoundException.class);
+    org.mockito.Mockito.verifyNoInteractions(configurationRepository, imageCleanupRepository);
+    verify(domainRepository, never()).deleteDomainById(anyLong());
+  }
 
-    @Test
-    void deleteById_shouldThrowNotFoundExceptionWhenDomainDoesNotExist() {
-        // Arrange
-        Long id = 1L;
+  @Test
+  void create_shouldCreateDomainWhenNameIsUnique() {
+    // Arrange
+    Domain domain = DomainTestData.domain();
 
-        when(domainRepository.getDomainById(id)).thenReturn(Optional.empty());
+    when(domainRepository.existsByName(domain.name())).thenReturn(false);
+    when(domainRepository.createDomain(domain)).thenReturn(Optional.of(domain));
 
-        // Act & Assert
-        assertThatThrownBy(() -> domainService.deleteById(id))
-                .isInstanceOf(NotFoundException.class);
+    // Act
+    Domain result = domainService.create(domain);
 
-        verify(domainRepository).getDomainById(id);
-        verify(domainRepository, never()).deleteDomainById(anyLong());
-    }
+    // Assert
+    assertThat(result).isEqualTo(domain);
+    verify(domainRepository).existsByName(domain.name());
+    verify(domainRepository).createDomain(domain);
+  }
 
-    @Test
-    void create_shouldCreateDomainWhenNameIsUnique() {
-        // Arrange
-        Domain domain = DomainTestData.domain();
+  @Test
+  void create_shouldThrowEntityAlreadyExistsExceptionWhenDomainWithSameNameExists() {
+    // Arrange
+    Domain domain = DomainTestData.domain();
 
-        when(domainRepository.existsByName(domain.name())).thenReturn(false);
-        when(domainRepository.createDomain(domain)).thenReturn(Optional.of(domain));
+    when(domainRepository.existsByName(domain.name())).thenReturn(true);
 
-        // Act
-        Domain result = domainService.create(domain);
+    // Act & Assert
+    assertThatThrownBy(() -> domainService.create(domain))
+        .isInstanceOf(EntityAlreadyExistsException.class);
 
-        // Assert
-        assertThat(result).isEqualTo(domain);
-        verify(domainRepository).existsByName(domain.name());
-        verify(domainRepository).createDomain(domain);
-    }
+    verify(domainRepository).existsByName(domain.name());
+    verify(domainRepository, never()).createDomain(any());
+  }
 
-    @Test
-    void create_shouldThrowEntityAlreadyExistsExceptionWhenDomainWithSameNameExists() {
-        // Arrange
-        Domain domain = DomainTestData.domain();
+  @Test
+  void update_shouldUpdateDomainWhenItExistsAndNameIsUnique() {
+    // Arrange
+    Long id = 1L;
+    Domain domain = DomainTestData.domain();
 
-        when(domainRepository.existsByName(domain.name())).thenReturn(true);
+    when(domainRepository.existsByName(domain.name())).thenReturn(false);
+    when(domainRepository.getDomainById(anyLong()))
+        .thenReturn(
+            Optional.of(
+                new Domain(
+                    2L,
+                    "new name",
+                    domain.description(),
+                    domain.createdByUserId(),
+                    domain.componentTypes(),
+                    domain.createdAt())));
+    when(domainRepository.updateDomain(id, domain)).thenReturn(Optional.of(domain));
 
-        // Act & Assert
-        assertThatThrownBy(() -> domainService.create(domain))
-                .isInstanceOf(EntityAlreadyExistsException.class);
+    // Act
+    Domain result = domainService.update(id, domain);
 
-        verify(domainRepository).existsByName(domain.name());
-        verify(domainRepository, never()).createDomain(any());
-    }
+    // Assert
+    assertThat(result).isEqualTo(domain);
+    verify(domainRepository).getDomainById(id);
+    verify(domainRepository).existsByName(domain.name());
+    verify(domainRepository).updateDomain(id, domain);
+  }
 
-    @Test
-    void update_shouldUpdateDomainWhenItExistsAndNameIsUnique() {
-        // Arrange
-        Long id = 1L;
-        Domain domain = DomainTestData.domain();
+  @Test
+  void update_shouldThrowNotFoundExceptionWhenDomainDoesNotExist() {
+    // Arrange
+    Long id = 1L;
+    Domain domain = DomainTestData.domain();
 
-        when(domainRepository.existsByName(domain.name())).thenReturn(false);
-        when(domainRepository.getDomainById(anyLong())).thenReturn(Optional.of(new Domain(2L, "new name", domain.description(), domain.createdByUserId(), domain.componentTypes(), domain.createdAt())));
-        when(domainRepository.updateDomain(id, domain)).thenReturn(Optional.of(domain));
+    when(domainRepository.getDomainById(anyLong())).thenReturn(Optional.empty());
 
-        // Act
-        Domain result = domainService.update(id, domain);
+    // Act & Assert
+    assertThatThrownBy(() -> domainService.update(id, domain))
+        .isInstanceOf(NotFoundException.class);
 
-        // Assert
-        assertThat(result).isEqualTo(domain);
-        verify(domainRepository).getDomainById(id);
-        verify(domainRepository).existsByName(domain.name());
-        verify(domainRepository).updateDomain(id, domain);
-    }
+    verify(domainRepository, never()).existsByName(anyString());
+    verify(domainRepository, never()).updateDomain(anyLong(), any());
+  }
 
-    @Test
-    void update_shouldThrowNotFoundExceptionWhenDomainDoesNotExist() {
-        // Arrange
-        Long id = 1L;
-        Domain domain = DomainTestData.domain();
+  @Test
+  void update_shouldThrowEntityAlreadyExistsExceptionWhenAnotherDomainWithSameNameExists() {
+    // Arrange
+    Long id = 1L;
+    Domain domain = DomainTestData.domain();
 
-        when(domainRepository.getDomainById(anyLong())).thenReturn(Optional.empty());
+    when(domainRepository.existsByName(domain.name())).thenReturn(true);
+    when(domainRepository.getDomainById(anyLong()))
+        .thenReturn(
+            Optional.of(
+                new Domain(
+                    2L,
+                    "new name",
+                    domain.description(),
+                    domain.createdByUserId(),
+                    domain.componentTypes(),
+                    domain.createdAt())));
 
-        // Act & Assert
-        assertThatThrownBy(() -> domainService.update(id, domain))
-                .isInstanceOf(NotFoundException.class);
+    // Act & Assert
+    assertThatThrownBy(() -> domainService.update(id, domain))
+        .isInstanceOf(EntityAlreadyExistsException.class);
 
-        verify(domainRepository, never()).existsByName(anyString());
-        verify(domainRepository, never()).updateDomain(anyLong(), any());
-    }
-
-    @Test
-    void update_shouldThrowEntityAlreadyExistsExceptionWhenAnotherDomainWithSameNameExists() {
-        // Arrange
-        Long id = 1L;
-        Domain domain = DomainTestData.domain();
-
-        when(domainRepository.existsByName(domain.name())).thenReturn(true);
-        when(domainRepository.getDomainById(anyLong())).thenReturn(Optional.of(new Domain(2L, "new name", domain.description(), domain.createdByUserId(), domain.componentTypes(), domain.createdAt())));
-
-        // Act & Assert
-        assertThatThrownBy(() -> domainService.update(id, domain))
-                .isInstanceOf(EntityAlreadyExistsException.class);
-
-        verify(domainRepository).existsByName(domain.name());
-        verify(domainRepository, never()).updateDomain(anyLong(), any());
-    }
+    verify(domainRepository).existsByName(domain.name());
+    verify(domainRepository, never()).updateDomain(anyLong(), any());
+  }
 }
