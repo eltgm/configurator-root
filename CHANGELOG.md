@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-31
+
 ### Added
 
 - Удаление области со всем оставшимся каталогом после удаления всех конфигураций; подтверждение требует
@@ -90,7 +92,9 @@
 - Единственная поддерживаемая точка входа — `http://127.0.0.1:8080`; LAN/public/server deployment не входит в v1.0.0.
 - Совместимость с данными и backup формата до `v1.0.0` не гарантируется; разрешена чистая переустановка.
 
-[Unreleased]: https://github.com/eltgm/configurator-root/compare/v1.1.3...HEAD
+[Unreleased]: https://github.com/eltgm/configurator-root/compare/v1.2.0...HEAD
+
+[1.2.0]: https://github.com/eltgm/configurator-root/compare/v1.1.3...v1.2.0
 
 [1.1.3]: https://github.com/eltgm/configurator-root/compare/v1.1.2...v1.1.3
 [1.1.2]: https://github.com/eltgm/configurator-root/compare/v1.1.1...v1.1.2
