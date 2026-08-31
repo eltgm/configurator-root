@@ -39,7 +39,7 @@ grep -Fq 'published: "8080"' "$TEMP_DIR/config.yaml" || fail "gateway port is mi
 grep -Fxq 'maintenance' "$TEMP_DIR/profiles.txt" || fail "maintenance profile is missing"
 grep -Fq 'read_only: true' "$TEMP_DIR/config.yaml" || fail "read-only hardening is missing"
 grep -Fq 'no-new-privileges:true' "$TEMP_DIR/config.yaml" || fail "no-new-privileges hardening is missing"
-test "$(grep -Fc 'user: "0:0"' "$TEMP_DIR/maintenance.yaml")" -eq 2 ||
+test "$(grep -Ec "user: ['\"]?0:0['\"]?" "$TEMP_DIR/maintenance.yaml")" -eq 2 ||
   fail "maintenance services do not use the default container user"
 
 for maintenance_service in postgres-maintenance minio-maintenance; do
