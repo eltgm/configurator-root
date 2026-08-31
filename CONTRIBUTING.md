@@ -1,11 +1,12 @@
 # Участие в разработке
 
-Спасибо за интерес к Configurator. Перед изменениями ознакомьтесь с `README.md`, а AI-агентам также необходимо соблюдать
-`AGENTS.md`.
+Спасибо за интерес к Configurator. Перед изменениями ознакомьтесь с [README.md](README.md). AI-агенты также обязаны
+соблюдать [AGENTS.md](AGENTS.md).
 
-## Локальная подготовка
+## Подготовка среды
 
-Понадобятся JDK 21 и Docker.
+Для серверной части нужны JDK 21 и Docker Desktop. Для непосредственной работы с пользовательским интерфейсом также
+нужны Node.js 24 LTS и npm 11.
 
 ```bash
 git clone https://github.com/eltgm/configurator-root.git
@@ -13,30 +14,71 @@ cd configurator-root
 ./gradlew build
 ```
 
-## Рабочий процесс
+Gradle Wrapper входит в репозиторий, поэтому отдельная установка Gradle не требуется.
 
-1. Создайте issue либо привяжите существующую задачу.
-2. Создайте ветку от `develop`: `feature/CON1-<id>` или `bugfix/CON1-<id>`.
-3. Вносите небольшие атомарные изменения.
-4. Обновите source of truth до ручного кода: OpenAPI для REST, Flyway для БД.
-5. Добавьте unit tests и единый local/external integration contract.
-6. Запустите проверки.
-7. Откройте pull request в `develop` и заполните checklist.
+## Порядок работы
 
-## Проверки
+1. Создайте задачу GitHub или свяжите изменение с существующей задачей.
+2. Создайте от `develop` ветку `feature/CON<версия>-<номер>` или `bugfix/CON<версия>-<номер>`.
+3. Перед правками проверьте состояние рабочего дерева и сохраните несвязанные изменения пользователя.
+4. Определите, затрагивает ли задача OpenAPI, схему БД, автоматически создаваемый код, архитектурные границы или общий
+   интеграционный контракт.
+5. Вносите небольшие целостные изменения и добавляйте проверки соответствующего уровня.
+6. Выполните обязательные команды проверки.
+7. Откройте запрос на слияние в `develop` и заполните контрольный список.
+
+Прямые изменения `develop` и `master` не используются. Релизный запрос на слияние создаётся из `develop` в `master`.
+
+## Источники истины
+
+REST API сначала изменяется в [`specs/configurator-api.yaml`](specs/configurator-api.yaml). Затем Gradle создаёт
+серверные интерфейсы, а `npm run api:generate` — клиент пользовательского интерфейса. Файлы в `build/generated/**` и
+`configurator-web/src/shared/api/generated` вручную не редактируются.
+
+Изменение структуры БД начинается с новой версионной миграции в
+`configurator/src/main/resources/db/migration`. Выпущенные миграции не изменяются. jOOQ обновляется через обычный цикл
+сборки Gradle.
+
+## Архитектурные правила
+
+Серверная часть сохраняет цепочку:
+
+```text
+controller -> facade -> service -> port -> infrastructure
+```
+
+- контроллер отвечает только за границу HTTP;
+- фасад преобразует транспортные и доменные модели;
+- сервис содержит прикладной сценарий и деловую оркестрацию;
+- порт описывает внешнюю зависимость;
+- инфраструктура реализует работу с PostgreSQL, MinIO и другими системами;
+- REST DTO и типы jOOQ не проникают в доменную модель.
+
+Архитектурные ограничения проверяются `ArchitectureTest`. Java-код форматируется Spotless и Google Java Format.
+
+## Проверка серверной части
+
+Основная локальная проверка:
 
 ```bash
 ./gradlew build
+```
+
+Она включает компиляцию, модульные, репозиторные и архитектурные тесты, локальные интеграционные контракты,
+форматирование и порог покрытия JaCoCo. Для Testcontainers должен быть доступен Docker.
+
+Внешний контур через рабочий шлюз:
+
+```bash
 ./gradlew :configurator:bootJar
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ./gradlew :configurator-integration-tests:externalIntegrationTest
 ```
 
-Если внешний контур не удалось запустить, явно укажите это в pull request.
+Локальный и внешний режимы используют одни и те же контрактные сценарии. Если внешний контур недоступен, явно
+укажите это в запросе на слияние и не выдавайте его за выполненный.
 
-### Frontend
-
-Для frontend-изменений дополнительно нужны Node.js 24 и npm 11:
+## Проверка пользовательского интерфейса
 
 ```bash
 cd configurator-web
@@ -50,17 +92,21 @@ npm run test:visual
 npm run test:delivery
 ```
 
-Visual regression выполняется в pinned Playwright Docker image. Эталоны обновляются только после намеренного UI
-изменения через `npm run test:visual:update`, просматриваются в diff и подтверждаются повторным обычным прогоном.
-Подробности: `docs/testing/FRONTEND_TESTING.md`.
+`npm run check` проверяет соответствие клиента OpenAPI, форматирование, ESLint, Stylelint, модульные и компонентные
+тесты, TypeScript и рабочую сборку.
 
-`test:delivery` выполняется только при запущенном полном Compose и не использует HTTP mocks. Основной
-`docker-compose.yml` публикует gateway `127.0.0.1:8080`; development override добавляет loopback-порты backend `8081`,
-PostgreSQL `5432` и MinIO `9000/9001`. Не заменяйте loopback bind на wildcard host bind.
+Эталонные изображения Playwright обновляются только после намеренного изменения интерфейса командой
+`npm run test:visual:update`. Полученные различия нужно просмотреть и подтвердить обычным повторным прогоном.
+[Подробное руководство по проверкам](docs/testing/FRONTEND_TESTING.md).
 
-### Пользовательская поставка
+`npm run test:delivery` требует запущенный полный Compose и обращается к настоящей границе `/api` без подмены HTTP.
+Основной `docker-compose.yml` публикует шлюз только на `127.0.0.1:8080`. Конфигурация разработки дополнительно открывает
+локальные порты серверной части `8081`, PostgreSQL `5432` и MinIO `9000/9001`. Не заменяйте локальную привязку на
+публикацию по всем адресам узла.
 
-При изменении `delivery/**`, Compose runtime, gateway или release packaging дополнительно выполните:
+## Проверка пользовательской поставки
+
+При изменении `delivery/**`, Compose, шлюза или подготовки пакетов дополнительно выполните:
 
 ```bash
 delivery/tests/package-contract.sh
@@ -71,30 +117,28 @@ delivery/tests/release-workflow-contract.sh
 delivery/tests/docker-lifecycle-contract.sh
 ```
 
-Windows PowerShell 5.1 contract выполняется job `Windows delivery scripts contract`. Не меняйте backup format,
-stable channel, строгий Update/Restore failure contract, line endings или состав архива без актуализации требований и
-`docs/release/LOCAL_DELIVERY.md`. Release workflow сохраняет public GHCR namespace, amd64/arm64 manifests,
-exact/sha/stable tags без `latest`, minimum permissions, full-SHA action pins, SBOM/provenance, OIDC attestations и
-draft-only publication. Не запускайте tag/release публикацию из feature branch.
+Сценарий Windows остаётся совместимым с Windows PowerShell 5.1, CRLF и UTF-8 BOM, сценарий macOS — с Bash 3.2 и LF.
+Не меняйте формат резервной копии v1, канал `stable`, строгую остановку после ошибки `Update` или `Restore`, окончания
+строк и состав архива без обновления требований и [руководства по локальной поставке](docs/release/LOCAL_DELIVERY.md).
 
-После merge проверенного release PR в `master` annotated tag создаётся guarded-скриптом, который проверяет чистое
-дерево, совпадение с `origin/master`, changelog, release notes и версии source metadata:
+Подготовка выпуска сохраняет общедоступные образы GHCR для `linux/amd64` и `linux/arm64`, неизменяемые теги точной
+версии и коммита, изменяемый тег `stable`, минимальные разрешения, закрепление внешних действий по полному хешу,
+сведения о составе и происхождении и черновик выпуска. Тег `latest` запрещён. Запуск подготовки выпуска из рабочей
+ветки запрещён.
+
+После слияния проверенного релизного запроса в `master` аннотированный тег создаётся защищённым сценарием:
 
 ```bash
 scripts/release/start-release-tag.sh X.Y.Z
 ```
 
-Существующий tag не перемещайте и не удаляйте без проверки GitHub Release, exact image tags и результатов workflow.
-
-## Стиль и архитектура
-
-- Цепочка: `controller -> facade -> service -> port -> infrastructure`.
-- Generated files в `build/generated/**` не редактируются.
-- Java форматируется Spotless/Google Java Format.
-- REST DTO не используются как domain model.
-- Local и external integration tests не дублируются по смыслу.
+Сценарий проверяет чистоту дерева, совпадение с `origin/master`, журнал изменений, заметки выпуска и версии исходных
+метаданных. Существующий тег нельзя перемещать или удалять без проверки выпуска GitHub, опубликованных образов и
+результатов автоматической подготовки.
 
 ## Коммиты
+
+Формат сообщения закреплён правилами проекта и поэтому сохраняет английское описание в прошедшем времени:
 
 ```text
 CON<версия>-<номер> <English description in past tense>
@@ -102,7 +146,10 @@ CON<версия>-<номер> <English description in past tense>
 
 Пример: `CON1-83 Prepared repository for first release`.
 
-## Сообщения об ошибках и уязвимостях
+Не включайте в коммит несвязанные изменения, файлы среды разработки, `.DS_Store`, секреты и настройки конкретного
+компьютера.
 
-Для обычных ошибок используйте bug report. Уязвимости сообщайте приватно по инструкции в `SECURITY.md`, а не через
-публичный issue.
+## Ошибки и уязвимости
+
+Обычные ошибки оформляются по [правилам поддержки](SUPPORT.md). Уязвимости передаются приватно по
+[политике безопасности](SECURITY.md), а не через публичную задачу.
