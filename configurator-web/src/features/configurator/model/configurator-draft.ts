@@ -1,6 +1,6 @@
 import { configuratorDraftStorageKey } from '@/shared/config/preferences';
 
-export const configuratorDraftVersion = 2 as const;
+export const configuratorDraftVersion = 3 as const;
 export const configuratorDraftMaxItems = 50;
 export const configuratorDraftMaxQuantity = 999_999;
 
@@ -12,6 +12,7 @@ export interface ConfiguratorDraftItem {
 
 export interface ConfiguratorDraft {
   items: ConfiguratorDraftItem[];
+  trackInventory: boolean;
   updatedAt: string | null;
 }
 
@@ -22,9 +23,16 @@ interface StoredConfiguratorDraftV1 {
 }
 
 interface StoredConfiguratorDraftV2 {
+  version: 2;
+  updatedAt: string;
+  items: ConfiguratorDraftItem[];
+}
+
+interface StoredConfiguratorDraftV3 {
   version: typeof configuratorDraftVersion;
   updatedAt: string;
   items: ConfiguratorDraftItem[];
+  trackInventory: boolean;
 }
 
 export type ConfiguratorDraftReadStatus = 'empty' | 'restored' | 'invalid' | 'unavailable';
@@ -40,7 +48,7 @@ export type ConfiguratorDraftAddResult =
   | { status: 'limit-reached'; items: ConfiguratorDraftItem[] };
 
 export function emptyConfiguratorDraft(): ConfiguratorDraft {
-  return { items: [], updatedAt: null };
+  return { items: [], trackInventory: false, updatedAt: null };
 }
 
 function isPositiveInteger(value: unknown): value is number {
@@ -49,18 +57,23 @@ function isPositiveInteger(value: unknown): value is number {
 
 function isValidStoredDraft(
   value: unknown,
-): value is StoredConfiguratorDraftV1 | StoredConfiguratorDraftV2 {
+): value is StoredConfiguratorDraftV1 | StoredConfiguratorDraftV2 | StoredConfiguratorDraftV3 {
   if (!value || typeof value !== 'object') {
     return false;
   }
-  const candidate = value as Partial<StoredConfiguratorDraftV1 | StoredConfiguratorDraftV2>;
+  const candidate = value as Partial<
+    StoredConfiguratorDraftV1 | StoredConfiguratorDraftV2 | StoredConfiguratorDraftV3
+  >;
   if (
-    (candidate.version !== 1 && candidate.version !== configuratorDraftVersion) ||
+    (candidate.version !== 1 && candidate.version !== 2 && candidate.version !== 3) ||
     typeof candidate.updatedAt !== 'string' ||
     Number.isNaN(Date.parse(candidate.updatedAt)) ||
     !Array.isArray(candidate.items) ||
     candidate.items.length > configuratorDraftMaxItems
   ) {
+    return false;
+  }
+  if (candidate.version === 3 && typeof candidate.trackInventory !== 'boolean') {
     return false;
   }
   const componentIds = new Set<number>();
@@ -71,7 +84,7 @@ function isValidStoredDraft(
       !isPositiveInteger(item.componentId) ||
       !isPositiveInteger(item.componentTypeId) ||
       componentIds.has(item.componentId) ||
-      (candidate.version === configuratorDraftVersion &&
+      (candidate.version !== 1 &&
         (!isPositiveInteger((item as ConfiguratorDraftItem).quantity) ||
           (item as ConfiguratorDraftItem).quantity > configuratorDraftMaxQuantity))
     ) {
@@ -107,6 +120,7 @@ export function readConfiguratorDraft(
           componentTypeId: item.componentTypeId,
           quantity: parsed.version === 1 ? 1 : (item as ConfiguratorDraftItem).quantity,
         })),
+        trackInventory: parsed.version === 3 ? parsed.trackInventory : false,
         updatedAt: parsed.updatedAt,
       },
       status: 'restored',
@@ -119,14 +133,16 @@ export function readConfiguratorDraft(
 export function writeConfiguratorDraft(
   domainId: number,
   items: ReadonlyArray<ConfiguratorDraftItem>,
+  trackInventory: boolean,
   storage?: Pick<Storage, 'setItem'>,
   now: () => Date = () => new Date(),
 ) {
   const updatedAt = now().toISOString();
-  const stored: StoredConfiguratorDraftV2 = {
+  const stored: StoredConfiguratorDraftV3 = {
     version: configuratorDraftVersion,
     updatedAt,
     items: items.map((item) => ({ ...item })),
+    trackInventory,
   };
   try {
     (storage ?? window.localStorage).setItem(

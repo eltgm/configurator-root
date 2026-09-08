@@ -262,6 +262,17 @@ export const resources = {
           unavailableDescription:
             'Браузер запретил локальное хранение. Текущая сборка останется доступна только до обновления страницы.',
         },
+        inventory: {
+          track: 'Учитывать количество компонентов',
+          trackDescription:
+            'Показывать остатки, выбирать количество и резервировать его при сохранении.',
+          available: 'Доступно: {{count}}',
+          selectedAvailability: 'Доступно: {{available}} · выбрано: {{selected}}',
+          outOfStock: 'Нет в наличии',
+          unavailable: 'Недоступно',
+          enabledAnnouncement: 'Учёт количества включён',
+          disabledAnnouncement: 'Учёт количества выключен',
+        },
         feedback: {
           added: '{{name}} добавлен в сборку',
           alreadySelected: '{{name}} уже находится в сборке',
@@ -300,6 +311,7 @@ export const resources = {
             conflict: 'Устраните пары, заблокированные автоматическими правилами.',
             disconnected: 'Свяжите все компоненты сборки подтверждёнными связями.',
             blocked: 'Дождитесь загрузки или удалите недоступные и архивные компоненты.',
+            inventory: 'Уменьшите количество компонентов до доступного остатка.',
             error: 'Повторите проверку совместимости перед сохранением.',
           },
         },
@@ -386,6 +398,7 @@ export const resources = {
             empty: 'Добавьте хотя бы один компонент.',
             limit: 'В конфигурации может быть не более 50 компонентов.',
             archived: 'Удалите или замените все архивные компоненты.',
+            inventory: 'Уменьшите количество компонентов до доступного остатка.',
             pending: 'Дождитесь проверки связности и блокирующих правил.',
             blocked:
               'Состав нарушает автоматические правила совместимости. Удалите или замените заблокированные компоненты.',
@@ -1439,6 +1452,16 @@ export const resources = {
           unavailableDescription:
             'The browser denied local storage. The current assembly will only remain available until the page is refreshed.',
         },
+        inventory: {
+          track: 'Track component quantities',
+          trackDescription: 'Show stock, select quantities, and reserve them when saving.',
+          available: 'Available: {{count}}',
+          selectedAvailability: 'Available: {{available}} · selected: {{selected}}',
+          outOfStock: 'Out of stock',
+          unavailable: 'Unavailable',
+          enabledAnnouncement: 'Quantity tracking enabled',
+          disabledAnnouncement: 'Quantity tracking disabled',
+        },
         feedback: {
           added: '{{name}} added to the assembly',
           alreadySelected: '{{name}} is already in the assembly',
@@ -1477,6 +1500,7 @@ export const resources = {
             conflict: 'Resolve pairs blocked by automatic compatibility rules.',
             disconnected: 'Connect all assembly components through confirmed relationships.',
             blocked: 'Wait for loading or remove unavailable and archived components.',
+            inventory: 'Reduce component quantities to the available stock.',
             error: 'Retry compatibility validation before saving.',
           },
         },
@@ -1561,6 +1585,7 @@ export const resources = {
             empty: 'Add at least one component.',
             limit: 'A configuration cannot contain more than 50 components.',
             archived: 'Remove or replace every archived component.',
+            inventory: 'Reduce component quantities to the available stock.',
             pending: 'Wait for connectivity and blocking-rule validation to finish.',
             blocked:
               'The composition violates automatic compatibility rules. Remove or replace the blocked components.',

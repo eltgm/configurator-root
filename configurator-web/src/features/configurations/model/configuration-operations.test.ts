@@ -24,6 +24,7 @@ const configuration: Configuration = {
       componentTypeName: 'CPU',
       archived: false,
       quantity: 1,
+      availableQuantity: 5,
     },
   ],
 };
@@ -39,7 +40,6 @@ describe('configuration operations', () => {
     expect(getConfigurationCopyInitialValues(configuration, suffix)).toEqual({
       name: 'Home PC — copy',
       description: 'Quiet build',
-      trackInventory: false,
     });
   });
 

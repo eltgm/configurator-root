@@ -27,6 +27,7 @@ describe('configurator draft persistence', () => {
       writeConfiguratorDraft(
         domainId,
         [first, second],
+        true,
         adapter,
         () => new Date('2026-08-23T12:00:00Z'),
       ),
@@ -34,21 +35,26 @@ describe('configurator draft persistence', () => {
 
     expect(storage.get(configuratorDraftStorageKey(domainId))).toBe(
       JSON.stringify({
-        version: 2,
+        version: 3,
         updatedAt: '2026-08-23T12:00:00.000Z',
         items: [first, second],
+        trackInventory: true,
       }),
     );
     expect(readConfiguratorDraft(domainId, adapter)).toEqual({
       status: 'restored',
-      draft: { items: [first, second], updatedAt: '2026-08-23T12:00:00.000Z' },
+      draft: {
+        items: [first, second],
+        trackInventory: true,
+        updatedAt: '2026-08-23T12:00:00.000Z',
+      },
     });
     expect(readConfiguratorDraft(202, adapter).status).toBe('empty');
   });
 
   it.each([
     'not-json',
-    JSON.stringify({ version: 3, updatedAt: '2026-08-23T12:00:00Z', items: [] }),
+    JSON.stringify({ version: 4, updatedAt: '2026-08-23T12:00:00Z', items: [] }),
     JSON.stringify({ version: 1, updatedAt: 'invalid', items: [] }),
     JSON.stringify({ version: 1, updatedAt: '2026-08-23T12:00:00Z', items: [first, first] }),
     JSON.stringify({
@@ -59,7 +65,7 @@ describe('configurator draft persistence', () => {
   ])('recovers from malformed or incompatible data: %s', (raw) => {
     expect(readConfiguratorDraft(domainId, { getItem: () => raw })).toEqual({
       status: 'invalid',
-      draft: { items: [], updatedAt: null },
+      draft: { items: [], trackInventory: false, updatedAt: null },
     });
   });
 
@@ -72,12 +78,29 @@ describe('configurator draft persistence', () => {
       }).status,
     ).toBe('unavailable');
     expect(
-      writeConfiguratorDraft(domainId, [first], {
+      writeConfiguratorDraft(domainId, [first], false, {
         setItem: () => {
           throw new DOMException('Quota exceeded');
         },
       }),
     ).toEqual({ persisted: false, updatedAt: null });
+  });
+
+  it('migrates legacy drafts with quantity tracking disabled without losing quantities', () => {
+    const legacy = JSON.stringify({
+      version: 2,
+      updatedAt: '2026-08-23T12:00:00Z',
+      items: [{ ...first, quantity: 3 }],
+    });
+
+    expect(readConfiguratorDraft(domainId, { getItem: () => legacy })).toEqual({
+      status: 'restored',
+      draft: {
+        items: [{ ...first, quantity: 3 }],
+        trackInventory: false,
+        updatedAt: '2026-08-23T12:00:00Z',
+      },
+    });
   });
 });
 

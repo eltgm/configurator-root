@@ -99,6 +99,7 @@ class ConfiguratorResultAssembler {
         .name(component.getName())
         .brand(component.getBrand())
         .componentTypeId(component.getComponentTypeId())
+        .availableQuantity(component.getAvailableQuantity())
         .primaryImage(component.getPrimaryImage())
         .compatibilityByBase(List.copyOf(compatibilityByBase))
         .build();

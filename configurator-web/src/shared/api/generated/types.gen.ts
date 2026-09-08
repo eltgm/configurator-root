@@ -410,6 +410,10 @@ export type ConfiguratorCompatibleComponent = {
   brand?: string | null;
   componentTypeId: number;
   /**
+   * Unallocated instances currently available to a new tracked configuration
+   */
+  readonly availableQuantity: number;
+  /**
    * All manual links and enabled automatic rule sets that matched
    */
   explanations: Array<CompatibilityExplanation>;
@@ -472,6 +476,10 @@ export type ConfiguratorIntersectionCompatibleComponent = {
   name: string;
   brand?: string | null;
   componentTypeId: number;
+  /**
+   * Unallocated instances currently available to a new tracked configuration
+   */
+  readonly availableQuantity: number;
   /**
    * Compatibility evidence for every selected base component in request order
    */
@@ -552,6 +560,10 @@ export type ConfiguratorAssemblyCandidate = {
   name: string;
   brand?: string | null;
   componentTypeId: number;
+  /**
+   * Unallocated instances currently available to a new tracked configuration
+   */
+  readonly availableQuantity: number;
   status: ConfiguratorCandidateStatus;
   /**
    * Pair decisions in componentIds request order
@@ -598,6 +610,10 @@ export type ConfigurationComponent = {
    * Number of instances of this component in the configuration
    */
   quantity: number;
+  /**
+   * Unallocated instances excluding all saved tracked configurations
+   */
+  readonly availableQuantity: number;
 };
 
 /**
@@ -702,6 +718,13 @@ export type ConfigurationExport = {
 
 export type ComponentPageWritable = {
   items: Array<ComponentWritable>;
+  page: number;
+  size: number;
+  totalItems: number;
+};
+
+export type ConfigurationPageWritable = {
+  items: Array<SavedConfigurationWritable>;
   page: number;
   size: number;
   totalItems: number;
@@ -812,6 +835,52 @@ export type ConfiguratorCandidatesResponseWritable = {
    * Direct pair decisions for selected components in deterministic pair order
    */
   assemblyDecisions: Array<ConfiguratorAssemblyPairDecision>;
+};
+
+/**
+ * Current component data and requested quantity included in a saved configuration
+ */
+export type ConfigurationComponentWritable = {
+  id: number;
+  name: string;
+  brand?: string | null;
+  componentTypeId: number;
+  componentTypeName: string;
+  /**
+   * Whether the component was archived after the configuration was saved
+   */
+  archived: boolean;
+  /**
+   * Number of instances of this component in the configuration
+   */
+  quantity: number;
+};
+
+/**
+ * Saved user configuration. Components contain their current catalog state and are ordered
+ * by component type orderIndex, component type name and component id.
+ *
+ */
+export type SavedConfigurationWritable = {
+  id: number;
+  domainId: number;
+  name: string;
+  description?: string | null;
+  createdAt: string;
+  /**
+   * Whether this configuration occupies component instances
+   */
+  trackInventory: boolean;
+  components: Array<ConfigurationComponentWritable>;
+};
+
+/**
+ * Versioned, self-contained JSON export of a saved configuration
+ */
+export type ConfigurationExportWritable = {
+  schemaVersion: number;
+  exportedAt: string;
+  configuration: SavedConfigurationWritable;
 };
 
 export type PostAuthRegisterData = {

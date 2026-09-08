@@ -29,6 +29,7 @@ export interface ConfiguratorDraftSlot {
 export function useConfiguratorDraft(domainId: number) {
   const [initialDraft] = useState(() => readConfiguratorDraft(domainId));
   const [items, setItems] = useState(initialDraft.draft.items);
+  const [trackInventory, setTrackInventoryState] = useState(initialDraft.draft.trackInventory);
   const [updatedAt, setUpdatedAt] = useState(initialDraft.draft.updatedAt);
   const [readStatus] = useState<ConfiguratorDraftReadStatus>(initialDraft.status);
   const [persistenceAvailable, setPersistenceAvailable] = useState(
@@ -39,9 +40,10 @@ export function useConfiguratorDraft(domainId: number) {
     items.map((item) => item.componentId),
   );
 
-  const commit = (nextItems: ConfiguratorDraftItem[]) => {
+  const commit = (nextItems: ConfiguratorDraftItem[], nextTrackInventory = trackInventory) => {
     setItems(nextItems);
-    const result = writeConfiguratorDraft(domainId, nextItems);
+    setTrackInventoryState(nextTrackInventory);
+    const result = writeConfiguratorDraft(domainId, nextItems, nextTrackInventory);
     setPersistenceAvailable(result.persisted);
     if (result.persisted) {
       setUpdatedAt(result.updatedAt);
@@ -80,6 +82,10 @@ export function useConfiguratorDraft(domainId: number) {
     commit([]);
   };
 
+  const setTrackInventory = (enabled: boolean) => {
+    commit(items, enabled);
+  };
+
   const slots: ConfiguratorDraftSlot[] = items.map((item, index) => {
     const query = componentQueries[index];
     return {
@@ -94,6 +100,7 @@ export function useConfiguratorDraft(domainId: number) {
 
   return {
     items,
+    trackInventory,
     slots,
     updatedAt,
     readStatus,
@@ -101,6 +108,7 @@ export function useConfiguratorDraft(domainId: number) {
     add,
     replace,
     setQuantity,
+    setTrackInventory,
     remove,
     clear,
   };

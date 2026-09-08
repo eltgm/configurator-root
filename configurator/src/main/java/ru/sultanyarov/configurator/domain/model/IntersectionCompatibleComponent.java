@@ -9,5 +9,6 @@ public record IntersectionCompatibleComponent(
     String name,
     String brand,
     Long componentTypeId,
+    Integer availableQuantity,
     ComponentImage primaryImage,
     List<BaseComponentCompatibility> compatibilityByBase) {}

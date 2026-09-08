@@ -45,6 +45,7 @@ describe('ConfigurationsPage', () => {
                         componentTypeName: 'Процессор',
                         archived: false,
                         quantity: 1,
+                        availableQuantity: 8,
                       },
                       {
                         id: 8,
@@ -53,6 +54,7 @@ describe('ConfigurationsPage', () => {
                         componentTypeName: 'Видеокарта',
                         archived: true,
                         quantity: 1,
+                        availableQuantity: 0,
                       },
                     ],
                   },

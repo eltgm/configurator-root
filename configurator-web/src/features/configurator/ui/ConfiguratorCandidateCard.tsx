@@ -25,6 +25,7 @@ interface ConfiguratorCandidateCardProps {
   componentTypeName?: string;
   catalogMode: boolean;
   replacementMode: boolean;
+  trackInventory: boolean;
   onSelect: (component: ConfiguratorComponentSelection) => void;
   onExplain?: (component: ConfiguratorCandidate) => void;
 }
@@ -34,6 +35,7 @@ export function ConfiguratorCandidateCard({
   componentTypeName,
   catalogMode,
   replacementMode,
+  trackInventory,
   onSelect,
   onExplain,
 }: ConfiguratorCandidateCardProps) {
@@ -55,6 +57,15 @@ export function ConfiguratorCandidateCard({
                 .filter(Boolean)
                 .join(' · ')}
             </Text>
+            {trackInventory ? (
+              <Text size="xs" c={component.availableQuantity > 0 ? 'teal' : 'orange'} fw={500}>
+                {component.availableQuantity > 0
+                  ? t('configurator.inventory.available', {
+                      count: component.availableQuantity,
+                    })
+                  : t('configurator.inventory.outOfStock')}
+              </Text>
+            ) : null}
           </Stack>
           <Group justify="space-between" align="center" mt="auto" wrap="wrap">
             {!catalogMode ? (
@@ -98,10 +109,13 @@ export function ConfiguratorCandidateCard({
                     : undefined
                 }
                 onClick={() => onSelect(component)}
+                disabled={trackInventory && component.availableQuantity === 0}
               >
-                {replacementMode
-                  ? t('configurator.browser.selectReplacement')
-                  : t('configurator.browser.add')}
+                {trackInventory && component.availableQuantity === 0
+                  ? t('configurator.inventory.unavailable')
+                  : replacementMode
+                    ? t('configurator.browser.selectReplacement')
+                    : t('configurator.browser.add')}
               </Button>
             </Group>
           </Group>

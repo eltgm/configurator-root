@@ -1,6 +1,7 @@
 import {
   Alert,
   Button,
+  Checkbox,
   Group,
   Modal,
   Paper,
@@ -93,7 +94,19 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
         .every((slot) => slot.status === 'ready' && slot.component && !slot.component.archived)
     : false;
   const compatibilityBlocked = replacementTarget ? !replacementBasesReady : !hydratedDraftReady;
-  const saveEligibility = getConfigurationSaveEligibility(componentIds.length, compatibilityState);
+  const inventoryValid =
+    !draft.trackInventory ||
+    draft.slots.every(
+      (slot) =>
+        slot.status !== 'ready' ||
+        !slot.component ||
+        slot.item.quantity <= slot.component.availableQuantity,
+    );
+  const saveEligibility = getConfigurationSaveEligibility(
+    componentIds.length,
+    compatibilityState,
+    inventoryValid,
+  );
 
   const getSaveUnavailableReason = (
     reason: Exclude<ConfigurationSaveBlockReason, 'empty'>,
@@ -107,6 +120,8 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
         return t('configurations.save.unavailable.disconnected');
       case 'blocked':
         return t('configurations.save.unavailable.blocked');
+      case 'inventory':
+        return t('configurations.save.unavailable.inventory');
       case 'error':
         return t('configurations.save.unavailable.error');
     }
@@ -167,22 +182,39 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
       ) : null}
       <VisuallyHidden aria-live="polite">{message}</VisuallyHidden>
       <Paper p="md" withBorder>
-        <Switch
-          checked={includeTransitive}
-          label={t('configurator.transitiveMode.label')}
-          description={t('configurator.transitiveMode.description')}
-          onChange={(event) => {
-            const enabled = event.currentTarget.checked;
-            setIncludeTransitive(enabled);
-            setMessage(
-              t(
-                enabled
-                  ? 'configurator.transitiveMode.enabledAnnouncement'
-                  : 'configurator.transitiveMode.disabledAnnouncement',
-              ),
-            );
-          }}
-        />
+        <Stack gap="md">
+          <Checkbox
+            checked={draft.trackInventory}
+            label={t('configurator.inventory.track')}
+            description={t('configurator.inventory.trackDescription')}
+            onChange={(event) => {
+              draft.setTrackInventory(event.currentTarget.checked);
+              setMessage(
+                t(
+                  event.currentTarget.checked
+                    ? 'configurator.inventory.enabledAnnouncement'
+                    : 'configurator.inventory.disabledAnnouncement',
+                ),
+              );
+            }}
+          />
+          <Switch
+            checked={includeTransitive}
+            label={t('configurator.transitiveMode.label')}
+            description={t('configurator.transitiveMode.description')}
+            onChange={(event) => {
+              const enabled = event.currentTarget.checked;
+              setIncludeTransitive(enabled);
+              setMessage(
+                t(
+                  enabled
+                    ? 'configurator.transitiveMode.enabledAnnouncement'
+                    : 'configurator.transitiveMode.disabledAnnouncement',
+                ),
+              );
+            }}
+          />
+        </Stack>
       </Paper>
       <div className={classes.workspace}>
         <CurrentAssembly
@@ -193,6 +225,7 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
           conflictComponentIds={validation?.conflictComponentIds ?? new Set()}
           conflictCount={validation?.conflictPairs.length ?? 0}
           pairResults={validation?.pairs ?? []}
+          trackInventory={draft.trackInventory}
           onRetryCompatibility={() => void assemblyQuery.refetch()}
           onReplace={(slot) => {
             if (slot.component) {
@@ -255,6 +288,7 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
           baseComponentIds={baseComponentIds}
           baseComponentNames={baseComponentNames}
           includeTransitive={includeTransitive}
+          trackInventory={draft.trackInventory}
           compatibilityBlocked={compatibilityBlocked}
           {...(replacementTarget ? { replacementTarget } : {})}
           onCancelReplacement={() => {
@@ -297,6 +331,7 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
           domainId={domainId}
           componentItems={saveSnapshot.componentItems}
           components={saveSnapshot.components}
+          trackInventory={draft.trackInventory}
           onClose={() => setSaveSnapshot(undefined)}
           onSaved={() => {
             draft.clear();

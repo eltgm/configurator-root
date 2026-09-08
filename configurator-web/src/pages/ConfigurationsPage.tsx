@@ -119,6 +119,7 @@ function ConfigurationPageContent({ domainId }: { domainId: number }) {
           opened
           mode="copy"
           domainId={copyingConfiguration.domainId}
+          trackInventory={copyingConfiguration.trackInventory}
           componentItems={copyingConfiguration.components.map((component) => ({
             componentId: component.id,
             quantity: component.quantity,
@@ -130,6 +131,7 @@ function ConfigurationPageContent({ domainId }: { domainId: number }) {
             ...(component.brand ? { brand: component.brand } : {}),
             archived: component.archived,
             quantity: component.quantity,
+            availableQuantity: component.availableQuantity,
           }))}
           initialValues={copyInitialValues}
           onClose={() => setCopyingConfiguration(undefined)}

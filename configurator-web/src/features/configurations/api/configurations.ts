@@ -1,5 +1,8 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { componentKeys } from '@/features/components/api/components';
+import { configuratorCompatibilityKeys } from '@/features/configurator/api/configurator-compatibility';
+
 import {
   apiData,
   client,
@@ -31,6 +34,16 @@ export const configurationKeys = {
   detail: (domainId: number | null, configurationId: number | null) =>
     [...configurationKeys.byDomain(domainId), 'detail', configurationId] as const,
 };
+
+async function invalidateInventoryQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  domainId: number,
+) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: componentKeys.byDomain(domainId) }),
+    queryClient.invalidateQueries({ queryKey: configuratorCompatibilityKeys.root(domainId) }),
+  ]);
+}
 
 export async function fetchConfigurations(
   domainId: number,
@@ -111,7 +124,10 @@ export function useCreateConfigurationMutation() {
       ),
     onSuccess: async (configuration, { domainId }) => {
       queryClient.setQueryData(configurationKeys.detail(domainId, configuration.id), configuration);
-      await queryClient.invalidateQueries({ queryKey: configurationKeys.lists(domainId) });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: configurationKeys.lists(domainId) }),
+        invalidateInventoryQueries(queryClient, domainId),
+      ]);
     },
   });
 }
@@ -136,7 +152,10 @@ export function useUpdateConfigurationMutation() {
       ),
     onSuccess: async (configuration, { domainId, configurationId }) => {
       queryClient.setQueryData(configurationKeys.detail(domainId, configurationId), configuration);
-      await queryClient.invalidateQueries({ queryKey: configurationKeys.lists(domainId) });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: configurationKeys.lists(domainId) }),
+        invalidateInventoryQueries(queryClient, domainId),
+      ]);
     },
   });
 }
@@ -178,7 +197,10 @@ export function useDeleteConfigurationMutation() {
         queryKey: configurationKeys.detail(domainId, configurationId),
         exact: true,
       });
-      await queryClient.invalidateQueries({ queryKey: configurationKeys.lists(domainId) });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: configurationKeys.lists(domainId) }),
+        invalidateInventoryQueries(queryClient, domainId),
+      ]);
     },
   });
 }
