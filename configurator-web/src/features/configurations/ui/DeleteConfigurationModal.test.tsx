@@ -13,6 +13,7 @@ const configuration: Configuration = {
   domainId: 101,
   name: 'Рабочая станция',
   createdAt: '2026-08-23T10:00:00Z',
+  trackInventory: false,
   components: [],
 };
 

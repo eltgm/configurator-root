@@ -27,7 +27,11 @@ test('saves the current assembly and shows it in the configurations list', async
   expect((await createRequest).postDataJSON()).toEqual({
     name: 'Домашний ПК',
     description: 'Тихая сборка',
-    componentIds: [101, 102],
+    components: [
+      { componentId: 101, quantity: 1 },
+      { componentId: 102, quantity: 1 },
+    ],
+    trackInventory: false,
   });
   await expect(page).toHaveURL(/\/configurations$/);
   const card = page.getByRole('article');
@@ -37,7 +41,7 @@ test('saves the current assembly and shows it in the configurations list', async
   const storedDraft = await page.evaluate<string | null>(
     "window.localStorage.getItem('configurator.assembly-draft.v1.101')",
   );
-  expect(JSON.parse(storedDraft ?? '{}') as unknown).toMatchObject({ version: 1, items: [] });
+  expect(JSON.parse(storedDraft ?? '{}') as unknown).toMatchObject({ version: 2, items: [] });
 
   await card.getByRole('link', { name: 'Открыть конфигурацию' }).click();
   await expect(page).toHaveURL(/\/configurations\/901$/);
@@ -65,7 +69,11 @@ test('saves the current assembly and shows it in the configurations list', async
   expect((await updateRequest).postDataJSON()).toEqual({
     name: 'Домашний ПК 2026',
     description: 'Тихая сборка',
-    componentIds: [104, 102],
+    components: [
+      { componentId: 104, quantity: 1 },
+      { componentId: 102, quantity: 1 },
+    ],
+    trackInventory: false,
   });
   await expect(page).toHaveURL(/\/configurations\/901$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Домашний ПК 2026' })).toBeVisible();
@@ -87,7 +95,11 @@ test('saves the current assembly and shows it in the configurations list', async
   expect((await copyRequest).postDataJSON()).toEqual({
     name: 'Домашний ПК 2026 — копия',
     description: 'Тихая сборка',
-    componentIds: [104, 102],
+    components: [
+      { componentId: 104, quantity: 1 },
+      { componentId: 102, quantity: 1 },
+    ],
+    trackInventory: false,
   });
   await expect(page).toHaveURL(/\/configurations\/902$/);
 
@@ -102,7 +114,7 @@ test('saves the current assembly and shows it in the configurations list', async
     configuration: { id: number; name: string };
   };
   expect(exported).toMatchObject({
-    schemaVersion: 1,
+    schemaVersion: 2,
     configuration: { id: 902, name: 'Домашний ПК 2026 — копия' },
   });
   const exportNotification = page.getByRole('alert').filter({ hasText: 'JSON-экспорт скачан' });
@@ -130,7 +142,7 @@ test('saves the current assembly and shows it in the configurations list', async
     "window.localStorage.getItem('configurator.assembly-draft.v1.101')",
   );
   expect(JSON.parse(draftAfterOperations ?? '{}') as unknown).toMatchObject({
-    version: 1,
+    version: 2,
     items: [],
   });
 

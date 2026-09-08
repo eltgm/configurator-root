@@ -1,5 +1,7 @@
 package ru.sultanyarov.configurator.application.port.out;
 
+import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
 import ru.sultanyarov.configurator.domain.model.Configuration;
 import ru.sultanyarov.configurator.domain.model.Page;
@@ -16,5 +18,17 @@ public interface ConfigurationRepository {
 
   Optional<Configuration> findByIdAndUserId(Long id, Long userId);
 
-  Page<Configuration> findPageByDomainIdAndUserId(Long domainId, Long userId, int page, int size);
+  /**
+   * Returns an owned configuration while holding its row lock until the current transaction ends.
+   */
+  Optional<Configuration> findByIdAndUserIdForUpdate(Long id, Long userId);
+
+  /**
+   * Returns the quantities currently occupied by inventory-tracked configurations for each
+   * requested component. Callers hold the corresponding component row locks before using it.
+   */
+  Map<Long, Integer> findAllocatedQuantitiesByComponentIds(Collection<Long> componentIds);
+
+  Page<Configuration> findPageByDomainIdAndUserId(
+      Long domainId, Long userId, Boolean trackInventory, int page, int size);
 }

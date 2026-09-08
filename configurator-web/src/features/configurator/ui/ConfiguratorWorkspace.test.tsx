@@ -22,6 +22,9 @@ const ryzen: Component = {
   name: 'Ryzen 7 7800X3D',
   brand: 'AMD',
   archived: false,
+  totalQuantity: 8,
+  allocatedQuantity: 0,
+  availableQuantity: 8,
   createdAt: '2026-08-01T12:00:00Z',
 };
 const intel: Component = {
@@ -30,6 +33,9 @@ const intel: Component = {
   name: 'Core Ultra 9',
   brand: 'Intel',
   archived: false,
+  totalQuantity: 8,
+  allocatedQuantity: 0,
+  availableQuantity: 8,
   createdAt: '2026-08-02T12:00:00Z',
 };
 const radeon: Component = {
@@ -38,6 +44,9 @@ const radeon: Component = {
   name: 'Radeon RX 7900 XTX',
   brand: 'AMD',
   archived: false,
+  totalQuantity: 8,
+  allocatedQuantity: 0,
+  availableQuantity: 8,
   createdAt: '2026-08-03T12:00:00Z',
 };
 const motherboard: Component = {
@@ -46,6 +55,9 @@ const motherboard: Component = {
   name: 'B650 Tomahawk',
   brand: 'MSI',
   archived: false,
+  totalQuantity: 8,
+  allocatedQuantity: 0,
+  availableQuantity: 8,
   createdAt: '2026-08-04T12:00:00Z',
 };
 const components = [ryzen, intel, radeon, motherboard];
@@ -316,14 +328,15 @@ describe('configurator workspace', () => {
     expect(requestBody).toEqual({
       name: 'Домашний ПК',
       description: 'Тихая сборка',
-      componentIds: [ryzen.id],
+      components: [{ componentId: ryzen.id, quantity: 1 }],
+      trackInventory: false,
     });
     expect(
       JSON.parse(window.localStorage.getItem(configuratorDraftStorageKey(domainId)) ?? ''),
-    ).toMatchObject({ version: 1, items: [] });
+    ).toMatchObject({ version: 2, items: [] });
   });
 
-  it('adds direct and intersected candidates, explicitly replaces and clears the draft', async () => {
+  it('adds direct and intersected candidates, replaces and clears the draft', async () => {
     const user = userEvent.setup();
     useHandlers();
     renderPage();
@@ -340,8 +353,8 @@ describe('configurator workspace', () => {
     expect(
       JSON.parse(window.localStorage.getItem(configuratorDraftStorageKey(domainId)) ?? ''),
     ).toMatchObject({
-      version: 1,
-      items: [{ componentId: ryzen.id, componentTypeId: ryzen.componentTypeId }],
+      version: 2,
+      items: [{ componentId: ryzen.id, componentTypeId: ryzen.componentTypeId, quantity: 1 }],
     });
 
     expect(await within(assembly).findByText('Сборка корректна')).toBeInTheDocument();
@@ -351,7 +364,13 @@ describe('configurator workspace', () => {
     expect(await within(assembly).findByText(radeon.name)).toBeInTheDocument();
     browser = screen.getByRole('region', { name: 'Доступные компоненты' });
     expect(await within(browser).findByText(motherboard.name)).toBeInTheDocument();
-    await user.click(within(browser).getByRole('button', { name: 'Добавить' }));
+    const motherboardCard = (await within(browser).findByText(motherboard.name)).closest(
+      '[data-with-border="true"]',
+    );
+    expect(motherboardCard).not.toBeNull();
+    await user.click(
+      within(motherboardCard as HTMLElement).getByRole('button', { name: 'Добавить' }),
+    );
     expect(await within(assembly).findByText(motherboard.name)).toBeInTheDocument();
 
     await user.click(within(assembly).getByRole('button', { name: `Заменить ${ryzen.name}` }));
@@ -363,12 +382,6 @@ describe('configurator workspace', () => {
     await user.click(
       within(replacementBrowser).getByRole('button', { name: `Выбрать ${intel.name}` }),
     );
-    const replaceDialog = await screen.findByRole('dialog', {
-      name: 'Заменить компонент этого типа?',
-    });
-    expect(within(replaceDialog).getByText(/Ryzen 7 7800X3D/)).toBeInTheDocument();
-    await user.click(within(replaceDialog).getByRole('button', { name: 'Заменить' }));
-    await waitFor(() => expect(replaceDialog).not.toBeInTheDocument());
     expect(await within(assembly).findByText(intel.name)).toBeInTheDocument();
     expect(within(assembly).queryByText(ryzen.name)).not.toBeInTheDocument();
 
@@ -517,12 +530,6 @@ describe('configurator workspace', () => {
     await user.click(
       within(replacementBrowser).getByRole('button', { name: `Выбрать ${intel.name}` }),
     );
-    await user.click(
-      within(
-        await screen.findByRole('dialog', { name: 'Заменить компонент этого типа?' }),
-      ).getByRole('button', { name: 'Заменить' }),
-    );
-
     expect(await within(assembly).findByText(intel.name)).toBeInTheDocument();
     expect(await within(assembly).findByText('Сборка корректна')).toBeInTheDocument();
     expect(within(assembly).queryByText(ryzen.name)).not.toBeInTheDocument();

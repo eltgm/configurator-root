@@ -4,6 +4,7 @@ import {
   Divider,
   Group,
   Modal,
+  NumberInput,
   Paper,
   Select,
   Stack,
@@ -40,6 +41,7 @@ interface ComponentFormValues {
   name: string;
   brand: string;
   description: string;
+  totalQuantity: number;
   attributes: Record<string, string>;
 }
 
@@ -57,6 +59,7 @@ function initialValues(component?: Component): ComponentFormValues {
     name: component?.name ?? '',
     brand: component?.brand ?? '',
     description: component?.description ?? '',
+    totalQuantity: component?.totalQuantity ?? 0,
     attributes: Object.fromEntries(
       (component?.attributes ?? []).map((attribute) => [
         String(attribute.attributeDefinitionId),
@@ -77,6 +80,7 @@ function buildRequest(
     name: values.name.trim(),
     ...(brand ? { brand } : {}),
     ...(description ? { description } : {}),
+    totalQuantity: values.totalQuantity,
     attributes: attributes.flatMap((attribute) => {
       const value = values.attributes[String(attribute.id)]?.trim() ?? '';
       return value ? [{ attributeDefinitionId: attribute.id, value }] : [];
@@ -169,6 +173,10 @@ export function ComponentForm({ domainId, componentTypes, component }: Component
           .max(255, t('components.form.validation.nameTooLong')),
         brand: z.string(),
         description: z.string(),
+        totalQuantity: z
+          .number()
+          .int(t('components.form.validation.quantityInteger'))
+          .min(0, t('components.form.validation.quantityNonNegative')),
         attributes: z.record(z.string(), z.string()),
       }),
     [t],
@@ -293,6 +301,34 @@ export function ComponentForm({ domainId, componentTypes, component }: Component
                 rows={4}
                 error={form.formState.errors.description?.message}
                 {...form.register('description')}
+              />
+              <Controller
+                name="totalQuantity"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <NumberInput
+                    label={t('components.form.totalQuantity')}
+                    description={
+                      component
+                        ? t('components.form.totalQuantityDescription', {
+                            allocated: component.allocatedQuantity,
+                            available: component.availableQuantity,
+                          })
+                        : t('components.form.totalQuantityNewDescription')
+                    }
+                    min={0}
+                    allowDecimal={false}
+                    allowNegative={false}
+                    value={field.value}
+                    onBlur={field.onBlur}
+                    onChange={(value) => {
+                      if (typeof value === 'number' && Number.isInteger(value)) {
+                        field.onChange(value);
+                      }
+                    }}
+                    error={fieldState.error?.message}
+                  />
+                )}
               />
             </Stack>
           </Paper>

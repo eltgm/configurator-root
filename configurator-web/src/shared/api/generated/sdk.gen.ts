@@ -1189,9 +1189,11 @@ export const getDomainsByIdConfigurations = <ThrowOnError extends boolean = fals
  * Create configuration
  *
  * Atomically saves a non-empty, possibly incomplete build for the current user. Components
- * must be active, belong to this domain, have distinct component types and be pairwise
- * compatible through manual links or enabled automatic rules. Transitive compatibility is
- * not sufficient. The owner is always obtained from the authenticated server context.
+ * must be active, belong to this domain and be pairwise compatible through manual links or
+ * enabled automatic rules. Multiple models of the same component type are allowed.
+ * Transitive compatibility is not sufficient. When trackInventory=true, the requested
+ * quantities must be available after allocations of other tracked configurations. The owner
+ * is always obtained from the authenticated server context.
  *
  */
 export const postDomainsByIdConfigurations = <ThrowOnError extends boolean = false>(
@@ -1262,9 +1264,11 @@ export const getConfigurationsById = <ThrowOnError extends boolean = false>(
  * Atomically replaces the name, description and complete component set of a configuration
  * owned by the current user. Domain, owner and creation time are preserved. The complete
  * resulting component set is validated using the same strict rules as configuration creation:
- * all components must be active, belong to the configuration domain, have distinct types and
- * be pairwise directly compatible. Transitive compatibility is not sufficient. A missing or
- * foreign-owned configuration is returned as 404.
+ * all components must be active, belong to the configuration domain and be pairwise directly
+ * compatible. Multiple models of the same component type are allowed. Transitive
+ * compatibility is not sufficient. When trackInventory=true, the requested quantities must
+ * be available after allocations of other tracked configurations. A missing or foreign-owned
+ * configuration is returned as 404.
  *
  */
 export const putConfigurationsById = <ThrowOnError extends boolean = false>(

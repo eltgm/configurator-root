@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import ru.sultanyarov.configurator.api.inbounds.rest.controller.ConfigurationController;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfigurationComponentInput;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfigurationExport;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfigurationPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateConfigurationRequest;
@@ -28,7 +29,9 @@ class ConfigurationControllerTest {
 
   @Test
   void shouldCreateConfiguration() {
-    CreateConfigurationRequest request = new CreateConfigurationRequest("Build", List.of(1L));
+    CreateConfigurationRequest request =
+        new CreateConfigurationRequest("Build")
+            .components(List.of(new ConfigurationComponentInput(1L, 2)));
     SavedConfiguration body = configuration(7L);
     when(configurationFacade.create(1L, request)).thenReturn(body);
 
@@ -42,9 +45,9 @@ class ConfigurationControllerTest {
   @Test
   void shouldGetConfigurationPage() {
     ConfigurationPage body = new ConfigurationPage(List.of(), 0, 10, 0);
-    when(configurationFacade.getPage(1L, 0, 10)).thenReturn(body);
+    when(configurationFacade.getPage(1L, 0, 10, true)).thenReturn(body);
 
-    var response = controller.getDomainsByIdConfigurations(1L, 0, 10);
+    var response = controller.getDomainsByIdConfigurations(1L, 0, 10, true);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isSameAs(body);
@@ -60,7 +63,9 @@ class ConfigurationControllerTest {
 
   @Test
   void shouldFullyUpdateConfiguration() {
-    UpdateConfigurationRequest request = new UpdateConfigurationRequest("Updated", List.of(2L));
+    UpdateConfigurationRequest request =
+        new UpdateConfigurationRequest("Updated")
+            .components(List.of(new ConfigurationComponentInput(2L, 3)));
     SavedConfiguration body = configuration(7L);
     when(configurationFacade.update(7L, request)).thenReturn(body);
 
@@ -94,6 +99,6 @@ class ConfigurationControllerTest {
   }
 
   private static SavedConfiguration configuration(Long id) {
-    return new SavedConfiguration(id, 1L, "Build", LocalDateTime.now(), List.of());
+    return new SavedConfiguration(id, 1L, "Build", LocalDateTime.now(), false, List.of());
   }
 }

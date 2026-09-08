@@ -1,4 +1,4 @@
-import { Button, Group, Pagination, Progress, Stack, Text } from '@mantine/core';
+import { Button, Group, Pagination, Progress, Stack, Tabs, Text } from '@mantine/core';
 import { IconAssembly } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import {
   configurationListPageSize,
+  type ConfigurationInventoryFilter,
   useConfigurationsQuery,
 } from '@/features/configurations/api/configurations';
 import { getConfigurationCopyInitialValues } from '@/features/configurations/model/configuration-operations';
@@ -22,10 +23,16 @@ function ConfigurationPageContent({ domainId }: { domainId: number }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [page, setPage] = useState(0);
+  const [inventoryFilter, setInventoryFilter] = useState<ConfigurationInventoryFilter>('all');
   const [copyingConfiguration, setCopyingConfiguration] = useState<Configuration>();
   const [deletingConfiguration, setDeletingConfiguration] = useState<Configuration>();
   const { exportConfiguration, exportingConfigurationId } = useConfigurationExport();
-  const configurationsQuery = useConfigurationsQuery(domainId, page);
+  const configurationsQuery = useConfigurationsQuery(
+    domainId,
+    page,
+    configurationListPageSize,
+    inventoryFilter,
+  );
   const totalPages = Math.ceil(
     (configurationsQuery.data?.totalItems ?? 0) / configurationListPageSize,
   );
@@ -39,6 +46,21 @@ function ConfigurationPageContent({ domainId }: { domainId: number }) {
 
   return (
     <Stack gap="lg">
+      <Tabs
+        value={inventoryFilter}
+        onChange={(value) => {
+          if (value === 'all' || value === 'tracked' || value === 'untracked') {
+            setInventoryFilter(value);
+            setPage(0);
+          }
+        }}
+      >
+        <Tabs.List aria-label={t('configurations.inventory.filterLabel')}>
+          <Tabs.Tab value="all">{t('configurations.inventory.all')}</Tabs.Tab>
+          <Tabs.Tab value="tracked">{t('configurations.inventory.tracked')}</Tabs.Tab>
+          <Tabs.Tab value="untracked">{t('configurations.inventory.untracked')}</Tabs.Tab>
+        </Tabs.List>
+      </Tabs>
       {configurationsQuery.isFetching && !configurationsQuery.isPending ? (
         <Progress
           value={100}
@@ -97,13 +119,17 @@ function ConfigurationPageContent({ domainId }: { domainId: number }) {
           opened
           mode="copy"
           domainId={copyingConfiguration.domainId}
-          componentIds={copyingConfiguration.components.map((component) => component.id)}
+          componentItems={copyingConfiguration.components.map((component) => ({
+            componentId: component.id,
+            quantity: component.quantity,
+          }))}
           components={copyingConfiguration.components.map((component) => ({
             id: component.id,
             name: component.name,
             typeName: component.componentTypeName,
             ...(component.brand ? { brand: component.brand } : {}),
             archived: component.archived,
+            quantity: component.quantity,
           }))}
           initialValues={copyInitialValues}
           onClose={() => setCopyingConfiguration(undefined)}

@@ -15,6 +15,7 @@ import ru.sultanyarov.configurator.application.validator.ComponentImageValidator
 import ru.sultanyarov.configurator.application.validator.ComponentValidator;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
 import ru.sultanyarov.configurator.domain.exception.ComponentArchivedException;
+import ru.sultanyarov.configurator.domain.exception.ConfigurationConflictException;
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
 import ru.sultanyarov.configurator.domain.model.AttributeDefinition;
@@ -48,6 +49,10 @@ public class ComponentServiceImpl implements ComponentService {
   @Transactional
   public Component create(Component componentToCreate) {
     log.debug("create component {}", componentToCreate);
+    if (componentToCreate.getTotalQuantity() == null) {
+      componentToCreate.setTotalQuantity(0);
+    }
+    validateTotalQuantity(componentToCreate.getTotalQuantity());
     Long componentTypeId = componentToCreate.getComponentTypeId();
 
     ComponentType componentType = componentTypeService.getById(componentTypeId);
@@ -107,13 +112,31 @@ public class ComponentServiceImpl implements ComponentService {
   public Component update(Long id, Component component) {
     log.debug("update component with id {}", id);
 
-    Component existingComponent = getById(id);
+    Component existingComponent =
+        componentRepository
+            .getByIdForUpdate(id)
+            .orElseThrow(() -> new NotFoundException("Component with id {} not found", id));
     ComponentType componentType =
         componentTypeService.getById(existingComponent.getComponentTypeId());
     Map<Long, AttributeDefinition> componentTypeAttributesMap =
         getComponentAttributesDefinitionsMap(componentType);
 
     component.setName(component.getName().trim());
+    if (component.getTotalQuantity() == null) {
+      component.setTotalQuantity(
+          existingComponent.getTotalQuantity() == null ? 0 : existingComponent.getTotalQuantity());
+    }
+    validateTotalQuantity(component.getTotalQuantity());
+    int allocatedQuantity =
+        existingComponent.getAllocatedQuantity() == null
+            ? 0
+            : existingComponent.getAllocatedQuantity();
+    if (component.getTotalQuantity() < allocatedQuantity) {
+      throw new ConfigurationConflictException(
+          "Component with id {} has {} allocated instances, so total quantity cannot be lower",
+          id,
+          allocatedQuantity);
+    }
     componentValidator.validateUpdate(
         component, existingComponent, componentType, componentTypeAttributesMap);
 
@@ -131,13 +154,19 @@ public class ComponentServiceImpl implements ComponentService {
     updatedComponent.setImages(
         existingComponent.getImages() == null ? List.of() : existingComponent.getImages());
     updatedComponent.setPrimaryImage(existingComponent.getPrimaryImage());
+    updatedComponent.setAllocatedQuantity(allocatedQuantity);
+    updatedComponent.setAvailableQuantity(component.getTotalQuantity() - allocatedQuantity);
     return updatedComponent;
   }
 
   @Override
+  @Transactional
   public void archiveById(Long id) {
     log.debug("archive component with id {}", id);
-    Component component = getById(id);
+    Component component =
+        componentRepository
+            .getByIdForUpdate(id)
+            .orElseThrow(() -> new NotFoundException("Component with id {} not found", id));
     if (Boolean.TRUE.equals(component.getArchived())) {
       return;
     }
@@ -151,7 +180,10 @@ public class ComponentServiceImpl implements ComponentService {
   @Transactional
   public Component restoreById(Long id) {
     log.debug("restore component with id {}", id);
-    Component component = getById(id);
+    Component component =
+        componentRepository
+            .getByIdForUpdate(id)
+            .orElseThrow(() -> new NotFoundException("Component with id {} not found", id));
     if (!Boolean.TRUE.equals(component.getArchived())) {
       return component;
     }
@@ -309,6 +341,12 @@ public class ComponentServiceImpl implements ComponentService {
     return componentRepository
         .getById(id)
         .orElseThrow(() -> new NotFoundException("Component with id {} not found", id));
+  }
+
+  private static void validateTotalQuantity(Integer totalQuantity) {
+    if (totalQuantity == null || totalQuantity < 0) {
+      throw new ValidationException("Component total quantity must be greater than or equal to 0");
+    }
   }
 
   @Override

@@ -18,6 +18,9 @@ public final class Component {
   private String brand;
   private String description;
   private Boolean archived;
+  private Integer totalQuantity;
+  private Integer allocatedQuantity;
+  private Integer availableQuantity;
   private List<AttributeValue> attributes;
   private List<ComponentImage> images;
   private ComponentImage primaryImage;

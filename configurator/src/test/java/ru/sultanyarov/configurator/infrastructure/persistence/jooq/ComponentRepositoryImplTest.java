@@ -77,6 +77,48 @@ class ComponentRepositoryImplTest extends AbstractJooqRepositoryTest {
   }
 
   @Test
+  void shouldExposeAllocatedAndAvailableQuantityFromTrackedConfigurations() {
+    insertComponent(7L, 1L, "Switch");
+    dslContext.update(Tables.COMPONENT).set(Tables.COMPONENT.TOTAL_QUANTITY, 5).execute();
+    Long trackedConfigurationId =
+        dslContext
+            .insertInto(Tables.CONFIGURATION)
+            .set(Tables.CONFIGURATION.DOMAIN_ID, 1L)
+            .set(Tables.CONFIGURATION.NAME, "Tracked")
+            .set(Tables.CONFIGURATION.CREATED_BY_USER_ID, -1L)
+            .set(Tables.CONFIGURATION.TRACK_INVENTORY, true)
+            .returning(Tables.CONFIGURATION.ID)
+            .fetchOne(Tables.CONFIGURATION.ID);
+    Long untrackedConfigurationId =
+        dslContext
+            .insertInto(Tables.CONFIGURATION)
+            .set(Tables.CONFIGURATION.DOMAIN_ID, 1L)
+            .set(Tables.CONFIGURATION.NAME, "Untracked")
+            .set(Tables.CONFIGURATION.CREATED_BY_USER_ID, -1L)
+            .set(Tables.CONFIGURATION.TRACK_INVENTORY, false)
+            .returning(Tables.CONFIGURATION.ID)
+            .fetchOne(Tables.CONFIGURATION.ID);
+    dslContext
+        .insertInto(Tables.CONFIGURATION_COMPONENT)
+        .set(Tables.CONFIGURATION_COMPONENT.CONFIGURATION_ID, trackedConfigurationId)
+        .set(Tables.CONFIGURATION_COMPONENT.COMPONENT_ID, 7L)
+        .set(Tables.CONFIGURATION_COMPONENT.QUANTITY, 3)
+        .execute();
+    dslContext
+        .insertInto(Tables.CONFIGURATION_COMPONENT)
+        .set(Tables.CONFIGURATION_COMPONENT.CONFIGURATION_ID, untrackedConfigurationId)
+        .set(Tables.CONFIGURATION_COMPONENT.COMPONENT_ID, 7L)
+        .set(Tables.CONFIGURATION_COMPONENT.QUANTITY, 1)
+        .execute();
+
+    Component component = repository.getById(7L).orElseThrow();
+
+    assertThat(component.getTotalQuantity()).isEqualTo(5);
+    assertThat(component.getAllocatedQuantity()).isEqualTo(3);
+    assertThat(component.getAvailableQuantity()).isEqualTo(2);
+  }
+
+  @Test
   void shouldGetComponentWithAttributeValuesAndImages() {
     insertComponent(7L, 1L, "Switch");
     dslContext

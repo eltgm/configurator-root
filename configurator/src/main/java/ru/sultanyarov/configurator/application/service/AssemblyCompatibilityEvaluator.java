@@ -37,7 +37,8 @@ class AssemblyCompatibilityEvaluator {
                 .build());
         if (decision.status() == PairCompatibilityStatus.DENIED) {
           blocked = true;
-        } else if (decision.status() == PairCompatibilityStatus.ALLOWED) {
+        } else if (decision.status() == PairCompatibilityStatus.ALLOWED
+            || left.getComponentTypeId().equals(right.getComponentTypeId())) {
           allowedGraph.get(left.getId()).add(right.getId());
           allowedGraph.get(right.getId()).add(left.getId());
         }

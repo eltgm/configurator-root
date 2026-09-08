@@ -1,11 +1,13 @@
 import { configuratorDraftStorageKey } from '@/shared/config/preferences';
 
-export const configuratorDraftVersion = 1 as const;
+export const configuratorDraftVersion = 2 as const;
 export const configuratorDraftMaxItems = 50;
+export const configuratorDraftMaxQuantity = 999_999;
 
 export interface ConfiguratorDraftItem {
   componentId: number;
   componentTypeId: number;
+  quantity: number;
 }
 
 export interface ConfiguratorDraft {
@@ -14,6 +16,12 @@ export interface ConfiguratorDraft {
 }
 
 interface StoredConfiguratorDraftV1 {
+  version: 1;
+  updatedAt: string;
+  items: Array<Omit<ConfiguratorDraftItem, 'quantity'>>;
+}
+
+interface StoredConfiguratorDraftV2 {
   version: typeof configuratorDraftVersion;
   updatedAt: string;
   items: ConfiguratorDraftItem[];
@@ -28,12 +36,7 @@ export interface ConfiguratorDraftReadResult {
 
 export type ConfiguratorDraftAddResult =
   | { status: 'added'; items: ConfiguratorDraftItem[] }
-  | { status: 'already-selected'; items: ConfiguratorDraftItem[] }
-  | {
-      status: 'replacement-required';
-      items: ConfiguratorDraftItem[];
-      replacedItem: ConfiguratorDraftItem;
-    }
+  | { status: 'quantity-increased'; items: ConfiguratorDraftItem[] }
   | { status: 'limit-reached'; items: ConfiguratorDraftItem[] };
 
 export function emptyConfiguratorDraft(): ConfiguratorDraft {
@@ -44,13 +47,15 @@ function isPositiveInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0;
 }
 
-function isValidStoredDraft(value: unknown): value is StoredConfiguratorDraftV1 {
+function isValidStoredDraft(
+  value: unknown,
+): value is StoredConfiguratorDraftV1 | StoredConfiguratorDraftV2 {
   if (!value || typeof value !== 'object') {
     return false;
   }
-  const candidate = value as Partial<StoredConfiguratorDraftV1>;
+  const candidate = value as Partial<StoredConfiguratorDraftV1 | StoredConfiguratorDraftV2>;
   if (
-    candidate.version !== configuratorDraftVersion ||
+    (candidate.version !== 1 && candidate.version !== configuratorDraftVersion) ||
     typeof candidate.updatedAt !== 'string' ||
     Number.isNaN(Date.parse(candidate.updatedAt)) ||
     !Array.isArray(candidate.items) ||
@@ -59,7 +64,6 @@ function isValidStoredDraft(value: unknown): value is StoredConfiguratorDraftV1 
     return false;
   }
   const componentIds = new Set<number>();
-  const componentTypeIds = new Set<number>();
   return candidate.items.every((item) => {
     if (
       !item ||
@@ -67,12 +71,13 @@ function isValidStoredDraft(value: unknown): value is StoredConfiguratorDraftV1 
       !isPositiveInteger(item.componentId) ||
       !isPositiveInteger(item.componentTypeId) ||
       componentIds.has(item.componentId) ||
-      componentTypeIds.has(item.componentTypeId)
+      (candidate.version === configuratorDraftVersion &&
+        (!isPositiveInteger((item as ConfiguratorDraftItem).quantity) ||
+          (item as ConfiguratorDraftItem).quantity > configuratorDraftMaxQuantity))
     ) {
       return false;
     }
     componentIds.add(item.componentId);
-    componentTypeIds.add(item.componentTypeId);
     return true;
   });
 }
@@ -97,7 +102,11 @@ export function readConfiguratorDraft(
     }
     return {
       draft: {
-        items: parsed.items.map((item) => ({ ...item })),
+        items: parsed.items.map((item) => ({
+          componentId: item.componentId,
+          componentTypeId: item.componentTypeId,
+          quantity: parsed.version === 1 ? 1 : (item as ConfiguratorDraftItem).quantity,
+        })),
         updatedAt: parsed.updatedAt,
       },
       status: 'restored',
@@ -114,7 +123,7 @@ export function writeConfiguratorDraft(
   now: () => Date = () => new Date(),
 ) {
   const updatedAt = now().toISOString();
-  const stored: StoredConfiguratorDraftV1 = {
+  const stored: StoredConfiguratorDraftV2 = {
     version: configuratorDraftVersion,
     updatedAt,
     items: items.map((item) => ({ ...item })),
@@ -132,29 +141,48 @@ export function writeConfiguratorDraft(
 
 export function addConfiguratorDraftItem(
   items: ReadonlyArray<ConfiguratorDraftItem>,
-  item: ConfiguratorDraftItem,
+  item: Omit<ConfiguratorDraftItem, 'quantity'>,
 ): ConfiguratorDraftAddResult {
-  if (items.some((candidate) => candidate.componentId === item.componentId)) {
-    return { status: 'already-selected', items: [...items] };
-  }
-  const replacedItem = items.find(
-    (candidate) => candidate.componentTypeId === item.componentTypeId,
-  );
-  if (replacedItem) {
-    return { status: 'replacement-required', items: [...items], replacedItem };
+  const existing = items.find((candidate) => candidate.componentId === item.componentId);
+  if (existing) {
+    return {
+      status: 'quantity-increased',
+      items: items.map((candidate) =>
+        candidate.componentId === item.componentId
+          ? {
+              ...candidate,
+              quantity: Math.min(candidate.quantity + 1, configuratorDraftMaxQuantity),
+            }
+          : candidate,
+      ),
+    };
   }
   if (items.length >= configuratorDraftMaxItems) {
     return { status: 'limit-reached', items: [...items] };
   }
-  return { status: 'added', items: [...items, item] };
+  return { status: 'added', items: [...items, { ...item, quantity: 1 }] };
 }
 
 export function replaceConfiguratorDraftItem(
   items: ReadonlyArray<ConfiguratorDraftItem>,
-  item: ConfiguratorDraftItem,
+  replacedComponentId: number,
+  item: Omit<ConfiguratorDraftItem, 'quantity'>,
 ) {
   return items.map((candidate) =>
-    candidate.componentTypeId === item.componentTypeId ? item : candidate,
+    candidate.componentId === replacedComponentId
+      ? { ...item, quantity: candidate.quantity }
+      : candidate,
+  );
+}
+
+export function setConfiguratorDraftItemQuantity(
+  items: ReadonlyArray<ConfiguratorDraftItem>,
+  componentId: number,
+  quantity: number,
+) {
+  const normalizedQuantity = Math.max(1, Math.min(quantity, configuratorDraftMaxQuantity));
+  return items.map((item) =>
+    item.componentId === componentId ? { ...item, quantity: normalizedQuantity } : item,
   );
 }
 

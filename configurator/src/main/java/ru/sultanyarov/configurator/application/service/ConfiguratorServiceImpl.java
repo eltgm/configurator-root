@@ -179,7 +179,11 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
                       .build();
                 })
             .toList();
-    ConfiguratorCandidateStatus status = candidateStatus(decisions);
+    boolean hasSameTypeBase =
+        componentIds.stream()
+            .map(activeComponentsById::get)
+            .anyMatch(base -> base.getComponentTypeId().equals(candidate.getComponentTypeId()));
+    ConfiguratorCandidateStatus status = candidateStatus(decisions, hasSameTypeBase);
     return ConfiguratorAssemblyCandidate.builder()
         .id(candidate.getId())
         .name(candidate.getName())
@@ -192,13 +196,16 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
   }
 
   private static ConfiguratorCandidateStatus candidateStatus(
-      List<ConfiguratorCandidateBaseDecision> decisions) {
+      List<ConfiguratorCandidateBaseDecision> decisions, boolean hasSameTypeBase) {
     if (decisions.stream()
         .anyMatch(decision -> decision.status() == PairCompatibilityStatus.DENIED)) {
       return ConfiguratorCandidateStatus.BLOCKED;
     }
     if (decisions.stream()
         .anyMatch(decision -> decision.status() == PairCompatibilityStatus.ALLOWED)) {
+      return ConfiguratorCandidateStatus.AVAILABLE;
+    }
+    if (hasSameTypeBase) {
       return ConfiguratorCandidateStatus.AVAILABLE;
     }
     return ConfiguratorCandidateStatus.UNRELATED;

@@ -6,12 +6,13 @@ import {
   Modal,
   Paper,
   Stack,
+  Switch,
   Text,
   Textarea,
   TextInput,
 } from '@mantine/core';
 import { useEffect, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 
@@ -30,12 +31,16 @@ export interface ConfigurationSummaryItem {
   typeName: string;
   brand?: string | null;
   archived?: boolean;
+  quantity: number;
+  totalQuantity?: number;
+  allocatedQuantity?: number;
+  availableQuantity?: number;
 }
 
 interface CreateConfigurationModalProps {
   opened: boolean;
   domainId: number;
-  componentIds: ReadonlyArray<number>;
+  componentItems: ReadonlyArray<{ componentId: number; quantity: number }>;
   components: ReadonlyArray<ConfigurationSummaryItem>;
   mode?: 'create' | 'copy';
   initialValues?: ConfigurationFormValues | undefined;
@@ -46,7 +51,7 @@ interface CreateConfigurationModalProps {
 export function CreateConfigurationModal({
   opened,
   domainId,
-  componentIds,
+  componentItems,
   components,
   mode = 'create',
   initialValues,
@@ -65,17 +70,19 @@ export function CreateConfigurationModal({
           .min(1, t('configurations.form.validation.nameRequired'))
           .max(255, t('configurations.form.validation.nameTooLong')),
         description: z.string().max(4000, t('configurations.form.validation.descriptionTooLong')),
+        trackInventory: z.boolean(),
       }),
     [t],
   );
   const form = useForm<ConfigurationFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', description: '' },
+    defaultValues: { name: '', description: '', trackInventory: false },
   });
+  const trackInventory = useWatch({ control: form.control, name: 'trackInventory' });
 
   useEffect(() => {
     if (opened) {
-      form.reset(initialValues ?? { name: '', description: '' });
+      form.reset(initialValues ?? { name: '', description: '', trackInventory: false });
       resetMutation();
     }
   }, [form, initialValues, opened, resetMutation]);
@@ -90,7 +97,7 @@ export function CreateConfigurationModal({
     try {
       const configuration = await createConfiguration.mutateAsync({
         domainId,
-        body: toCreateConfigurationRequest(values, componentIds),
+        body: toCreateConfigurationRequest(values, componentItems),
       });
       showSuccessNotification(
         t(
@@ -145,6 +152,11 @@ export function CreateConfigurationModal({
             error={form.formState.errors.description?.message}
             {...form.register('description')}
           />
+          <Switch
+            label={t('configurations.inventory.track')}
+            description={t('configurations.inventory.trackDescription')}
+            {...form.register('trackInventory')}
+          />
           {createConfiguration.error ? <ErrorState error={createConfiguration.error} /> : null}
           <Stack gap="xs">
             <Group justify="space-between">
@@ -162,6 +174,14 @@ export function CreateConfigurationModal({
                 </Text>
                 <Text size="xs" c="dimmed">
                   {[component.typeName, component.brand].filter(Boolean).join(' · ')}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {t('configurations.components.quantity', { count: component.quantity })}
+                  {trackInventory && component.availableQuantity !== undefined
+                    ? ` · ${t('configurations.inventory.available', {
+                        count: component.availableQuantity,
+                      })}`
+                    : ''}
                 </Text>
                 {component.archived ? (
                   <Badge mt={4} color="gray" size="sm">

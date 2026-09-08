@@ -7,11 +7,15 @@ import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.COMPONENT_TY
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.CONFIGURATION;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.CONFIGURATION_COMPONENT;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
+import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.RecordMapper;
 import org.jooq.SelectField;
@@ -45,6 +49,7 @@ public class ConfigurationRepositoryImpl implements ConfigurationRepository {
             .set(CONFIGURATION.NAME, configuration.name())
             .set(CONFIGURATION.DESCRIPTION, configuration.description())
             .set(CONFIGURATION.CREATED_BY_USER_ID, configuration.createdByUserId())
+            .set(CONFIGURATION.TRACK_INVENTORY, configuration.trackInventory())
             .returning(CONFIGURATION.ID)
             .fetchOptional(CONFIGURATION.ID)
             .orElse(null);
@@ -63,6 +68,7 @@ public class ConfigurationRepositoryImpl implements ConfigurationRepository {
             .update(CONFIGURATION)
             .set(CONFIGURATION.NAME, configuration.name())
             .set(CONFIGURATION.DESCRIPTION, configuration.description())
+            .set(CONFIGURATION.TRACK_INVENTORY, configuration.trackInventory())
             .where(CONFIGURATION.ID.eq(id))
             .and(CONFIGURATION.CREATED_BY_USER_ID.eq(userId))
             .execute();
@@ -99,10 +105,53 @@ public class ConfigurationRepositoryImpl implements ConfigurationRepository {
   }
 
   @Override
+  public Optional<Configuration> findByIdAndUserIdForUpdate(Long id, Long userId) {
+    return dslContext
+        .select(configurationFields())
+        .from(CONFIGURATION)
+        .where(CONFIGURATION.ID.eq(id))
+        .and(CONFIGURATION.CREATED_BY_USER_ID.eq(userId))
+        .forUpdate()
+        .fetchOptional(configurationMapper());
+  }
+
+  @Override
+  public Map<Long, Integer> findAllocatedQuantitiesByComponentIds(Collection<Long> componentIds) {
+    if (componentIds.isEmpty()) {
+      return Map.of();
+    }
+    Field<Integer> allocatedQuantity =
+        org.jooq
+            .impl
+            .DSL
+            .sum(CONFIGURATION_COMPONENT.QUANTITY)
+            .cast(Integer.class)
+            .as("allocated_quantity");
+    Map<Long, Integer> quantities = new HashMap<>();
+    dslContext
+        .select(CONFIGURATION_COMPONENT.COMPONENT_ID, allocatedQuantity)
+        .from(CONFIGURATION_COMPONENT)
+        .join(CONFIGURATION)
+        .on(CONFIGURATION.ID.eq(CONFIGURATION_COMPONENT.CONFIGURATION_ID))
+        .where(CONFIGURATION_COMPONENT.COMPONENT_ID.in(componentIds))
+        .and(CONFIGURATION.TRACK_INVENTORY.isTrue())
+        .groupBy(CONFIGURATION_COMPONENT.COMPONENT_ID)
+        .forEach(
+            record ->
+                quantities.put(
+                    record.get(CONFIGURATION_COMPONENT.COMPONENT_ID),
+                    record.get(allocatedQuantity)));
+    return quantities;
+  }
+
+  @Override
   public Page<Configuration> findPageByDomainIdAndUserId(
-      Long domainId, Long userId, int page, int size) {
+      Long domainId, Long userId, Boolean trackInventory, int page, int size) {
     Condition condition =
         CONFIGURATION.DOMAIN_ID.eq(domainId).and(CONFIGURATION.CREATED_BY_USER_ID.eq(userId));
+    if (trackInventory != null) {
+      condition = condition.and(CONFIGURATION.TRACK_INVENTORY.eq(trackInventory));
+    }
     return jooqPage(
         dslContext,
         dslContext
@@ -125,7 +174,8 @@ public class ConfigurationRepositoryImpl implements ConfigurationRepository {
                     dslContext
                         .insertInto(CONFIGURATION_COMPONENT)
                         .set(CONFIGURATION_COMPONENT.CONFIGURATION_ID, configurationId)
-                        .set(CONFIGURATION_COMPONENT.COMPONENT_ID, component.id()))
+                        .set(CONFIGURATION_COMPONENT.COMPONENT_ID, component.id())
+                        .set(CONFIGURATION_COMPONENT.QUANTITY, component.quantity()))
             .toList();
     if (!insertQueries.isEmpty()) {
       dslContext.batch(insertQueries).execute();
@@ -140,6 +190,7 @@ public class ConfigurationRepositoryImpl implements ConfigurationRepository {
         CONFIGURATION.DESCRIPTION,
         CONFIGURATION.CREATED_BY_USER_ID,
         CONFIGURATION.CREATED_AT,
+        CONFIGURATION.TRACK_INVENTORY,
         componentsField());
   }
 
@@ -152,7 +203,8 @@ public class ConfigurationRepositoryImpl implements ConfigurationRepository {
                     COMPONENT.BRAND,
                     COMPONENT.COMPONENT_TYPE_ID,
                     COMPONENT_TYPE.NAME,
-                    COMPONENT.ARCHIVED)
+                    COMPONENT.ARCHIVED,
+                    CONFIGURATION_COMPONENT.QUANTITY)
                 .from(CONFIGURATION_COMPONENT)
                 .join(COMPONENT)
                 .on(COMPONENT.ID.eq(CONFIGURATION_COMPONENT.COMPONENT_ID))
@@ -175,6 +227,7 @@ public class ConfigurationRepositoryImpl implements ConfigurationRepository {
         .componentTypeId(record.get(COMPONENT.COMPONENT_TYPE_ID))
         .componentTypeName(record.get(COMPONENT_TYPE.NAME))
         .archived(Boolean.TRUE.equals(record.get(COMPONENT.ARCHIVED)))
+        .quantity(record.get(CONFIGURATION_COMPONENT.QUANTITY))
         .build();
   }
 
@@ -187,6 +240,7 @@ public class ConfigurationRepositoryImpl implements ConfigurationRepository {
             .description(record.get(CONFIGURATION.DESCRIPTION))
             .createdByUserId(record.get(CONFIGURATION.CREATED_BY_USER_ID))
             .createdAt(record.get(CONFIGURATION.CREATED_AT))
+            .trackInventory(Boolean.TRUE.equals(record.get(CONFIGURATION.TRACK_INVENTORY)))
             .components(JooqMapperUtils.getListOrNull(record, COMPONENTS_FIELD))
             .build();
   }

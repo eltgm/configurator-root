@@ -151,6 +151,12 @@ export function ComponentCatalogContent({
                 </Text>
               </Stack>
               <ComponentAttributes component={component} />
+              <Text size="xs" c="dimmed">
+                {t('components.item.availableQuantity', {
+                  available: component.availableQuantity,
+                  total: component.totalQuantity,
+                })}
+              </Text>
               <Group justify="space-between" mt="auto">
                 <Text size="xs" c="dimmed">
                   {dateFormatter.format(new Date(component.createdAt))}
@@ -179,6 +185,7 @@ export function ComponentCatalogContent({
               <Table.Th>{t('components.table.component')}</Table.Th>
               <Table.Th>{t('components.table.brand')}</Table.Th>
               <Table.Th>{t('components.table.type')}</Table.Th>
+              <Table.Th>{t('components.table.availableQuantity')}</Table.Th>
               <Table.Th>{t('components.table.createdAt')}</Table.Th>
               <Table.Th>{t('components.table.actions')}</Table.Th>
             </Table.Tr>
@@ -201,6 +208,12 @@ export function ComponentCatalogContent({
                 </Table.Td>
                 <Table.Td>{component.brand || t('components.item.noBrand')}</Table.Td>
                 <Table.Td>{typeName(component)}</Table.Td>
+                <Table.Td>
+                  {t('components.item.availableQuantityCompact', {
+                    available: component.availableQuantity,
+                    total: component.totalQuantity,
+                  })}
+                </Table.Td>
                 <Table.Td>{dateFormatter.format(new Date(component.createdAt))}</Table.Td>
                 <Table.Td>
                   <ComponentAction
@@ -238,6 +251,12 @@ export function ComponentCatalogContent({
                   </Text>
                 </Stack>
                 <Group justify="space-between" align="center">
+                  <Text size="xs" c="dimmed">
+                    {t('components.item.availableQuantityCompact', {
+                      available: component.availableQuantity,
+                      total: component.totalQuantity,
+                    })}
+                  </Text>
                   <Text size="xs" c="dimmed">
                     {dateFormatter.format(new Date(component.createdAt))}
                   </Text>

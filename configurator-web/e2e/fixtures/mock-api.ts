@@ -90,6 +90,9 @@ const componentPage: {
       name: 'Ryzen 7 7800X3D',
       brand: 'AMD',
       archived: false,
+      totalQuantity: 8,
+      allocatedQuantity: 0,
+      availableQuantity: 8,
       createdAt: '2026-08-09T12:00:00Z',
       attributes: [
         {
@@ -107,6 +110,9 @@ const componentPage: {
       name: 'Core Ultra 9 285K',
       brand: 'Intel',
       archived: false,
+      totalQuantity: 8,
+      allocatedQuantity: 0,
+      availableQuantity: 8,
       createdAt: '2026-08-10T12:00:00Z',
       attributes: [],
     },
@@ -116,6 +122,9 @@ const componentPage: {
       name: 'B650 Tomahawk',
       brand: 'MSI',
       archived: false,
+      totalQuantity: 8,
+      allocatedQuantity: 0,
+      availableQuantity: 8,
       createdAt: '2026-08-11T12:00:00Z',
       attributes: [],
     },
@@ -378,7 +387,9 @@ async function installMockApi(page: Page) {
       componentTypeId: number;
       componentTypeName: string;
       archived: boolean;
+      quantity: number;
     }>;
+    trackInventory: boolean;
   }> = [];
   let nextConfigurationId = 901;
   let componentImages = [
@@ -772,7 +783,8 @@ async function installMockApi(page: Page) {
       const body = request.postDataJSON() as {
         name: string;
         description?: string;
-        componentIds: number[];
+        components: Array<{ componentId: number; quantity: number }>;
+        trackInventory: boolean;
       };
       const created = {
         id: nextConfigurationId++,
@@ -780,8 +792,9 @@ async function installMockApi(page: Page) {
         name: body.name,
         ...(body.description ? { description: body.description } : {}),
         createdAt: '2026-08-23T12:00:00Z',
-        components: body.componentIds.flatMap((componentId) => {
-          const component = componentState.find((item) => item.id === componentId);
+        trackInventory: body.trackInventory,
+        components: body.components.flatMap((item) => {
+          const component = componentState.find((candidate) => candidate.id === item.componentId);
           if (!component) {
             return [];
           }
@@ -796,6 +809,7 @@ async function installMockApi(page: Page) {
                 componentTypeState.find((type) => type.id === component.componentTypeId)?.name ??
                 'Unknown',
               archived: false,
+              quantity: item.quantity,
             },
           ];
         }),
@@ -827,7 +841,7 @@ async function installMockApi(page: Page) {
     }
     await route.fulfill({
       json: {
-        schemaVersion: 1,
+        schemaVersion: 2,
         exportedAt: '2026-08-23T12:30:00Z',
         configuration,
       },
@@ -858,7 +872,7 @@ async function installMockApi(page: Page) {
     if (request.method() === 'GET' && pathname.endsWith('/export/json')) {
       await route.fulfill({
         json: {
-          schemaVersion: 1,
+          schemaVersion: 2,
           exportedAt: '2026-08-23T12:30:00Z',
           configuration: configurations[index],
         },
@@ -878,15 +892,17 @@ async function installMockApi(page: Page) {
       const body = request.postDataJSON() as {
         name: string;
         description?: string;
-        componentIds: number[];
+        components: Array<{ componentId: number; quantity: number }>;
+        trackInventory?: boolean;
       };
       const current = configurations[index];
       const updated = {
         ...current,
         name: body.name,
         ...(body.description ? { description: body.description } : {}),
-        components: body.componentIds.flatMap((componentId) => {
-          const component = componentState.find((item) => item.id === componentId);
+        trackInventory: body.trackInventory ?? current.trackInventory,
+        components: body.components.flatMap((item) => {
+          const component = componentState.find((candidate) => candidate.id === item.componentId);
           if (!component) return [];
           return [
             {
@@ -899,6 +915,7 @@ async function installMockApi(page: Page) {
                 componentTypeState.find((type) => type.id === component.componentTypeId)?.name ??
                 'Unknown',
               archived: false,
+              quantity: item.quantity,
             },
           ];
         }),

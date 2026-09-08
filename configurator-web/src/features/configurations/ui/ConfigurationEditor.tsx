@@ -5,6 +5,7 @@ import {
   Modal,
   Paper,
   Stack,
+  Switch,
   Text,
   Textarea,
   TextInput,
@@ -32,6 +33,7 @@ import {
   configurationEditorInitialValues,
   getConfigurationEditorEligibility,
   removeConfigurationEditorComponent,
+  setConfigurationEditorComponentQuantity,
   replaceConfigurationEditorComponent,
   toUpdateConfigurationRequest,
   type ConfigurationEditorComponent,
@@ -63,6 +65,7 @@ export function ConfigurationEditor({ configuration, componentTypes }: Configura
           .min(1, t('configurations.form.validation.nameRequired'))
           .max(255, t('configurations.form.validation.nameTooLong')),
         description: z.string().max(4000, t('configurations.form.validation.descriptionTooLong')),
+        trackInventory: z.boolean(),
       }),
     [t],
   );
@@ -145,6 +148,7 @@ export function ConfigurationEditor({ configuration, componentTypes }: Configura
   const selectedItems = components.map((component) => ({
     componentId: component.id,
     componentTypeId: component.componentTypeId,
+    quantity: component.quantity,
   }));
   const browserBlocked = replacementTarget
     ? baseComponents.some((component) => component.archived)
@@ -163,6 +167,7 @@ export function ConfigurationEditor({ configuration, componentTypes }: Configura
       replacementTarget?.componentTypeName ??
       t('components.item.unknownType'),
     archived: false,
+    quantity: 1,
   });
 
   const selectComponent = (selection: ConfiguratorComponentSelection) => {
@@ -244,6 +249,11 @@ export function ConfigurationEditor({ configuration, componentTypes }: Configura
                   error={form.formState.errors.description?.message}
                   {...form.register('description', { onChange: resetServerError })}
                 />
+                <Switch
+                  label={t('configurations.inventory.track')}
+                  description={t('configurations.inventory.trackDescription')}
+                  {...form.register('trackInventory', { onChange: resetServerError })}
+                />
               </Stack>
             </Paper>
 
@@ -267,6 +277,12 @@ export function ConfigurationEditor({ configuration, componentTypes }: Configura
                   );
                   setReplacementComponentId((current) =>
                     current === componentId ? null : current,
+                  );
+                  resetServerError();
+                }}
+                onQuantityChange={(componentId, quantity) => {
+                  setComponents((current) =>
+                    setConfigurationEditorComponentQuantity(current, componentId, quantity),
                   );
                   resetServerError();
                 }}

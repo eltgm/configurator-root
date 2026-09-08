@@ -99,6 +99,9 @@ describe('component image API', () => {
       componentTypeId: 1,
       name: 'Component',
       archived: false,
+      totalQuantity: 0,
+      allocatedQuantity: 0,
+      availableQuantity: 0,
       createdAt: '2026-08-23T00:00:00Z',
       images: [firstImage],
     });
@@ -151,6 +154,9 @@ describe('component image API', () => {
       componentTypeId: 1,
       name: 'Component',
       archived: false,
+      totalQuantity: 0,
+      allocatedQuantity: 0,
+      availableQuantity: 0,
       createdAt: '2026-08-23T00:00:00Z',
       images: [firstImage, secondImage],
     });

@@ -24,6 +24,8 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         body.createdAt != null
         body.components*.id == [1L, 5L]
         body.components*.componentTypeName == ["Processor", "Cooler"]
+        body.components*.quantity == [1, 1]
+        !body.trackInventory
         body.components.every { !it.archived }
     }
 
@@ -36,12 +38,18 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         post("/domains/1/configurations", request("Automatic build", null, [1L, 2L])).status == 201
     }
 
-    def "should reject components of the same type"() {
+    def "should allow different component models of the same type"() {
         given:
         prepareData()
 
-        expect:
-        post("/domains/1/configurations", request("Invalid build", null, [2L, 3L])).status == 409
+        when:
+        def result = post("/domains/1/configurations", request("Two boards", null, [2L, 3L]))
+
+        then:
+        result.status == 201
+        def body = objectMapper.readValue(result.body, SavedConfiguration)
+        body.components*.id == [2L, 3L]
+        body.components*.quantity == [1, 1]
     }
 
     def "should reject archived component"() {
@@ -196,7 +204,6 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         put("/configurations/${original.id}", request("Foreign", null, [1L, 7L])).status == 400
         put("/configurations/${original.id}", request("Missing", null, [1L, 999L])).status == 404
         put("/configurations/${original.id}", request("Archived", null, [1L, 4L])).status == 409
-        put("/configurations/${original.id}", request("Same type", null, [2L, 3L])).status == 409
         put("/configurations/${original.id}", request("Incompatible", null, [1L, 8L])).status == 409
         put("/configurations/${original.id}", request("Empty", null, [])).status == 400
         put("/configurations/${original.id}", request("   ", null, [1L])).status == 400
@@ -308,7 +315,7 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         result.status == 200
         result.headers["Content-Disposition"] == "attachment; filename=\"configuration-${configuration.id}.json\""
         def body = objectMapper.readValue(result.body, ConfigurationExport)
-        body.schemaVersion == 1
+        body.schemaVersion == 2
         body.exportedAt != null
         body.configuration.id == configuration.id
         body.configuration.components*.id == [1L, 2L]
@@ -339,6 +346,47 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         ).totalItems == 0
     }
 
+    def "should reserve physical instances only for tracked configurations"() {
+        given:
+        prepareData()
+        runSqlScripts("/sql/set-configurator-component-inventory.sql")
+        def components = [[componentId: 1L, quantity: 2], [componentId: 5L, quantity: 1]]
+
+        when:
+        def tracked = post(
+                "/domains/1/configurations",
+                [name: "Tracked build", components: components, trackInventory: true]
+        )
+
+        then:
+        tracked.status == 201
+        def trackedBody = objectMapper.readValue(tracked.body, SavedConfiguration)
+        trackedBody.trackInventory
+        trackedBody.components*.quantity == [2, 1]
+
+        and: "tracked requests cannot exceed the remaining inventory"
+        post(
+                "/domains/1/configurations",
+                [name: "Unavailable tracked build", components: components, trackInventory: true]
+        ).status == 409
+
+        and: "untracked configurations do not reserve the inventory"
+        post(
+                "/domains/1/configurations",
+                [name: "Untracked build", components: components, trackInventory: false]
+        ).status == 201
+
+        and: "the catalog exposes physical, allocated and available quantities"
+        def component = objectMapper.readTree(get("/components/1").body)
+        component.totalQuantity.asInt() == 3
+        component.allocatedQuantity.asInt() == 2
+        component.availableQuantity.asInt() == 1
+        objectMapper.readValue(
+                get("/domains/1/configurations", [trackInventory: true]).body,
+                ConfigurationPage
+        ).items*.id == [trackedBody.id]
+    }
+
     private void prepareData() {
         runSqlScripts("/sql/clear-db.sql", "/sql/insert-configurator-test-data.sql")
     }
@@ -350,6 +398,11 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
     }
 
     private static Map<String, ?> request(String name, String description, List<Long> componentIds) {
-        return [name: name, description: description, componentIds: componentIds]
+        return [
+                name          : name,
+                description   : description,
+                components    : componentIds.collect { [componentId: it, quantity: 1] },
+                trackInventory: false
+        ]
     }
 }

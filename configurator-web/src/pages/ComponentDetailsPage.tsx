@@ -180,6 +180,24 @@ export function ComponentDetailsPage() {
                   </Text>
                   <Text fw={600}>{date}</Text>
                 </Stack>
+                <Stack gap={2}>
+                  <Text size="sm" c="dimmed">
+                    {t('components.detail.totalQuantity')}
+                  </Text>
+                  <Text fw={600}>{component.totalQuantity}</Text>
+                </Stack>
+                <Stack gap={2}>
+                  <Text size="sm" c="dimmed">
+                    {t('components.detail.allocatedQuantity')}
+                  </Text>
+                  <Text fw={600}>{component.allocatedQuantity}</Text>
+                </Stack>
+                <Stack gap={2}>
+                  <Text size="sm" c="dimmed">
+                    {t('components.detail.availableQuantity')}
+                  </Text>
+                  <Text fw={600}>{component.availableQuantity}</Text>
+                </Stack>
               </SimpleGrid>
               <Stack gap={2}>
                 <Text size="sm" c="dimmed">

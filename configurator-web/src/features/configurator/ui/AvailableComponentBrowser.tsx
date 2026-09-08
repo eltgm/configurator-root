@@ -86,19 +86,9 @@ export function AvailableComponentBrowser({
   const [componentTypeId, setComponentTypeId] = useState<number>();
   const [page, setPage] = useState(0);
   const [explanationCandidate, setExplanationCandidate] = useState<ConfiguratorCandidate>();
-  const selectedTypeIds = useMemo(
-    () => new Set(selectedItems.map((item) => item.componentTypeId)),
-    [selectedItems],
-  );
   const catalogMode =
     selectedItems.length === 0 || Boolean(replacementTarget && baseComponentIds.length === 0);
-  const availableComponentTypeId =
-    componentTypeId === undefined ||
-    selectedItems.length === 0 ||
-    !selectedTypeIds.has(componentTypeId)
-      ? componentTypeId
-      : undefined;
-  const effectiveTypeId = replacementTarget?.componentTypeId ?? availableComponentTypeId;
+  const effectiveTypeId = replacementTarget?.componentTypeId ?? componentTypeId;
   const catalogQuery = useComponentsQuery(
     domainId,
     {
@@ -153,29 +143,19 @@ export function AvailableComponentBrowser({
       (candidate) =>
         candidate.id !== replacementTarget?.id &&
         (effectiveTypeId === undefined || candidate.componentTypeId === effectiveTypeId) &&
-        (replacementTarget || !selectedTypeIds.has(candidate.componentTypeId)) &&
         (!normalizedSearch ||
           candidate.name.toLocaleLowerCase().includes(normalizedSearch) ||
           candidate.brand?.toLocaleLowerCase().includes(normalizedSearch)),
     );
-  }, [
-    assemblyQuery.data,
-    effectiveTypeId,
-    includeTransitive,
-    replacementTarget,
-    search,
-    selectedTypeIds,
-  ]);
+  }, [assemblyQuery.data, effectiveTypeId, includeTransitive, replacementTarget, search]);
   const filteredCompatibilityCandidates = useMemo(
     () =>
       filterConfiguratorCandidates(compatibilityCandidates, {
         search,
         ...(effectiveTypeId === undefined ? {} : { componentTypeId: effectiveTypeId }),
-        ...(replacementTarget
-          ? { excludedComponentId: replacementTarget.id }
-          : { excludedComponentTypeIds: selectedTypeIds }),
+        ...(replacementTarget ? { excludedComponentId: replacementTarget.id } : {}),
       }),
-    [compatibilityCandidates, effectiveTypeId, replacementTarget, search, selectedTypeIds],
+    [compatibilityCandidates, effectiveTypeId, replacementTarget, search],
   );
   const totalPages = catalogMode
     ? Math.ceil((catalogQuery.data?.totalItems ?? 0) / componentCatalogPageSize)
@@ -201,17 +181,10 @@ export function AvailableComponentBrowser({
   const totalItems = catalogMode
     ? (catalogQuery.data?.totalItems ?? 0)
     : filteredCompatibilityCandidates.length;
-  const typeOptions = componentTypes
-    .filter(
-      (type) =>
-        replacementTarget?.componentTypeId === type.id ||
-        selectedItems.length === 0 ||
-        !selectedTypeIds.has(type.id),
-    )
-    .map((type) => ({ value: String(type.id), label: type.name }));
+  const typeOptions = componentTypes.map((type) => ({ value: String(type.id), label: type.name }));
   const typeNames = new Map(componentTypes.map((type) => [type.id, type.name]));
   const hasFilters =
-    Boolean(search.trim()) || (!replacementTarget && availableComponentTypeId !== undefined);
+    Boolean(search.trim()) || (!replacementTarget && componentTypeId !== undefined);
   const explanationGroups: CompatibilityExplanationGroup[] =
     explanationCandidate?.compatibilityByBase.map((entry) => ({
       key: String(entry.baseComponentId),

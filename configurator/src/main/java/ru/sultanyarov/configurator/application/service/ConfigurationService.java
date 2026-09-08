@@ -12,7 +12,7 @@ public interface ConfigurationService {
 
   void delete(Long id);
 
-  Page<Configuration> getPage(Long domainId, Integer page, Integer size);
+  Page<Configuration> getPage(Long domainId, Integer page, Integer size, Boolean trackInventory);
 
   Configuration getById(Long id);
 

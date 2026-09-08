@@ -9,6 +9,7 @@ import {
   readConfiguratorDraft,
   removeConfiguratorDraftItem,
   replaceConfiguratorDraftItem,
+  setConfiguratorDraftItemQuantity,
   writeConfiguratorDraft,
 } from '@/features/configurator/model/configurator-draft';
 import type { Component } from '@/shared/api';
@@ -52,19 +53,23 @@ export function useConfiguratorDraft(domainId: number) {
       componentId: component.id,
       componentTypeId: component.componentTypeId,
     });
-    if (result.status === 'added') {
+    if (result.status === 'added' || result.status === 'quantity-increased') {
       commit(result.items);
     }
     return result;
   };
 
-  const replace = (component: ConfiguratorDraftSelection) => {
+  const replace = (replacedComponentId: number, component: ConfiguratorDraftSelection) => {
     commit(
-      replaceConfiguratorDraftItem(items, {
+      replaceConfiguratorDraftItem(items, replacedComponentId, {
         componentId: component.id,
         componentTypeId: component.componentTypeId,
       }),
     );
+  };
+
+  const setQuantity = (componentId: number, quantity: number) => {
+    commit(setConfiguratorDraftItemQuantity(items, componentId, quantity));
   };
 
   const remove = (componentId: number) => {
@@ -95,6 +100,7 @@ export function useConfiguratorDraft(domainId: number) {
     persistenceAvailable,
     add,
     replace,
+    setQuantity,
     remove,
     clear,
   };

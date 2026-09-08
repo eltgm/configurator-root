@@ -13,12 +13,14 @@ export async function openConfigurationEditor(page: Page, componentCount = 2) {
     name: 'Тестовая конфигурация',
     description: 'Сохранённое описание',
     createdAt: '2026-08-31T10:00:00Z',
+    trackInventory: false,
     components: Array.from({ length: componentCount }, (_, index) => ({
       id: 1000 + index,
       name: `Компонент ${index + 1}`,
       componentTypeId: 2000 + index,
       componentTypeName: `Тип ${index + 1}`,
       archived: false,
+      quantity: 1,
     })),
   };
   const componentTypes = configuration.components.map((component, index) => ({
@@ -75,14 +77,19 @@ export async function openConfigurationEditor(page: Page, componentCount = 2) {
       const body = route.request().postDataJSON() as {
         name: string;
         description: string;
-        componentIds: number[];
+        components: Array<{ componentId: number; quantity: number }>;
+        trackInventory: boolean;
       };
       const components = [...configuration.components, ...candidates];
       configuration = {
         ...configuration,
         name: body.name,
         description: body.description,
-        components: body.componentIds.map((id) => components.find((item) => item.id === id)!),
+        trackInventory: body.trackInventory,
+        components: body.components.map((item) => ({
+          ...components.find((candidate) => candidate.id === item.componentId)!,
+          quantity: item.quantity,
+        })),
       };
     }
     await route.fulfill({ json: configuration });
