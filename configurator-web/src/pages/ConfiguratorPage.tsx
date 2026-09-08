@@ -44,13 +44,11 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
   const componentTypesQuery = useComponentTypesQuery(domainId);
   const draft = useConfiguratorDraft(domainId);
   const [replacementTarget, setReplacementTarget] = useState<ConfiguratorComponentSelection>();
-  const [replacementCandidate, setReplacementCandidate] =
-    useState<ConfiguratorComponentSelection>();
   const [clearRequested, setClearRequested] = useState(false);
   const [message, setMessage] = useState('');
   const [includeTransitive, setIncludeTransitive] = useState(false);
   const [saveSnapshot, setSaveSnapshot] = useState<{
-    componentIds: Array<number>;
+    componentItems: Array<{ componentId: number; quantity: number }>;
     components: Array<ConfigurationSummaryItem>;
   }>();
   const componentIds = draft.items.map((item) => item.componentId);
@@ -115,16 +113,19 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
   };
 
   const selectComponent = (component: ConfiguratorComponentSelection) => {
+    if (replacementTarget) {
+      draft.replace(replacementTarget.id, component);
+      setReplacementTarget(undefined);
+      setMessage(t('configurator.feedback.replaced', { name: component.name }));
+      return;
+    }
     const result = draft.add(component);
     switch (result.status) {
       case 'added':
         setMessage(t('configurator.feedback.added', { name: component.name }));
         break;
-      case 'already-selected':
-        setMessage(t('configurator.feedback.alreadySelected', { name: component.name }));
-        break;
-      case 'replacement-required':
-        setReplacementCandidate(component);
+      case 'quantity-increased':
+        setMessage(t('configurator.feedback.quantityIncreased', { name: component.name }));
         break;
       case 'limit-reached':
         setMessage(t('configurator.feedback.limitReached', { count: configuratorDraftMaxItems }));
@@ -133,15 +134,6 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
   };
 
   const componentTypes = componentTypesQuery.data ?? [];
-  const replacedSlot = replacementCandidate
-    ? draft.slots.find((slot) => slot.item.componentTypeId === replacementCandidate.componentTypeId)
-    : undefined;
-  const replacedName =
-    replacedSlot?.component?.name ??
-    t('configurator.replace.unknownComponent', {
-      id: replacedSlot?.item.componentId ?? '',
-    });
-
   return (
     <>
       {draft.readStatus === 'invalid' ? (
@@ -205,14 +197,13 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
           onReplace={(slot) => {
             if (slot.component) {
               setReplacementTarget(slot.component);
-              setReplacementCandidate(undefined);
             }
           }}
+          onQuantityChange={draft.setQuantity}
           onRemove={(componentId) => {
             draft.remove(componentId);
             if (replacementTarget?.id === componentId) {
               setReplacementTarget(undefined);
-              setReplacementCandidate(undefined);
             }
             setMessage(t('configurator.feedback.removed'));
           }}
@@ -227,7 +218,10 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
             }
             const typeNames = new Map(componentTypes.map((type) => [type.id, type.name]));
             setSaveSnapshot({
-              componentIds: [...componentIds],
+              componentItems: draft.items.map((item) => ({
+                componentId: item.componentId,
+                quantity: item.quantity,
+              })),
               components: draft.slots.flatMap((slot) =>
                 slot.component
                   ? [
@@ -240,6 +234,10 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
                             id: slot.item.componentTypeId,
                           }),
                         ...(slot.component.brand ? { brand: slot.component.brand } : {}),
+                        quantity: slot.item.quantity,
+                        totalQuantity: slot.component.totalQuantity,
+                        allocatedQuantity: slot.component.allocatedQuantity,
+                        availableQuantity: slot.component.availableQuantity,
                       },
                     ]
                   : [],
@@ -261,49 +259,10 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
           {...(replacementTarget ? { replacementTarget } : {})}
           onCancelReplacement={() => {
             setReplacementTarget(undefined);
-            setReplacementCandidate(undefined);
           }}
           onSelect={selectComponent}
         />
       </div>
-
-      <Modal
-        opened={Boolean(replacementCandidate)}
-        onClose={() => setReplacementCandidate(undefined)}
-        title={t('configurator.replace.title')}
-        centered
-      >
-        <Stack>
-          <Text>
-            {t('configurator.replace.description', {
-              current: replacedName,
-              replacement: replacementCandidate?.name ?? '',
-            })}
-          </Text>
-          <Text size="sm" c="dimmed">
-            {t('configurator.replace.hint')}
-          </Text>
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setReplacementCandidate(undefined)}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              onClick={() => {
-                if (replacementCandidate) {
-                  draft.replace(replacementCandidate);
-                  setMessage(
-                    t('configurator.feedback.replaced', { name: replacementCandidate.name }),
-                  );
-                }
-                setReplacementCandidate(undefined);
-                setReplacementTarget(undefined);
-              }}
-            >
-              {t('configurator.replace.confirm')}
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
 
       <Modal
         opened={clearRequested}
@@ -322,7 +281,6 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
               onClick={() => {
                 draft.clear();
                 setReplacementTarget(undefined);
-                setReplacementCandidate(undefined);
                 setMessage(t('configurator.feedback.cleared'));
                 setClearRequested(false);
               }}
@@ -337,13 +295,12 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
         <CreateConfigurationModal
           opened
           domainId={domainId}
-          componentIds={saveSnapshot.componentIds}
+          componentItems={saveSnapshot.componentItems}
           components={saveSnapshot.components}
           onClose={() => setSaveSnapshot(undefined)}
           onSaved={() => {
             draft.clear();
             setReplacementTarget(undefined);
-            setReplacementCandidate(undefined);
             setSaveSnapshot(undefined);
             void navigate('/configurations');
           }}

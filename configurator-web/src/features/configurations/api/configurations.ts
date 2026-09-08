@@ -17,12 +17,17 @@ import {
 } from '@/shared/api';
 
 export const configurationListPageSize = 10;
+export type ConfigurationInventoryFilter = 'all' | 'tracked' | 'untracked';
 
 export const configurationKeys = {
   byDomain: (domainId: number | null) => ['domains', domainId, 'configurations'] as const,
   lists: (domainId: number | null) => [...configurationKeys.byDomain(domainId), 'list'] as const,
-  list: (domainId: number | null, page: number, size: number) =>
-    [...configurationKeys.lists(domainId), page, size] as const,
+  list: (
+    domainId: number | null,
+    page: number,
+    size: number,
+    inventoryFilter: ConfigurationInventoryFilter,
+  ) => [...configurationKeys.lists(domainId), page, size, inventoryFilter] as const,
   detail: (domainId: number | null, configurationId: number | null) =>
     [...configurationKeys.byDomain(domainId), 'detail', configurationId] as const,
 };
@@ -31,12 +36,17 @@ export async function fetchConfigurations(
   domainId: number,
   page: number,
   size = configurationListPageSize,
+  inventoryFilter: ConfigurationInventoryFilter = 'all',
 ): Promise<ConfigurationPage> {
   return apiData(
     getDomainsByIdConfigurations({
       client,
       path: { id: domainId },
-      query: { page, size },
+      query: {
+        page,
+        size,
+        ...(inventoryFilter === 'all' ? {} : { trackInventory: inventoryFilter === 'tracked' }),
+      },
       throwOnError: true,
     }),
   );
@@ -46,13 +56,14 @@ export function useConfigurationsQuery(
   domainId: number | null,
   page: number,
   size = configurationListPageSize,
+  inventoryFilter: ConfigurationInventoryFilter = 'all',
 ) {
   return useQuery({
-    queryKey: configurationKeys.list(domainId, page, size),
+    queryKey: configurationKeys.list(domainId, page, size, inventoryFilter),
     queryFn: () =>
       domainId === null
         ? Promise.resolve({ items: [], page: 0, size, totalItems: 0 })
-        : fetchConfigurations(domainId, page, size),
+        : fetchConfigurations(domainId, page, size, inventoryFilter),
     enabled: domainId !== null,
     placeholderData: keepPreviousData,
   });

@@ -35,6 +35,7 @@ describe('ConfigurationsPage', () => {
                     name: 'Рабочая станция',
                     description: 'Тихая сборка',
                     createdAt: '2026-08-23T10:00:00Z',
+                    trackInventory: false,
                     components: [
                       {
                         id: 7,
@@ -43,6 +44,7 @@ describe('ConfigurationsPage', () => {
                         componentTypeId: 11,
                         componentTypeName: 'Процессор',
                         archived: false,
+                        quantity: 1,
                       },
                       {
                         id: 8,
@@ -50,6 +52,7 @@ describe('ConfigurationsPage', () => {
                         componentTypeId: 12,
                         componentTypeName: 'Видеокарта',
                         archived: true,
+                        quantity: 1,
                       },
                     ],
                   },
@@ -60,6 +63,7 @@ describe('ConfigurationsPage', () => {
                     domainId: 101,
                     name: 'Старая сборка',
                     createdAt: '2026-08-01T10:00:00Z',
+                    trackInventory: false,
                     components: [],
                   },
                 ],
@@ -154,6 +158,7 @@ describe('ConfigurationsPage', () => {
                     domainId: 101,
                     name: 'Последняя на странице',
                     createdAt: '2026-08-01T10:00:00Z',
+                    trackInventory: false,
                     components: [],
                   },
                 ]
@@ -164,6 +169,7 @@ describe('ConfigurationsPage', () => {
                       domainId: 101,
                       name: 'Предыдущая страница',
                       createdAt: '2026-08-01T10:00:00Z',
+                      trackInventory: false,
                       components: [],
                     },
                   ]

@@ -17,6 +17,8 @@ public interface ComponentMapper {
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
   @Mapping(target = "archived", ignore = true)
+  @Mapping(target = "allocatedQuantity", ignore = true)
+  @Mapping(target = "availableQuantity", ignore = true)
   Component toEntity(CreateComponentRequest createComponentRequest);
 
   @Mapping(target = "primaryImage", ignore = true)
@@ -24,6 +26,8 @@ public interface ComponentMapper {
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
   @Mapping(target = "archived", ignore = true)
+  @Mapping(target = "allocatedQuantity", ignore = true)
+  @Mapping(target = "availableQuantity", ignore = true)
   Component toEntity(UpdateComponentRequest updateComponentRequest);
 
   @Mapping(target = "id", ignore = true)

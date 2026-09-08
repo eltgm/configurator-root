@@ -19,21 +19,32 @@ describe('configuration create model', () => {
     }
   });
 
-  it('trims metadata, omits a blank description and snapshots component ids', () => {
-    const componentIds = [7, 3];
+  it('trims metadata, omits a blank description and snapshots component quantities', () => {
+    const components = [
+      { componentId: 7, quantity: 2 },
+      { componentId: 3, quantity: 1 },
+    ];
     const request = toCreateConfigurationRequest(
-      { name: '  Home PC  ', description: '  Quiet build  ' },
-      componentIds,
+      { name: '  Home PC  ', description: '  Quiet build  ', trackInventory: true },
+      components,
     );
-    expect(request).toEqual({ name: 'Home PC', description: 'Quiet build', componentIds: [7, 3] });
-    expect(toCreateConfigurationRequest({ name: ' PC ', description: '  ' }, componentIds)).toEqual(
-      {
-        name: 'PC',
-        componentIds: [7, 3],
-      },
-    );
+    expect(request).toEqual({
+      name: 'Home PC',
+      description: 'Quiet build',
+      components,
+      trackInventory: true,
+    });
+    expect(
+      toCreateConfigurationRequest(
+        { name: ' PC ', description: '  ', trackInventory: false },
+        components,
+      ),
+    ).toEqual({ name: 'PC', components, trackInventory: false });
 
-    componentIds.push(9);
-    expect(request.componentIds).toEqual([7, 3]);
+    components.push({ componentId: 9, quantity: 1 });
+    expect(request.components).toEqual([
+      { componentId: 7, quantity: 2 },
+      { componentId: 3, quantity: 1 },
+    ]);
   });
 });

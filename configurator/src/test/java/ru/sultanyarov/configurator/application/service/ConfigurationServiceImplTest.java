@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ru.sultanyarov.configurator.application.port.out.ComponentRepository;
 import ru.sultanyarov.configurator.application.port.out.ConfigurationRepository;
 import ru.sultanyarov.configurator.application.port.out.ConfiguratorRepository;
 import ru.sultanyarov.configurator.application.port.out.CurrentUserProvider;
@@ -26,6 +28,7 @@ import ru.sultanyarov.configurator.domain.exception.ValidationException;
 import ru.sultanyarov.configurator.domain.model.Component;
 import ru.sultanyarov.configurator.domain.model.ComponentType;
 import ru.sultanyarov.configurator.domain.model.Configuration;
+import ru.sultanyarov.configurator.domain.model.ConfigurationComponentItem;
 import ru.sultanyarov.configurator.domain.model.ConfigurationDraft;
 import ru.sultanyarov.configurator.domain.model.Domain;
 import ru.sultanyarov.configurator.domain.model.Page;
@@ -34,6 +37,7 @@ import ru.sultanyarov.configurator.domain.model.Page;
 class ConfigurationServiceImplTest {
   @Mock private DomainService domainService;
   @Mock private ComponentService componentService;
+  @Mock private ComponentRepository componentRepository;
   @Mock private ConfiguratorRepository configuratorRepository;
   @Mock private ConfigurationRepository configurationRepository;
   @Mock private CurrentUserProvider currentUserProvider;
@@ -47,6 +51,7 @@ class ConfigurationServiceImplTest {
         new ConfigurationServiceImpl(
             domainService,
             componentService,
+            componentRepository,
             configuratorRepository,
             configurationRepository,
             currentUserProvider,
@@ -95,7 +100,8 @@ class ConfigurationServiceImplTest {
     List<Component> components = List.of(component(1L, 10L, false), component(2L, 20L, false));
     Configuration persisted = persistedConfiguration(7L);
     when(currentUserProvider.getCurrentUserId()).thenReturn(42L);
-    when(configurationRepository.findByIdAndUserId(7L, 42L)).thenReturn(Optional.of(existing));
+    when(configurationRepository.findByIdAndUserIdForUpdate(7L, 42L))
+        .thenReturn(Optional.of(existing));
     when(domainService.getById(1L)).thenReturn(domain());
     when(configuratorRepository.getActiveComponents(1L)).thenReturn(components);
     when(configurationRepository.update(any(), any(), any(Configuration.class)))
@@ -125,7 +131,7 @@ class ConfigurationServiceImplTest {
   @Test
   void shouldHideForeignConfigurationBeforeUpdateValidation() {
     when(currentUserProvider.getCurrentUserId()).thenReturn(42L);
-    when(configurationRepository.findByIdAndUserId(7L, 42L)).thenReturn(Optional.empty());
+    when(configurationRepository.findByIdAndUserIdForUpdate(7L, 42L)).thenReturn(Optional.empty());
 
     assertThatThrownBy(
             () -> service.update(7L, new ConfigurationDraft("Updated", null, List.of(1L))))
@@ -140,7 +146,8 @@ class ConfigurationServiceImplTest {
   void shouldStrictlyRejectArchivedComponentDuringUpdate() {
     Configuration existing = persistedConfiguration(7L);
     when(currentUserProvider.getCurrentUserId()).thenReturn(-1L);
-    when(configurationRepository.findByIdAndUserId(7L, -1L)).thenReturn(Optional.of(existing));
+    when(configurationRepository.findByIdAndUserIdForUpdate(7L, -1L))
+        .thenReturn(Optional.of(existing));
     when(domainService.getById(1L)).thenReturn(domain());
     when(configuratorRepository.getActiveComponents(1L)).thenReturn(List.of());
     when(componentService.getById(1L)).thenReturn(component(1L, 10L, true));
@@ -158,7 +165,8 @@ class ConfigurationServiceImplTest {
     Configuration existing = persistedConfiguration(7L);
     Component component = component(1L, 10L, false);
     when(currentUserProvider.getCurrentUserId()).thenReturn(-1L);
-    when(configurationRepository.findByIdAndUserId(7L, -1L)).thenReturn(Optional.of(existing));
+    when(configurationRepository.findByIdAndUserIdForUpdate(7L, -1L))
+        .thenReturn(Optional.of(existing));
     when(domainService.getById(1L)).thenReturn(domain());
     when(configuratorRepository.getActiveComponents(1L)).thenReturn(List.of(component));
     when(configurationRepository.update(any(), any(), any(Configuration.class)))
@@ -173,6 +181,8 @@ class ConfigurationServiceImplTest {
   @Test
   void shouldDeleteConfigurationForCurrentUser() {
     when(currentUserProvider.getCurrentUserId()).thenReturn(42L);
+    when(configurationRepository.findByIdAndUserIdForUpdate(7L, 42L))
+        .thenReturn(Optional.of(persistedConfiguration(7L)));
     when(configurationRepository.deleteByIdAndUserId(7L, 42L)).thenReturn(true);
 
     service.delete(7L);
@@ -183,7 +193,7 @@ class ConfigurationServiceImplTest {
   @Test
   void shouldReturnNotFoundWhenConfigurationCannotBeDeleted() {
     when(currentUserProvider.getCurrentUserId()).thenReturn(42L);
-    when(configurationRepository.deleteByIdAndUserId(7L, 42L)).thenReturn(false);
+    when(configurationRepository.findByIdAndUserIdForUpdate(7L, 42L)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.delete(7L))
         .isInstanceOf(NotFoundException.class)
@@ -222,16 +232,45 @@ class ConfigurationServiceImplTest {
   }
 
   @Test
-  void shouldRejectTwoComponentsOfSameType() {
+  void shouldAllowDifferentModelsOfSameComponentType() {
     when(domainService.getById(1L)).thenReturn(domain());
     when(configuratorRepository.getActiveComponents(1L))
         .thenReturn(List.of(component(1L, 10L, false), component(2L, 10L, false)));
 
+    when(currentUserProvider.getCurrentUserId()).thenReturn(-1L);
+    when(configurationRepository.create(any(Configuration.class)))
+        .thenReturn(Optional.of(persistedConfiguration(8L)));
+
+    service.create(1L, new ConfigurationDraft("Build", null, List.of(1L, 2L)));
+
+    verify(compatibilityValidator)
+        .validateAssemblyCompatibility(
+            1L, List.of(component(1L, 10L, false), component(2L, 10L, false)));
+  }
+
+  @Test
+  void shouldRejectTrackedConfigurationWhenRequestedQuantityExceedsAvailableInventory() {
+    Component component = component(1L, 10L, false);
+    component.setTotalQuantity(4);
+    when(domainService.getById(1L)).thenReturn(domain());
+    when(configuratorRepository.getActiveComponents(1L)).thenReturn(List.of(component));
+    when(componentRepository.getById(1L)).thenReturn(Optional.of(component));
+    when(configurationRepository.findAllocatedQuantitiesByComponentIds(java.util.Set.of(1L)))
+        .thenReturn(Map.of(1L, 2));
+
     assertThatThrownBy(
-            () -> service.create(1L, new ConfigurationDraft("Build", null, List.of(1L, 2L))))
+            () ->
+                service.create(
+                    1L,
+                    new ConfigurationDraft(
+                        "Tracked build",
+                        null,
+                        true,
+                        List.of(new ConfigurationComponentItem(1L, 3)))))
         .isInstanceOf(ConfigurationConflictException.class)
-        .hasMessageContaining("Only one component");
-    verify(compatibilityValidator, never()).validateAssemblyCompatibility(any(), any());
+        .hasMessageContaining("only 2 are available");
+
+    verify(configurationRepository, never()).create(any(Configuration.class));
   }
 
   @Test
@@ -239,16 +278,19 @@ class ConfigurationServiceImplTest {
     Page<Configuration> page = new Page<>(List.of(), 0, 10, 0);
     when(domainService.getById(1L)).thenReturn(domain());
     when(currentUserProvider.getCurrentUserId()).thenReturn(42L);
-    when(configurationRepository.findPageByDomainIdAndUserId(1L, 42L, 0, 10)).thenReturn(page);
+    when(configurationRepository.findPageByDomainIdAndUserId(1L, 42L, null, 0, 10))
+        .thenReturn(page);
 
-    assertThat(service.getPage(1L, null, null)).isSameAs(page);
-    verify(configurationRepository).findPageByDomainIdAndUserId(1L, 42L, 0, 10);
+    assertThat(service.getPage(1L, null, null, null)).isSameAs(page);
+    verify(configurationRepository).findPageByDomainIdAndUserId(1L, 42L, null, 0, 10);
   }
 
   @Test
   void shouldRejectInvalidPagination() {
-    assertThatThrownBy(() -> service.getPage(1L, -1, 10)).isInstanceOf(ValidationException.class);
-    assertThatThrownBy(() -> service.getPage(1L, 0, 101)).isInstanceOf(ValidationException.class);
+    assertThatThrownBy(() -> service.getPage(1L, -1, 10, null))
+        .isInstanceOf(ValidationException.class);
+    assertThatThrownBy(() -> service.getPage(1L, 0, 101, null))
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -270,7 +312,7 @@ class ConfigurationServiceImplTest {
 
     var export = service.export(7L);
 
-    assertThat(export.schemaVersion()).isEqualTo(1);
+    assertThat(export.schemaVersion()).isEqualTo(2);
     assertThat(export.configuration()).isSameAs(configuration);
     assertThat(export.exportedAt()).isAfterOrEqualTo(before);
   }

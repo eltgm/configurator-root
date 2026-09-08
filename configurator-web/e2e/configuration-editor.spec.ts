@@ -123,7 +123,11 @@ test('switching replacement resets search and pagination without losing metadata
   expect((await saved).postDataJSON()).toEqual({
     name: 'Изменённое название',
     description: 'Сохранённое описание',
-    componentIds: [10000, 1001],
+    components: [
+      { componentId: 10000, quantity: 1 },
+      { componentId: 1001, quantity: 1 },
+    ],
+    trackInventory: false,
   });
   await expect(page).toHaveURL(/\/configurations\/990$/);
 });

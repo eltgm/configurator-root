@@ -32,8 +32,8 @@ describe('CreateConfigurationModal', () => {
         <CreateConfigurationModal
           opened
           domainId={101}
-          componentIds={[7]}
-          components={[{ id: 7, name: 'Ryzen', typeName: 'Процессор', brand: 'AMD' }]}
+          componentItems={[{ componentId: 7, quantity: 1 }]}
+          components={[{ id: 7, name: 'Ryzen', typeName: 'Процессор', brand: 'AMD', quantity: 1 }]}
           onClose={onClose}
           onSaved={vi.fn()}
         />
@@ -75,9 +75,16 @@ describe('CreateConfigurationModal', () => {
           opened
           mode="copy"
           domainId={101}
-          componentIds={[7, 8]}
-          components={[{ id: 7, name: 'Ryzen', typeName: 'Процессор', brand: 'AMD' }]}
-          initialValues={{ name: 'Домашний ПК — копия', description: 'Тихая сборка' }}
+          componentItems={[
+            { componentId: 7, quantity: 1 },
+            { componentId: 8, quantity: 1 },
+          ]}
+          components={[{ id: 7, name: 'Ryzen', typeName: 'Процессор', brand: 'AMD', quantity: 1 }]}
+          initialValues={{
+            name: 'Домашний ПК — копия',
+            description: 'Тихая сборка',
+            trackInventory: false,
+          }}
           onClose={vi.fn()}
           onSaved={vi.fn()}
         />

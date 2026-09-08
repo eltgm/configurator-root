@@ -1,4 +1,15 @@
-import { Alert, Badge, Button, Group, Paper, Skeleton, Stack, Text, Title } from '@mantine/core';
+import {
+  Alert,
+  Badge,
+  Button,
+  Group,
+  NumberInput,
+  Paper,
+  Skeleton,
+  Stack,
+  Text,
+  Title,
+} from '@mantine/core';
 import { IconAlertTriangle, IconArrowsExchange, IconRefresh, IconTrash } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -30,6 +41,7 @@ interface CurrentAssemblyProps {
   pairResults: ReadonlyArray<ConfiguratorPairResult>;
   onRetryCompatibility: () => void;
   onReplace: (slot: ConfiguratorDraftSlot) => void;
+  onQuantityChange: (componentId: number, quantity: number) => void;
   onRemove: (componentId: number) => void;
   onClear: () => void;
   canSave: boolean;
@@ -47,6 +59,7 @@ export function CurrentAssembly({
   pairResults,
   onRetryCompatibility,
   onReplace,
+  onQuantityChange,
   onRemove,
   onClear,
   canSave,
@@ -215,6 +228,23 @@ export function CurrentAssembly({
                           {[component.brand, typeName].filter(Boolean).join(' · ')}
                         </Text>
                       </Stack>
+                      <NumberInput
+                        aria-label={t('configurator.assembly.quantityNamed', {
+                          name: component.name,
+                        })}
+                        min={1}
+                        max={999999}
+                        allowDecimal={false}
+                        allowNegative={false}
+                        value={slot.item.quantity}
+                        w={92}
+                        size="xs"
+                        onChange={(value) => {
+                          if (typeof value === 'number' && Number.isInteger(value)) {
+                            onQuantityChange(component.id, value);
+                          }
+                        }}
+                      />
                       <Group gap={2} wrap="nowrap">
                         {!component.archived ? (
                           <Button

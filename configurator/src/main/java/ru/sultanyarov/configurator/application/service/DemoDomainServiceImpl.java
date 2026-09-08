@@ -15,6 +15,7 @@ import ru.sultanyarov.configurator.domain.model.CompatibilityRuleOperator;
 import ru.sultanyarov.configurator.domain.model.CompatibilityRuleSet;
 import ru.sultanyarov.configurator.domain.model.Component;
 import ru.sultanyarov.configurator.domain.model.ComponentType;
+import ru.sultanyarov.configurator.domain.model.ConfigurationComponentItem;
 import ru.sultanyarov.configurator.domain.model.ConfigurationDraft;
 import ru.sultanyarov.configurator.domain.model.DataType;
 import ru.sultanyarov.configurator.domain.model.Domain;
@@ -54,7 +55,8 @@ public class DemoDomainServiceImpl implements DemoDomainService {
         Domain.builder()
             .name(DEMO_DOMAIN_NAME)
             .description(
-                "Демонстрационный каталог для сборки игрового ПК с ручной и автоматической совместимостью")
+                "Демонстрационный каталог для сборки игрового ПК с ручной и автоматической"
+                    + " совместимостью")
             .createdByUserId(currentUserProvider.getCurrentUserId())
             .componentTypes(List.of())
             .build());
@@ -399,13 +401,14 @@ public class DemoDomainServiceImpl implements DemoDomainService {
         new ConfigurationDraft(
             DEMO_CONFIGURATION_NAME,
             "Готовая совместимая конфигурация для игр в разрешении 1440p",
+            false,
             List.of(
-                components.ryzen().getId(),
-                components.asusMotherboard().getId(),
-                components.ddr5Memory().getId(),
-                components.rtx().getId(),
-                components.corsairPsu().getId(),
-                components.fractalCase().getId())));
+                new ConfigurationComponentItem(components.ryzen().getId(), 1),
+                new ConfigurationComponentItem(components.asusMotherboard().getId(), 1),
+                new ConfigurationComponentItem(components.ddr5Memory().getId(), 1),
+                new ConfigurationComponentItem(components.rtx().getId(), 1),
+                new ConfigurationComponentItem(components.corsairPsu().getId(), 1),
+                new ConfigurationComponentItem(components.fractalCase().getId(), 1))));
   }
 
   private record DemoTypes(

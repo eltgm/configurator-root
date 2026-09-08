@@ -15,6 +15,7 @@ const configuration: Configuration = {
   name: 'Home PC',
   description: 'Quiet build',
   createdAt: '2026-08-23T10:00:00Z',
+  trackInventory: false,
   components: [
     {
       id: 3,
@@ -22,6 +23,7 @@ const configuration: Configuration = {
       componentTypeId: 11,
       componentTypeName: 'CPU',
       archived: false,
+      quantity: 1,
     },
   ],
 };
@@ -37,6 +39,7 @@ describe('configuration operations', () => {
     expect(getConfigurationCopyInitialValues(configuration, suffix)).toEqual({
       name: 'Home PC — copy',
       description: 'Quiet build',
+      trackInventory: false,
     });
   });
 

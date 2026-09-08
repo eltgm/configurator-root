@@ -307,9 +307,9 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
         blocked.compatibilityByBase[0].blockingRules*.ruleSetId == [701L]
         blocked.compatibilityByBase[0].blockingRules*.ruleSetName == ["Socket and power"]
 
-        and: "components without relationship knowledge remain distinguishable"
+        and: "a different model of an already selected type is available"
         def unrelated = responseBody.candidatesByType[1].components.find { it.id == 8L }
-        unrelated.status.toString() == "UNRELATED"
+        unrelated.status.toString() == "AVAILABLE"
         unrelated.compatibilityByBase*.status*.toString() == ["UNKNOWN", "UNKNOWN"]
 
         and: "selected components are not returned as candidates"

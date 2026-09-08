@@ -1,4 +1,4 @@
-import { Alert, Badge, Button, Group, Paper, Stack, Text, Title } from '@mantine/core';
+import { Alert, Badge, Button, Group, NumberInput, Paper, Stack, Text, Title } from '@mantine/core';
 import { IconAlertTriangle, IconArchive, IconRefresh, IconTrash } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -17,6 +17,7 @@ interface ConfigurationAssemblyEditorProps {
   eligibility: ConfigurationEditorEligibility;
   replacementComponentId: number | null;
   onRemove: (componentId: number) => void;
+  onQuantityChange: (componentId: number, quantity: number) => void;
   onReplace: (componentId: number) => void;
   onReplaceButtonRef: (componentId: number, element: HTMLButtonElement | null) => void;
   actions: ReactNode;
@@ -31,6 +32,7 @@ export function ConfigurationAssemblyEditor({
   eligibility,
   replacementComponentId,
   onRemove,
+  onQuantityChange,
   onReplace,
   onReplaceButtonRef,
   actions,
@@ -104,6 +106,23 @@ export function ConfigurationAssemblyEditor({
                 </Text>
               </Stack>
               <Group gap="xs">
+                <NumberInput
+                  aria-label={t('configurations.components.quantityNamed', {
+                    name: component.name,
+                  })}
+                  min={1}
+                  max={999999}
+                  allowDecimal={false}
+                  allowNegative={false}
+                  value={component.quantity}
+                  w={92}
+                  size="xs"
+                  onChange={(value) => {
+                    if (typeof value === 'number' && Number.isInteger(value)) {
+                      onQuantityChange(component.id, value);
+                    }
+                  }}
+                />
                 <Button
                   ref={(element) => onReplaceButtonRef(component.id, element)}
                   size="xs"

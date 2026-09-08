@@ -67,6 +67,9 @@ const component: Component = {
   brand: 'AMD',
   description: 'Игровой процессор',
   archived: false,
+  totalQuantity: 4,
+  allocatedQuantity: 1,
+  availableQuantity: 3,
   createdAt: '2026-08-09T12:00:00Z',
   attributes: [
     {
@@ -211,6 +214,7 @@ describe('component details and form', () => {
       componentTypeId: 11,
       name: 'Ryzen 9',
       brand: 'AMD',
+      totalQuantity: 0,
       attributes: [
         { attributeDefinitionId: 1001, value: 'AM5' },
         { attributeDefinitionId: 1002, value: '120.5' },

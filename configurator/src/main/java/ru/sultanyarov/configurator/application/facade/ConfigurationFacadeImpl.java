@@ -39,9 +39,11 @@ public class ConfigurationFacadeImpl implements ConfigurationFacade {
   }
 
   @Override
-  public ConfigurationPage getPage(Long domainId, Integer page, Integer size) {
+  public ConfigurationPage getPage(
+      Long domainId, Integer page, Integer size, Boolean trackInventory) {
     log.info("Getting configurations in domain {}, page {}, size {}", domainId, page, size);
-    return configurationMapper.toDto(configurationService.getPage(domainId, page, size));
+    return configurationMapper.toDto(
+        configurationService.getPage(domainId, page, size, trackInventory));
   }
 
   @Override

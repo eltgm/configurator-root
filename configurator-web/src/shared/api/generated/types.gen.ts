@@ -209,6 +209,18 @@ export type Component = {
   brand?: string | null;
   description?: string | null;
   archived: boolean;
+  /**
+   * Total physical instances of this catalog component
+   */
+  totalQuantity: number;
+  /**
+   * Instances occupied by saved configurations that track inventory
+   */
+  readonly allocatedQuantity: number;
+  /**
+   * Unallocated instances available for configurations that track inventory
+   */
+  readonly availableQuantity: number;
   createdAt: string;
   attributes?: Array<AttributeValue>;
   images?: Array<ComponentImage>;
@@ -219,6 +231,10 @@ export type CreateComponentRequest = {
   name: string;
   brand?: string | null;
   description?: string | null;
+  /**
+   * Total physical instances. An omitted value is stored as 0.
+   */
+  totalQuantity?: number;
   attributes?: Array<AttributeValueInput> | null;
 };
 
@@ -228,6 +244,10 @@ export type UpdateComponentRequest = {
   brand?: string | null;
   description?: string | null;
   attributes: Array<AttributeValueInput>;
+  /**
+   * Cannot be lower than the quantity occupied by tracked configurations
+   */
+  totalQuantity?: number;
 };
 
 export type CompatibilityLink = {
@@ -554,7 +574,7 @@ export type ConfiguratorCandidatesResponse = {
 };
 
 /**
- * Current component data included in a saved configuration
+ * Current component data and requested quantity included in a saved configuration
  */
 export type ConfigurationComponent = {
   id: number;
@@ -566,6 +586,18 @@ export type ConfigurationComponent = {
    * Whether the component was archived after the configuration was saved
    */
   archived: boolean;
+  /**
+   * Number of instances of this component in the configuration
+   */
+  quantity: number;
+};
+
+/**
+ * A unique active component and the number of its instances in a configuration
+ */
+export type ConfigurationComponentInput = {
+  componentId: number;
+  quantity: number;
 };
 
 /**
@@ -579,6 +611,10 @@ export type SavedConfiguration = {
   name: string;
   description?: string | null;
   createdAt: string;
+  /**
+   * Whether this configuration occupies component instances
+   */
+  trackInventory: boolean;
   components: Array<ConfigurationComponent>;
 };
 
@@ -592,14 +628,24 @@ export type CreateConfigurationRequest = {
    */
   description?: string | null;
   /**
-   * Unique active components from the path domain. At most one component of each type is
-   * allowed. For two or more components, ALLOWED relationships must form a connected graph
-   * and no selected pair may be DENIED. UNKNOWN pairs are permitted when the ALLOWED graph
-   * remains connected. Transitive reachability through unselected components does not
-   * validate a configuration.
+   * Unique active component models from the path domain with their quantities. Multiple
+   * models of one component type are allowed. For two or more distinct models, ALLOWED
+   * relationships must form a connected graph and no selected pair may be DENIED. UNKNOWN
+   * pairs are permitted when the ALLOWED graph remains connected. Transitive reachability
+   * through unselected components does not validate a configuration.
    *
    */
-  componentIds: Array<number>;
+  components?: Array<ConfigurationComponentInput>;
+  /**
+   * Deprecated compatibility input. Each identifier has quantity 1 and cannot be combined with components.
+   *
+   * @deprecated
+   */
+  componentIds?: Array<number>;
+  /**
+   * When true, saving reserves the requested quantities atomically.
+   */
+  trackInventory?: boolean;
 };
 
 /**
@@ -617,14 +663,24 @@ export type UpdateConfigurationRequest = {
    */
   description?: string | null;
   /**
-   * Complete replacement set of unique active components from the configuration domain.
-   * At most one component of each type is allowed. For two or more components, ALLOWED
-   * relationships must form a connected graph and no selected pair may be DENIED. UNKNOWN
-   * pairs are permitted when the ALLOWED graph remains connected. An archived component is
-   * rejected even when it already belongs to the saved configuration.
+   * Complete replacement set of unique active component models from the configuration
+   * domain, with quantities. Multiple models of one type are allowed. For two or more
+   * distinct models, ALLOWED relationships must form a connected graph and no selected pair
+   * may be DENIED. An archived component is rejected even when it already belongs to the
+   * saved configuration.
    *
    */
-  componentIds: Array<number>;
+  components?: Array<ConfigurationComponentInput>;
+  /**
+   * Deprecated compatibility input. Each identifier has quantity 1 and cannot be combined with components.
+   *
+   * @deprecated
+   */
+  componentIds?: Array<number>;
+  /**
+   * When omitted, preserves the existing setting. When true, saving reserves requested quantities atomically.
+   */
+  trackInventory?: boolean | null;
 };
 
 /**
@@ -650,6 +706,10 @@ export type ComponentWritable = {
   brand?: string | null;
   description?: string | null;
   archived: boolean;
+  /**
+   * Total physical instances of this catalog component
+   */
+  totalQuantity: number;
   createdAt: string;
   attributes?: Array<AttributeValue>;
   images?: Array<ComponentImage>;
@@ -2265,6 +2325,10 @@ export type GetDomainsByIdConfigurationsData = {
   query?: {
     page?: number;
     size?: number;
+    /**
+     * Optional inventory-mode filter. Omit to return all configurations.
+     */
+    trackInventory?: boolean;
   };
   url: '/domains/{id}/configurations';
 };
@@ -2320,7 +2384,7 @@ export type PostDomainsByIdConfigurationsErrors = {
    */
   404: ErrorResponse;
   /**
-   * Archived component, repeated component type or incompatible component set
+   * Archived component, insufficient component availability or incompatible component set
    */
   409: ErrorResponse;
 };
@@ -2431,7 +2495,7 @@ export type PutConfigurationsByIdErrors = {
    */
   404: ErrorResponse;
   /**
-   * Archived component, repeated component type or incompatible component set
+   * Archived component, insufficient component availability or incompatible component set
    */
   409: ErrorResponse;
 };

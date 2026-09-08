@@ -1,4 +1,4 @@
-import type { CreateConfigurationRequest } from '@/shared/api';
+import type { ConfigurationComponentInput, CreateConfigurationRequest } from '@/shared/api';
 
 export type ConfigurationSaveBlockReason =
   'empty' | 'pending' | 'conflict' | 'disconnected' | 'blocked' | 'error';
@@ -11,6 +11,7 @@ export type ConfigurationSaveEligibility =
 export interface ConfigurationFormValues {
   name: string;
   description: string;
+  trackInventory: boolean;
 }
 
 export function getConfigurationSaveEligibility(
@@ -25,12 +26,13 @@ export function getConfigurationSaveEligibility(
 
 export function toCreateConfigurationRequest(
   values: ConfigurationFormValues,
-  componentIds: ReadonlyArray<number>,
+  components: ReadonlyArray<ConfigurationComponentInput>,
 ): CreateConfigurationRequest {
   const description = values.description.trim();
   return {
     name: values.name.trim(),
     ...(description ? { description } : {}),
-    componentIds: [...componentIds],
+    components: components.map((component) => ({ ...component })),
+    trackInventory: values.trackInventory,
   };
 }

@@ -149,6 +149,12 @@ export const resources = {
           replace: 'Заменить',
           replaces: 'Тип уже выбран',
           page: 'Страница {{page}}',
+          pagination: {
+            first: 'Первая страница',
+            previous: 'Предыдущая страница',
+            next: 'Следующая страница',
+            last: 'Последняя страница',
+          },
         },
         assembly: {
           title: 'Текущая сборка',
@@ -159,7 +165,7 @@ export const resources = {
           clear: 'Очистить',
           emptyTitle: 'Сборка пока пуста',
           emptyDescription:
-            'Добавляйте компоненты из каталога. В сборке может быть один компонент каждого типа.',
+            'Добавляйте компоненты из каталога. В сборке можно выбрать несколько моделей одного типа.',
           archived: 'В архиве',
           conflict: 'Конфликт',
           disconnected: 'Нет связи',
@@ -169,6 +175,7 @@ export const resources = {
           remove: 'Убрать',
           removeNamed: 'Убрать {{name}} из сборки',
           replaceNamed: 'Заменить {{name}}',
+          quantityNamed: 'Количество «{{name}}»',
         },
         validation: {
           pending: 'Проверяем совместимость',
@@ -262,6 +269,7 @@ export const resources = {
           removed: 'Компонент убран из сборки',
           cleared: 'Сборка очищена',
           limitReached: 'В сборке может быть не более {{count}} компонентов',
+          quantityIncreased: 'Количество «{{name}}» увеличено',
         },
         states: {
           loadingTypes: 'Загрузка типов компонентов',
@@ -307,6 +315,16 @@ export const resources = {
             nameTooLong: 'Название должно содержать не более 255 символов',
             descriptionTooLong: 'Описание должно содержать не более 4000 символов',
           },
+        },
+        inventory: {
+          track: 'Учитывать количество компонентов',
+          trackDescription:
+            'При сохранении конфигурация займёт указанное количество каждого компонента.',
+          filterLabel: 'Фильтр конфигураций по учёту количества',
+          all: 'Все конфигурации',
+          tracked: 'С учётом количества',
+          untracked: 'Без учёта количества',
+          available: 'Доступно: {{count}}',
         },
         notifications: {
           created: 'Конфигурация сохранена',
@@ -388,6 +406,11 @@ export const resources = {
           count_many: '{{count}} компонентов',
           count_other: '{{count}} компонента',
           archived: 'В архиве',
+          quantity_one: '{{count}} экземпляр',
+          quantity_few: '{{count}} экземпляра',
+          quantity_many: '{{count}} экземпляров',
+          quantity_other: '{{count}} экземпляра',
+          quantityNamed: 'Количество «{{name}}»',
         },
       },
       components: {
@@ -431,11 +454,14 @@ export const resources = {
           noAttributes: 'Характеристики не заданы',
           noValue: '—',
           moreAttributes: 'Ещё характеристик: {{count}}',
+          availableQuantity: 'Доступно {{available}} из {{total}}',
+          availableQuantityCompact: '{{available}} / {{total}}',
         },
         table: {
           component: 'Компонент',
           brand: 'Бренд',
           type: 'Тип',
+          availableQuantity: 'Доступно',
           createdAt: 'Создан',
           actions: 'Действия',
         },
@@ -462,6 +488,9 @@ export const resources = {
           type: 'Тип компонента',
           brand: 'Бренд',
           createdAt: 'Создан',
+          totalQuantity: 'Всего экземпляров',
+          allocatedQuantity: 'Занято конфигурациями',
+          availableQuantity: 'Доступно для новых конфигураций',
           description: 'Описание',
           noDescription: 'Описание не задано',
           noAttributes: 'Характеристики для компонента не заданы.',
@@ -541,6 +570,10 @@ export const resources = {
           brandPlaceholder: 'Например, AMD',
           description: 'Описание',
           descriptionPlaceholder: 'Дополнительная информация о компоненте',
+          totalQuantity: 'Общее количество',
+          totalQuantityNewDescription:
+            'По умолчанию компоненты недоступны для конфигураций с учётом количества.',
+          totalQuantityDescription: 'Сейчас занято: {{allocated}}; доступно: {{available}}.',
           attributesHint: 'Набор полей определяется выбранным типом компонента.',
           loadingAttributes: 'Загрузка характеристик',
           noAttributes: 'Для этого типа характеристики не определены.',
@@ -558,6 +591,8 @@ export const resources = {
             nameTooLong: 'Название должно содержать не более 255 символов',
             attributeRequired: 'Заполните обязательную характеристику',
             numberInvalid: 'Введите число через точку',
+            quantityInteger: 'Количество должно быть целым числом',
+            quantityNonNegative: 'Количество не может быть отрицательным',
           },
           unsaved: {
             title: 'Выйти без сохранения?',
@@ -1290,6 +1325,12 @@ export const resources = {
           replace: 'Replace',
           replaces: 'Type selected',
           page: 'Page {{page}}',
+          pagination: {
+            first: 'First page',
+            previous: 'Previous page',
+            next: 'Next page',
+            last: 'Last page',
+          },
         },
         assembly: {
           title: 'Current assembly',
@@ -1298,7 +1339,7 @@ export const resources = {
           clear: 'Clear',
           emptyTitle: 'The assembly is empty',
           emptyDescription:
-            'Add components from the catalog. The assembly can contain one component of each type.',
+            'Add components from the catalog. The assembly can include multiple models of one type.',
           archived: 'Archived',
           conflict: 'Conflict',
           disconnected: 'No connection',
@@ -1308,6 +1349,7 @@ export const resources = {
           remove: 'Remove',
           removeNamed: 'Remove {{name}} from the assembly',
           replaceNamed: 'Replace {{name}}',
+          quantityNamed: 'Quantity for “{{name}}”',
         },
         validation: {
           pending: 'Checking compatibility',
@@ -1396,6 +1438,7 @@ export const resources = {
           removed: 'Component removed from the assembly',
           cleared: 'Assembly cleared',
           limitReached: 'The assembly cannot contain more than {{count}} components',
+          quantityIncreased: 'Quantity for “{{name}}” increased',
         },
         states: {
           loadingTypes: 'Loading component types',
@@ -1441,6 +1484,16 @@ export const resources = {
             nameTooLong: 'Name must not exceed 255 characters',
             descriptionTooLong: 'Description must not exceed 4000 characters',
           },
+        },
+        inventory: {
+          track: 'Track component quantities',
+          trackDescription:
+            'Saving this configuration reserves the specified quantity of every component.',
+          filterLabel: 'Filter configurations by quantity tracking',
+          all: 'All configurations',
+          tracked: 'Quantity tracking enabled',
+          untracked: 'Quantity tracking disabled',
+          available: 'Available: {{count}}',
         },
         notifications: {
           created: 'Configuration saved',
@@ -1518,6 +1571,9 @@ export const resources = {
           count_one: '{{count}} component',
           count_other: '{{count}} components',
           archived: 'Archived',
+          quantity_one: '{{count}} instance',
+          quantity_other: '{{count}} instances',
+          quantityNamed: 'Quantity for “{{name}}”',
         },
       },
       components: {
@@ -1559,11 +1615,14 @@ export const resources = {
           noAttributes: 'No properties specified',
           noValue: '—',
           moreAttributes: '{{count}} more properties',
+          availableQuantity: '{{available}} of {{total}} available',
+          availableQuantityCompact: '{{available}} / {{total}}',
         },
         table: {
           component: 'Component',
           brand: 'Brand',
           type: 'Type',
+          availableQuantity: 'Available',
           createdAt: 'Created',
           actions: 'Actions',
         },
@@ -1589,6 +1648,9 @@ export const resources = {
           type: 'Component type',
           brand: 'Brand',
           createdAt: 'Created',
+          totalQuantity: 'Total instances',
+          allocatedQuantity: 'Reserved by configurations',
+          availableQuantity: 'Available for new configurations',
           description: 'Description',
           noDescription: 'No description',
           noAttributes: 'No properties are set for this component.',
@@ -1667,6 +1729,10 @@ export const resources = {
           brandPlaceholder: 'For example, AMD',
           description: 'Description',
           descriptionPlaceholder: 'Additional information about the component',
+          totalQuantity: 'Total quantity',
+          totalQuantityNewDescription:
+            'New components are unavailable to configurations that track quantities until a total is set.',
+          totalQuantityDescription: 'Currently reserved: {{allocated}}; available: {{available}}.',
           attributesHint: 'The selected component type defines this set of fields.',
           loadingAttributes: 'Loading properties',
           noAttributes: 'This type has no defined properties.',
@@ -1683,6 +1749,8 @@ export const resources = {
             nameTooLong: 'The name must contain no more than 255 characters',
             attributeRequired: 'Fill in this required property',
             numberInvalid: 'Enter a number using a decimal point',
+            quantityInteger: 'Quantity must be a whole number',
+            quantityNonNegative: 'Quantity cannot be negative',
           },
           unsaved: {
             title: 'Leave without saving?',

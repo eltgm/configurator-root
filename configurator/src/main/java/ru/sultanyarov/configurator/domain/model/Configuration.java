@@ -12,4 +12,5 @@ public record Configuration(
     String description,
     Long createdByUserId,
     LocalDateTime createdAt,
+    boolean trackInventory,
     List<ConfigurationComponent> components) {}

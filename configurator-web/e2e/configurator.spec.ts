@@ -27,9 +27,6 @@ test('opens the configurator frontend with the selected domain', async ({ page }
   const replacementBrowser = page.getByRole('region', { name: 'Выбор замены' });
   await expect(replacementBrowser.getByText('Core Ultra 9 285K')).toBeVisible();
   await replacementBrowser.getByRole('button', { name: 'Выбрать' }).click();
-  const replaceDialog = page.getByRole('dialog', { name: 'Заменить компонент этого типа?' });
-  await expect(replaceDialog.getByText(/Core Ultra 9 285K/)).toBeVisible();
-  await replaceDialog.getByRole('button', { name: 'Заменить' }).click();
   await expect(assembly.getByText('Core Ultra 9 285K')).toBeVisible();
   await expect(assembly.getByText('Ryzen 7 7800X3D')).toHaveCount(0);
 
@@ -310,10 +307,6 @@ test('keeps a conflicting draft and repairs it with a slot-aware replacement', a
   await replacementRequest;
   const replacementBrowser = page.getByRole('region', { name: 'Выбор замены' });
   await replacementBrowser.getByRole('button', { name: 'Выбрать' }).click();
-  await page
-    .getByRole('dialog', { name: 'Заменить компонент этого типа?' })
-    .getByRole('button', { name: 'Заменить' })
-    .click();
 
   await expect(assembly.getByText('Core Ultra 9 285K')).toBeVisible();
   await expect(assembly.getByText('Сборка корректна')).toBeVisible();

@@ -19,6 +19,7 @@ export function getConfigurationCopyInitialValues(
   return {
     name: createConfigurationCopyName(configuration.name, suffix),
     description: configuration.description ?? '',
+    trackInventory: false,
   };
 }
 

@@ -8,6 +8,7 @@ import {
   getConfigurationEditorEligibility,
   removeConfigurationEditorComponent,
   replaceConfigurationEditorComponent,
+  setConfigurationEditorComponentQuantity,
   toUpdateConfigurationRequest,
   type ConfigurationEditorComponent,
 } from '@/features/configurations/model/configuration-editor';
@@ -19,6 +20,7 @@ const processor: ConfigurationEditorComponent = {
   componentTypeId: 10,
   componentTypeName: 'Processor',
   archived: false,
+  quantity: 1,
 };
 const board: ConfigurationEditorComponent = {
   id: 2,
@@ -26,6 +28,7 @@ const board: ConfigurationEditorComponent = {
   componentTypeId: 20,
   componentTypeName: 'Motherboard',
   archived: false,
+  quantity: 1,
 };
 const otherBoard: ConfigurationEditorComponent = { ...board, id: 3, name: 'Other board' };
 
@@ -37,33 +40,47 @@ describe('configuration editor model', () => {
       name: ' Workstation ',
       description: ' Quiet ',
       createdAt: '2026-08-23T10:00:00Z',
+      trackInventory: true,
       components: [processor],
     };
 
     expect(configurationEditorInitialValues(configuration)).toEqual({
       name: ' Workstation ',
       description: ' Quiet ',
+      trackInventory: true,
     });
     const components = configurationEditorInitialComponents(configuration);
     expect(components).toEqual([processor]);
     expect(components[0]).not.toBe(configuration.components[0]);
   });
 
-  it('adds, removes and replaces only a component of the same type', () => {
+  it('adds different models of the same type, removes them and replaces an exact model', () => {
     expect(addConfigurationEditorComponent([processor], board)).toEqual([processor, board]);
     expect(addConfigurationEditorComponent([processor, board], otherBoard)).toEqual([
       processor,
       board,
+      otherBoard,
     ]);
     expect(replaceConfigurationEditorComponent([processor, board], 2, otherBoard)).toEqual([
       processor,
       otherBoard,
     ]);
     expect(replaceConfigurationEditorComponent([processor, board], 1, otherBoard)).toEqual([
-      processor,
+      otherBoard,
       board,
     ]);
     expect(removeConfigurationEditorComponent([processor, board], 1)).toEqual([board]);
+  });
+
+  it('keeps existing positions for a duplicate or missing replacement and normalizes quantities', () => {
+    expect(addConfigurationEditorComponent([processor], processor)).toEqual([processor]);
+    expect(replaceConfigurationEditorComponent([processor], board.id, board)).toEqual([processor]);
+    expect(setConfigurationEditorComponentQuantity([processor], processor.id, 0)).toEqual([
+      { ...processor, quantity: 1 },
+    ]);
+    expect(setConfigurationEditorComponentQuantity([processor], processor.id, 1_000_000)).toEqual([
+      { ...processor, quantity: 999_999 },
+    ]);
   });
 
   it('compares composition as a set instead of display order', () => {
@@ -107,7 +124,17 @@ describe('configuration editor model', () => {
 
   it('normalizes a complete update request', () => {
     expect(
-      toUpdateConfigurationRequest({ name: '  Updated  ', description: '   ' }, [processor, board]),
-    ).toEqual({ name: 'Updated', componentIds: [1, 2] });
+      toUpdateConfigurationRequest(
+        { name: '  Updated  ', description: '   ', trackInventory: true },
+        [processor, board],
+      ),
+    ).toEqual({
+      name: 'Updated',
+      components: [
+        { componentId: 1, quantity: 1 },
+        { componentId: 2, quantity: 1 },
+      ],
+      trackInventory: true,
+    });
   });
 });
