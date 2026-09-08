@@ -6,14 +6,15 @@ import {
   readConfiguratorDraft,
   removeConfiguratorDraftItem,
   replaceConfiguratorDraftItem,
+  setConfiguratorDraftItemQuantity,
   writeConfiguratorDraft,
 } from '@/features/configurator/model/configurator-draft';
 import { configuratorDraftStorageKey } from '@/shared/config/preferences';
 
 const domainId = 101;
-const first = { componentId: 11, componentTypeId: 1 };
-const replacement = { componentId: 12, componentTypeId: 1 };
-const second = { componentId: 21, componentTypeId: 2 };
+const first = { componentId: 11, componentTypeId: 1, quantity: 1 };
+const replacement = { componentId: 12, componentTypeId: 1, quantity: 1 };
+const second = { componentId: 21, componentTypeId: 2, quantity: 1 };
 
 describe('configurator draft persistence', () => {
   it('round-trips an ordered versioned draft under a domain-scoped key', () => {
@@ -33,7 +34,7 @@ describe('configurator draft persistence', () => {
 
     expect(storage.get(configuratorDraftStorageKey(domainId))).toBe(
       JSON.stringify({
-        version: 1,
+        version: 2,
         updatedAt: '2026-08-23T12:00:00.000Z',
         items: [first, second],
       }),
@@ -47,13 +48,13 @@ describe('configurator draft persistence', () => {
 
   it.each([
     'not-json',
-    JSON.stringify({ version: 2, updatedAt: '2026-08-23T12:00:00Z', items: [] }),
+    JSON.stringify({ version: 3, updatedAt: '2026-08-23T12:00:00Z', items: [] }),
     JSON.stringify({ version: 1, updatedAt: 'invalid', items: [] }),
     JSON.stringify({ version: 1, updatedAt: '2026-08-23T12:00:00Z', items: [first, first] }),
     JSON.stringify({
-      version: 1,
+      version: 2,
       updatedAt: '2026-08-23T12:00:00Z',
-      items: [first, replacement],
+      items: [{ ...first, quantity: 0 }],
     }),
   ])('recovers from malformed or incompatible data: %s', (raw) => {
     expect(readConfiguratorDraft(domainId, { getItem: () => raw })).toEqual({
@@ -81,11 +82,11 @@ describe('configurator draft persistence', () => {
 });
 
 describe('configurator draft operations', () => {
-  it('adds components in selection order and treats the same component as a no-op', () => {
+  it('adds models in selection order and increments the same model quantity', () => {
     expect(addConfiguratorDraftItem([], first)).toEqual({ status: 'added', items: [first] });
     expect(addConfiguratorDraftItem([first], first)).toEqual({
-      status: 'already-selected',
-      items: [first],
+      status: 'quantity-increased',
+      items: [{ ...first, quantity: 2 }],
     });
     expect(addConfiguratorDraftItem([first], second)).toEqual({
       status: 'added',
@@ -93,13 +94,12 @@ describe('configurator draft operations', () => {
     });
   });
 
-  it('requires an explicit same-type replacement and preserves its position', () => {
+  it('allows several models of the same type and preserves quantity on replacement', () => {
     expect(addConfiguratorDraftItem([first, second], replacement)).toEqual({
-      status: 'replacement-required',
-      items: [first, second],
-      replacedItem: first,
+      status: 'added',
+      items: [first, second, replacement],
     });
-    expect(replaceConfiguratorDraftItem([first, second], replacement)).toEqual([
+    expect(replaceConfiguratorDraftItem([first, second], first.componentId, replacement)).toEqual([
       replacement,
       second,
     ]);
@@ -113,10 +113,17 @@ describe('configurator draft operations', () => {
     const full = Array.from({ length: configuratorDraftMaxItems }, (_, index) => ({
       componentId: index + 1,
       componentTypeId: index + 101,
+      quantity: 1,
     }));
     expect(addConfiguratorDraftItem(full, { componentId: 1000, componentTypeId: 1000 })).toEqual({
       status: 'limit-reached',
       items: full,
     });
+  });
+
+  it('normalizes an explicitly edited quantity', () => {
+    expect(setConfiguratorDraftItemQuantity([first], first.componentId, 4)).toEqual([
+      { ...first, quantity: 4 },
+    ]);
   });
 });

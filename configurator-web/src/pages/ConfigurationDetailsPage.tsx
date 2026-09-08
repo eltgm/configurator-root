@@ -124,13 +124,17 @@ export function ConfigurationDetailsPage() {
         opened={copying}
         mode="copy"
         domainId={configuration.domainId}
-        componentIds={configuration.components.map((component) => component.id)}
+        componentItems={configuration.components.map((component) => ({
+          componentId: component.id,
+          quantity: component.quantity,
+        }))}
         components={configuration.components.map((component) => ({
           id: component.id,
           name: component.name,
           typeName: component.componentTypeName,
           ...(component.brand ? { brand: component.brand } : {}),
           archived: component.archived,
+          quantity: component.quantity,
         }))}
         initialValues={copyInitialValues}
         onClose={() => setCopying(false)}

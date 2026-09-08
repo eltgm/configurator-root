@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfigurationComponentInput;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfigurationPage;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.CreateConfigurationRequest;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.SavedConfiguration;
@@ -29,7 +30,9 @@ class ConfigurationFacadeImplTest {
 
   @Test
   void shouldCreateAndMapConfiguration() {
-    CreateConfigurationRequest request = new CreateConfigurationRequest("Build", List.of(1L));
+    CreateConfigurationRequest request =
+        new CreateConfigurationRequest("Build")
+            .components(List.of(new ConfigurationComponentInput(1L, 1)));
     ConfigurationDraft draft = new ConfigurationDraft("Build", null, List.of(1L));
     Configuration configuration = configuration(7L);
     SavedConfiguration response = response(7L);
@@ -42,7 +45,9 @@ class ConfigurationFacadeImplTest {
 
   @Test
   void shouldUpdateAndMapConfiguration() {
-    UpdateConfigurationRequest request = new UpdateConfigurationRequest("Updated", List.of(2L));
+    UpdateConfigurationRequest request =
+        new UpdateConfigurationRequest("Updated")
+            .components(List.of(new ConfigurationComponentInput(2L, 2)));
     ConfigurationDraft draft = new ConfigurationDraft("Updated", null, List.of(2L));
     Configuration configuration = configuration(7L);
     SavedConfiguration response = response(7L);
@@ -68,14 +73,14 @@ class ConfigurationFacadeImplTest {
     Configuration configuration = configuration(7L);
     Page<Configuration> page = new Page<>(List.of(configuration), 0, 10, 1);
     ConfigurationPage pageResponse = new ConfigurationPage(List.of(response(7L)), 0, 10, 1);
-    when(configurationService.getPage(1L, 0, 10)).thenReturn(page);
+    when(configurationService.getPage(1L, 0, 10, false)).thenReturn(page);
     when(configurationMapper.toDto(page)).thenReturn(pageResponse);
     when(configurationService.getById(7L)).thenReturn(configuration);
     when(configurationMapper.toDto(configuration)).thenReturn(response(7L));
 
-    assertThat(facade.getPage(1L, 0, 10)).isSameAs(pageResponse);
+    assertThat(facade.getPage(1L, 0, 10, false)).isSameAs(pageResponse);
     assertThat(facade.getById(7L).getId()).isEqualTo(7L);
-    verify(configurationService).getPage(1L, 0, 10);
+    verify(configurationService).getPage(1L, 0, 10, false);
     verify(configurationService).getById(7L);
   }
 
@@ -104,6 +109,6 @@ class ConfigurationFacadeImplTest {
   }
 
   private static SavedConfiguration response(Long id) {
-    return new SavedConfiguration(id, 1L, "Build", LocalDateTime.now(), List.of());
+    return new SavedConfiguration(id, 1L, "Build", LocalDateTime.now(), false, List.of());
   }
 }

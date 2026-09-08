@@ -22,6 +22,9 @@ const ryzen: Component = {
   name: 'Ryzen 7 7800X3D',
   brand: 'AMD',
   archived: false,
+  totalQuantity: 8,
+  allocatedQuantity: 0,
+  availableQuantity: 8,
   createdAt: '2026-08-01T12:00:00Z',
   attributes: [
     {
@@ -53,6 +56,9 @@ const radeon: Component = {
   name: 'Radeon RX 7900 XTX',
   brand: 'AMD',
   archived: false,
+  totalQuantity: 4,
+  allocatedQuantity: 1,
+  availableQuantity: 3,
   createdAt: '2026-08-02T12:00:00Z',
 };
 const archivedIntel: Component = {
@@ -61,6 +67,9 @@ const archivedIntel: Component = {
   name: 'Core i7-12700K',
   brand: 'Intel',
   archived: true,
+  totalQuantity: 1,
+  allocatedQuantity: 0,
+  availableQuantity: 1,
   createdAt: '2026-07-01T12:00:00Z',
 };
 

@@ -25,6 +25,7 @@ const configuration: Configuration = {
   name: 'Рабочая станция',
   description: 'Тихая сборка',
   createdAt: '2026-08-23T10:00:00Z',
+  trackInventory: false,
   components: [
     {
       id: 7,
@@ -33,6 +34,7 @@ const configuration: Configuration = {
       componentTypeId: 11,
       componentTypeName: 'Процессор',
       archived: false,
+      quantity: 1,
     },
     {
       id: 8,
@@ -40,6 +42,7 @@ const configuration: Configuration = {
       componentTypeId: 12,
       componentTypeName: 'Видеокарта',
       archived: false,
+      quantity: 1,
     },
   ],
 };
@@ -181,7 +184,11 @@ describe('configuration details and editor', () => {
     expect(requestBody).toEqual({
       name: 'Рабочая станция — копия',
       description: 'Тихая сборка',
-      componentIds: [7, 8],
+      components: [
+        { componentId: 7, quantity: 1 },
+        { componentId: 8, quantity: 1 },
+      ],
+      trackInventory: false,
     });
     expect(window.localStorage.getItem(draftKey)).toBe(localDraft);
   });
@@ -273,7 +280,14 @@ describe('configuration details and editor', () => {
     await user.click(screen.getByRole('button', { name: 'Сохранить изменения' }));
 
     await findConfigurationHeading('Новая станция');
-    expect(requestBody).toEqual({ name: 'Новая станция', componentIds: [7, 8] });
+    expect(requestBody).toEqual({
+      name: 'Новая станция',
+      components: [
+        { componentId: 7, quantity: 1 },
+        { componentId: 8, quantity: 1 },
+      ],
+      trackInventory: false,
+    });
   });
 
   it('updates a connected assembly when some pairs are unknown', async () => {
@@ -294,6 +308,7 @@ describe('configuration details and editor', () => {
           componentTypeId: 13,
           componentTypeName: 'Оперативная память',
           archived: false,
+          quantity: 1,
         },
       ],
     };
@@ -351,7 +366,12 @@ describe('configuration details and editor', () => {
     expect(requestBody).toEqual({
       name: 'Связная сборка',
       description: 'Тихая сборка',
-      componentIds: [7, 8, 9],
+      components: [
+        { componentId: 7, quantity: 1 },
+        { componentId: 8, quantity: 1 },
+        { componentId: 9, quantity: 1 },
+      ],
+      trackInventory: false,
     });
   });
 
@@ -470,7 +490,12 @@ describe('configuration details and editor', () => {
     expect(requestBody).toEqual({
       name: 'Рабочая станция',
       description: 'Тихая сборка',
-      componentIds: [7, 8, 9],
+      components: [
+        { componentId: 7, quantity: 1 },
+        { componentId: 8, quantity: 1 },
+        { componentId: 9, quantity: 1 },
+      ],
+      trackInventory: false,
     });
   });
 
@@ -569,7 +594,8 @@ describe('configuration details and editor', () => {
     expect(requestBody).toEqual({
       name: 'Рабочая станция',
       description: 'Тихая сборка',
-      componentIds: [104],
+      components: [{ componentId: 104, quantity: 1 }],
+      trackInventory: false,
     });
   });
 
@@ -642,7 +668,8 @@ describe('configuration details and editor', () => {
     expect(requestBody).toEqual({
       name: 'Рабочая станция',
       description: 'Тихая сборка',
-      componentIds: [7],
+      components: [{ componentId: 7, quantity: 1 }],
+      trackInventory: false,
     });
   });
 

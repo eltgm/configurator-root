@@ -53,6 +53,17 @@ export function ConfigurationList({
                   date: dateFormatter.format(new Date(configuration.createdAt)),
                 })}
               </Text>
+              <Badge
+                color={configuration.trackInventory ? 'teal' : 'gray'}
+                variant="light"
+                w="fit-content"
+              >
+                {t(
+                  configuration.trackInventory
+                    ? 'configurations.inventory.tracked'
+                    : 'configurations.inventory.untracked',
+                )}
+              </Badge>
               {configuration.description ? (
                 <Text size="sm">{configuration.description}</Text>
               ) : (
@@ -76,15 +87,20 @@ export function ConfigurationList({
                         {[component.componentTypeName, component.brand].filter(Boolean).join(' · ')}
                       </Text>
                     </Stack>
-                    {component.archived ? (
-                      <Badge
-                        color="gray"
-                        size="sm"
-                        leftSection={<IconArchive size={12} aria-hidden="true" />}
-                      >
-                        {t('configurations.components.archived')}
+                    <Group gap="xs">
+                      <Badge size="sm" variant="light">
+                        {t('configurations.components.quantity', { count: component.quantity })}
                       </Badge>
-                    ) : null}
+                      {component.archived ? (
+                        <Badge
+                          color="gray"
+                          size="sm"
+                          leftSection={<IconArchive size={12} aria-hidden="true" />}
+                        >
+                          {t('configurations.components.archived')}
+                        </Badge>
+                      ) : null}
+                    </Group>
                   </Group>
                 </Paper>
               ))}

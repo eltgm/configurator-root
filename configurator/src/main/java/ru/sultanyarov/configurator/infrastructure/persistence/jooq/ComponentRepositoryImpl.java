@@ -1,7 +1,9 @@
 package ru.sultanyarov.configurator.infrastructure.persistence.jooq;
 
+import static org.jooq.impl.DSL.coalesce;
 import static org.jooq.impl.DSL.max;
 import static org.jooq.impl.DSL.multiset;
+import static org.jooq.impl.DSL.sum;
 import static ru.sultanyarov.configurator.common.util.PaginationHelper.*;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.*;
 
@@ -23,6 +25,7 @@ import ru.sultanyarov.configurator.domain.model.DataType;
 @Repository
 @RequiredArgsConstructor
 public class ComponentRepositoryImpl implements ComponentRepository {
+  private static final String ALLOCATED_QUANTITY_FIELD = "allocatedQuantity";
   private static final ru.sultanyarov.configurator.domain.entity.jooq.tables.Component COMPONENT =
       Tables.COMPONENT;
 
@@ -30,46 +33,62 @@ public class ComponentRepositoryImpl implements ComponentRepository {
 
   @Override
   public Optional<Component> createComponent(Component componentToCreate) {
-    return dslContext
-        .insertInto(COMPONENT)
-        .set(dslContext.newRecord(COMPONENT, componentToCreate))
-        .returning()
-        .fetchOptional(getComponentRecordMapper());
+    Long componentId =
+        dslContext
+            .insertInto(COMPONENT)
+            .set(dslContext.newRecord(COMPONENT, componentToCreate))
+            .returning(COMPONENT.ID)
+            .fetchOptional(COMPONENT.ID)
+            .orElse(null);
+    return componentId == null ? Optional.empty() : getById(componentId);
   }
 
   @Override
   public Optional<Component> getById(Long id) {
-    List<SelectFieldOrAsterisk> fields =
-        new ArrayList<>(
-            List.of(
-                COMPONENT.ID,
-                COMPONENT.COMPONENT_TYPE_ID,
-                COMPONENT.NAME,
-                COMPONENT.BRAND,
-                COMPONENT.DESCRIPTION,
-                COMPONENT.ARCHIVED,
-                COMPONENT.CREATED_AT));
-    fields.add(attributeValuesField());
-    fields.add(imagesField());
-    fields.add(ComponentImageFields.primaryImage());
-
     return dslContext
-        .select(fields)
+        .select(componentFields())
         .from(COMPONENT)
         .where(COMPONENT.ID.eq(id))
         .fetchOptional(getComponentRecordMapper());
   }
 
   @Override
-  public Optional<Component> updateComponent(Long id, Component component) {
+  public Optional<Component> getByIdForUpdate(Long id) {
     return dslContext
-        .update(COMPONENT)
-        .set(COMPONENT.NAME, component.getName())
-        .set(COMPONENT.BRAND, component.getBrand())
-        .set(COMPONENT.DESCRIPTION, component.getDescription())
+        .select(componentFields())
+        .from(COMPONENT)
         .where(COMPONENT.ID.eq(id))
-        .returning()
+        .forUpdate()
         .fetchOptional(getComponentRecordMapper());
+  }
+
+  @Override
+  public void lockByIds(Collection<Long> ids) {
+    if (ids.isEmpty()) {
+      return;
+    }
+    dslContext
+        .select(COMPONENT.ID)
+        .from(COMPONENT)
+        .where(COMPONENT.ID.in(ids))
+        .orderBy(COMPONENT.ID.asc())
+        .forUpdate()
+        .fetch();
+  }
+
+  @Override
+  public Optional<Component> updateComponent(Long id, Component component) {
+    var update =
+        dslContext
+            .update(COMPONENT)
+            .set(COMPONENT.NAME, component.getName())
+            .set(COMPONENT.BRAND, component.getBrand())
+            .set(COMPONENT.DESCRIPTION, component.getDescription());
+    if (component.getTotalQuantity() != null) {
+      update.set(COMPONENT.TOTAL_QUANTITY, component.getTotalQuantity());
+    }
+    int updatedRows = update.where(COMPONENT.ID.eq(id)).execute();
+    return updatedRows == 0 ? Optional.empty() : getById(id);
   }
 
   @Override
@@ -182,7 +201,8 @@ public class ComponentRepositoryImpl implements ComponentRepository {
     return jooqPage(
         dslContext,
         dslContext
-            .select(COMPONENT.asterisk(), ComponentImageFields.primaryImage())
+            .select(
+                COMPONENT.asterisk(), allocatedQuantityField(), ComponentImageFields.primaryImage())
             .from(COMPONENT)
             .where(condition)
             .orderBy(List.of(COMPONENT.ID)),
@@ -194,19 +214,60 @@ public class ComponentRepositoryImpl implements ComponentRepository {
   }
 
   private RecordMapper<org.jooq.Record, Component> getComponentRecordMapper() {
-    return componentRecord ->
-        Component.builder()
-            .id(componentRecord.get(COMPONENT.ID))
-            .componentTypeId(componentRecord.get(COMPONENT.COMPONENT_TYPE_ID))
-            .name(componentRecord.get(COMPONENT.NAME))
-            .brand(componentRecord.get(COMPONENT.BRAND))
-            .description(componentRecord.get(COMPONENT.DESCRIPTION))
-            .archived(componentRecord.get(COMPONENT.ARCHIVED))
-            .createdAt(componentRecord.get(COMPONENT.CREATED_AT))
-            .attributes(JooqMapperUtils.getListOrNull(componentRecord, "attributes"))
-            .images(JooqMapperUtils.getListOrNull(componentRecord, "images"))
-            .primaryImage(ComponentImageFields.readPrimaryImage(componentRecord))
-            .build();
+    return componentRecord -> {
+      Integer totalQuantity = componentRecord.get(COMPONENT.TOTAL_QUANTITY);
+      Integer allocatedQuantity = componentRecord.get(ALLOCATED_QUANTITY_FIELD, Integer.class);
+      return Component.builder()
+          .id(componentRecord.get(COMPONENT.ID))
+          .componentTypeId(componentRecord.get(COMPONENT.COMPONENT_TYPE_ID))
+          .name(componentRecord.get(COMPONENT.NAME))
+          .brand(componentRecord.get(COMPONENT.BRAND))
+          .description(componentRecord.get(COMPONENT.DESCRIPTION))
+          .archived(componentRecord.get(COMPONENT.ARCHIVED))
+          .totalQuantity(totalQuantity)
+          .allocatedQuantity(allocatedQuantity == null ? 0 : allocatedQuantity)
+          .availableQuantity(
+              totalQuantity == null
+                  ? null
+                  : totalQuantity - (allocatedQuantity == null ? 0 : allocatedQuantity))
+          .createdAt(componentRecord.get(COMPONENT.CREATED_AT))
+          .attributes(JooqMapperUtils.getListOrNull(componentRecord, "attributes"))
+          .images(JooqMapperUtils.getListOrNull(componentRecord, "images"))
+          .primaryImage(ComponentImageFields.readPrimaryImage(componentRecord))
+          .build();
+    };
+  }
+
+  private List<SelectFieldOrAsterisk> componentFields() {
+    List<SelectFieldOrAsterisk> fields =
+        new ArrayList<>(
+            List.of(
+                COMPONENT.ID,
+                COMPONENT.COMPONENT_TYPE_ID,
+                COMPONENT.NAME,
+                COMPONENT.BRAND,
+                COMPONENT.DESCRIPTION,
+                COMPONENT.ARCHIVED,
+                COMPONENT.TOTAL_QUANTITY,
+                COMPONENT.CREATED_AT));
+    fields.add(allocatedQuantityField());
+    fields.add(attributeValuesField());
+    fields.add(imagesField());
+    fields.add(ComponentImageFields.primaryImage());
+    return fields;
+  }
+
+  private Field<Integer> allocatedQuantityField() {
+    Field<Integer> allocatedQuantity =
+        dslContext
+            .select(sum(Tables.CONFIGURATION_COMPONENT.QUANTITY).cast(Integer.class))
+            .from(Tables.CONFIGURATION_COMPONENT)
+            .join(Tables.CONFIGURATION)
+            .on(Tables.CONFIGURATION.ID.eq(Tables.CONFIGURATION_COMPONENT.CONFIGURATION_ID))
+            .where(Tables.CONFIGURATION_COMPONENT.COMPONENT_ID.eq(COMPONENT.ID))
+            .and(Tables.CONFIGURATION.TRACK_INVENTORY.isTrue())
+            .asField();
+    return coalesce(allocatedQuantity, org.jooq.impl.DSL.inline(0)).as(ALLOCATED_QUANTITY_FIELD);
   }
 
   private SelectField<List<AttributeValue>> attributeValuesField() {

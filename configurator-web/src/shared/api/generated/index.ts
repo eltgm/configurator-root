@@ -80,6 +80,7 @@ export type {
   ComponentTypeAttributeSettingsRequest,
   ComponentWritable,
   ConfigurationComponent,
+  ConfigurationComponentInput,
   ConfigurationExport,
   ConfigurationPage,
   ConfiguratorAssemblyCandidate,

@@ -80,6 +80,17 @@ export function ConfigurationDetails({
             ) : (
               <Text c="dimmed">{t('configurations.card.noDescription')}</Text>
             )}
+            <Badge
+              color={configuration.trackInventory ? 'teal' : 'gray'}
+              variant="light"
+              w="fit-content"
+            >
+              {t(
+                configuration.trackInventory
+                  ? 'configurations.inventory.tracked'
+                  : 'configurations.inventory.untracked',
+              )}
+            </Badge>
           </Stack>
         </Paper>
 
@@ -104,11 +115,19 @@ export function ConfigurationDetails({
                       {[component.componentTypeName, component.brand].filter(Boolean).join(' · ')}
                     </Text>
                   </Stack>
-                  {component.archived ? (
-                    <Badge color="gray" leftSection={<IconArchive size={12} aria-hidden="true" />}>
-                      {t('configurations.components.archived')}
+                  <Group gap="xs">
+                    <Badge variant="light">
+                      {t('configurations.components.quantity', { count: component.quantity })}
                     </Badge>
-                  ) : null}
+                    {component.archived ? (
+                      <Badge
+                        color="gray"
+                        leftSection={<IconArchive size={12} aria-hidden="true" />}
+                      >
+                        {t('configurations.components.archived')}
+                      </Badge>
+                    ) : null}
+                  </Group>
                 </Group>
               </Paper>
             ))}

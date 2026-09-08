@@ -61,6 +61,34 @@ class ConfigurationRepositoryImplTest extends AbstractJooqRepositoryTest {
   }
 
   @Test
+  void shouldStoreQuantitiesAndFilterByInventoryTracking() {
+    Configuration tracked =
+        repository
+            .create(
+                Configuration.builder()
+                    .domainId(1L)
+                    .name("Tracked build")
+                    .createdByUserId(-1L)
+                    .trackInventory(true)
+                    .components(
+                        List.of(ConfigurationComponent.builder().id(100L).quantity(4).build()))
+                    .build())
+            .orElseThrow();
+    repository.create(configuration("Untracked build", List.of(component(200L)))).orElseThrow();
+
+    assertThat(tracked.trackInventory()).isTrue();
+    assertThat(tracked.components())
+        .singleElement()
+        .extracting(ConfigurationComponent::quantity)
+        .isEqualTo(4);
+    assertThat(repository.findPageByDomainIdAndUserId(1L, -1L, true, 0, 10).items())
+        .extracting(Configuration::id)
+        .containsExactly(tracked.id());
+    assertThat(repository.findAllocatedQuantitiesByComponentIds(List.of(100L)))
+        .containsEntry(100L, 4);
+  }
+
+  @Test
   void shouldReturnOwnedConfigurationsInNewestFirstOrderAndReflectArchiveState() {
     Configuration first =
         repository.create(configuration("First", List.of(component(100L)))).orElseThrow();
@@ -72,7 +100,7 @@ class ConfigurationRepositoryImplTest extends AbstractJooqRepositoryTest {
         .where(COMPONENT.ID.eq(200L))
         .execute();
 
-    var page = repository.findPageByDomainIdAndUserId(1L, -1L, 0, 10);
+    var page = repository.findPageByDomainIdAndUserId(1L, -1L, null, 0, 10);
 
     assertThat(page.totalItems()).isEqualTo(2);
     assertThat(page.items()).extracting(Configuration::id).containsExactly(second.id(), first.id());
@@ -196,6 +224,6 @@ class ConfigurationRepositoryImplTest extends AbstractJooqRepositoryTest {
   }
 
   private static ConfigurationComponent component(Long id) {
-    return ConfigurationComponent.builder().id(id).build();
+    return ConfigurationComponent.builder().id(id).quantity(1).build();
   }
 }

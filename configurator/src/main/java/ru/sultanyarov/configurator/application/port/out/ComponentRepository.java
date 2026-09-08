@@ -26,6 +26,21 @@ public interface ComponentRepository {
   Optional<Component> getById(Long id);
 
   /**
+   * Retrieves a component and locks its catalog row for the current transaction.
+   *
+   * @param id the unique identifier of the component
+   * @return the component, or empty when it does not exist
+   */
+  Optional<Component> getByIdForUpdate(Long id);
+
+  /**
+   * Locks all requested component rows in ascending identifier order.
+   *
+   * @param ids component identifiers to lock
+   */
+  void lockByIds(Collection<Long> ids);
+
+  /**
    * Updates editable fields of an existing component.
    *
    * @param id the unique identifier of the component

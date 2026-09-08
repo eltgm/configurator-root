@@ -57,6 +57,8 @@ abstract class AbstractJooqRepositoryTest {
     populator.addScript(
         new ClassPathResource(
             "db/migration/V9__protect-configurations-and-queue-image-cleanup.sql"));
+    populator.addScript(
+        new ClassPathResource("db/migration/V10__CON1-145-add-component-inventory.sql"));
     populator.execute(dataSource);
     return dataSource;
   }

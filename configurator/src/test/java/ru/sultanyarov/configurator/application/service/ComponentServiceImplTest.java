@@ -33,6 +33,13 @@ class ComponentServiceImplTest {
 
   @InjectMocks private ComponentServiceImpl componentService;
 
+  @BeforeEach
+  void delegateLockedReadsToExistingRepositoryStubs() {
+    lenient()
+        .when(componentRepository.getByIdForUpdate(anyLong()))
+        .thenAnswer(invocation -> componentRepository.getById(invocation.getArgument(0)));
+  }
+
   @Test
   void create_shouldValidateCreateComponentPersistItAndAttachCreatedAttributes() {
     AttributeValue attributeValue =

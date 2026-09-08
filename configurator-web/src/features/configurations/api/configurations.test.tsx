@@ -24,6 +24,7 @@ const configuration: Configuration = {
   domainId: 7,
   name: 'Home PC',
   createdAt: '2026-08-23T10:00:00Z',
+  trackInventory: false,
   components: [],
 };
 
@@ -53,13 +54,20 @@ describe('configurations API', () => {
       }),
     );
 
-    await expect(fetchConfigurations(7, 2, 10)).resolves.toEqual(response);
+    await expect(fetchConfigurations(7, 2, 10, 'all')).resolves.toEqual(response);
     expect(search).toBe('?page=2&size=10');
   });
 
   it('keeps list keys isolated by domain and page and stays idle without a domain', () => {
-    expect(configurationKeys.list(7, 0, 10)).not.toEqual(configurationKeys.list(8, 0, 10));
-    expect(configurationKeys.list(7, 0, 10)).not.toEqual(configurationKeys.list(7, 1, 10));
+    expect(configurationKeys.list(7, 0, 10, 'all')).not.toEqual(
+      configurationKeys.list(8, 0, 10, 'all'),
+    );
+    expect(configurationKeys.list(7, 0, 10, 'all')).not.toEqual(
+      configurationKeys.list(7, 1, 10, 'all'),
+    );
+    expect(configurationKeys.list(7, 0, 10, 'all')).not.toEqual(
+      configurationKeys.list(7, 0, 10, 'tracked'),
+    );
     const { wrapper } = createTestContext();
     const query = renderHook(() => useConfigurationsQuery(null, 0), { wrapper });
 

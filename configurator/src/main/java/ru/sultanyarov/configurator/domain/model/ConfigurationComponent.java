@@ -9,4 +9,5 @@ public record ConfigurationComponent(
     String brand,
     Long componentTypeId,
     String componentTypeName,
-    boolean archived) {}
+    boolean archived,
+    int quantity) {}

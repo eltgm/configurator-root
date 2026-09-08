@@ -9,6 +9,7 @@ export const configurationComponentLimit = 50;
 export interface ConfigurationEditorValues {
   name: string;
   description: string;
+  trackInventory: boolean;
 }
 
 export type ConfigurationEditorComponent = ConfigurationComponent;
@@ -28,6 +29,7 @@ export function configurationEditorInitialValues(
   return {
     name: configuration.name,
     description: configuration.description ?? '',
+    trackInventory: configuration.trackInventory,
   };
 }
 
@@ -43,10 +45,7 @@ export function addConfigurationEditorComponent(
 ) {
   if (
     components.length >= configurationComponentLimit ||
-    components.some(
-      (candidate) =>
-        candidate.id === component.id || candidate.componentTypeId === component.componentTypeId,
-    )
+    components.some((candidate) => candidate.id === component.id)
   ) {
     return [...components];
   }
@@ -59,7 +58,7 @@ export function replaceConfigurationEditorComponent(
   component: ConfigurationEditorComponent,
 ) {
   const replaced = components.find((candidate) => candidate.id === replacedComponentId);
-  if (!replaced || replaced.componentTypeId !== component.componentTypeId) {
+  if (!replaced) {
     return [...components];
   }
   return components.map((candidate) =>
@@ -74,20 +73,31 @@ export function removeConfigurationEditorComponent(
   return components.filter((component) => component.id !== componentId);
 }
 
+export function setConfigurationEditorComponentQuantity(
+  components: ReadonlyArray<ConfigurationEditorComponent>,
+  componentId: number,
+  quantity: number,
+) {
+  const normalizedQuantity = Math.max(1, Math.min(quantity, 999999));
+  return components.map((component) =>
+    component.id === componentId ? { ...component, quantity: normalizedQuantity } : component,
+  );
+}
+
 export function configurationComponentIds(components: ReadonlyArray<ConfigurationEditorComponent>) {
   return components.map((component) => component.id);
 }
 
-function normalizedComponentIds(componentIds: ReadonlyArray<number>) {
-  return [...componentIds].sort((left, right) => left - right);
+function normalizedComponentSignature(components: ReadonlyArray<ConfigurationEditorComponent>) {
+  return [...components].map((component) => `${component.id}:${component.quantity}`).sort();
 }
 
 export function configurationComponentsChanged(
   baseline: ReadonlyArray<ConfigurationEditorComponent>,
   current: ReadonlyArray<ConfigurationEditorComponent>,
 ) {
-  const baselineIds = normalizedComponentIds(configurationComponentIds(baseline));
-  const currentIds = normalizedComponentIds(configurationComponentIds(current));
+  const baselineIds = normalizedComponentSignature(baseline);
+  const currentIds = normalizedComponentSignature(current);
   return (
     baselineIds.length !== currentIds.length ||
     baselineIds.some((componentId, index) => componentId !== currentIds[index])
@@ -127,6 +137,10 @@ export function toUpdateConfigurationRequest(
   return {
     name: values.name.trim(),
     ...(description ? { description } : {}),
-    componentIds: configurationComponentIds(components),
+    components: components.map((component) => ({
+      componentId: component.id,
+      quantity: component.quantity,
+    })),
+    trackInventory: values.trackInventory,
   };
 }
