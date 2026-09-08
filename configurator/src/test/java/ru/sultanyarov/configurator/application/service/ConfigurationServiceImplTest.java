@@ -23,11 +23,13 @@ import ru.sultanyarov.configurator.application.port.out.ConfiguratorRepository;
 import ru.sultanyarov.configurator.application.port.out.CurrentUserProvider;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
 import ru.sultanyarov.configurator.domain.exception.ConfigurationConflictException;
+import ru.sultanyarov.configurator.domain.exception.InsufficientComponentAvailabilityException;
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
 import ru.sultanyarov.configurator.domain.model.Component;
 import ru.sultanyarov.configurator.domain.model.ComponentType;
 import ru.sultanyarov.configurator.domain.model.Configuration;
+import ru.sultanyarov.configurator.domain.model.ConfigurationComponent;
 import ru.sultanyarov.configurator.domain.model.ConfigurationComponentItem;
 import ru.sultanyarov.configurator.domain.model.ConfigurationDraft;
 import ru.sultanyarov.configurator.domain.model.Domain;
@@ -249,14 +251,18 @@ class ConfigurationServiceImplTest {
   }
 
   @Test
-  void shouldRejectTrackedConfigurationWhenRequestedQuantityExceedsAvailableInventory() {
-    Component component = component(1L, 10L, false);
-    component.setTotalQuantity(4);
+  void shouldReportEveryUnavailableComponentForTrackedConfiguration() {
+    Component board = component(1L, 10L, false);
+    board.setTotalQuantity(4);
+    Component switchComponent = component(2L, 20L, false);
+    switchComponent.setTotalQuantity(1);
     when(domainService.getById(1L)).thenReturn(domain());
-    when(configuratorRepository.getActiveComponents(1L)).thenReturn(List.of(component));
-    when(componentRepository.getById(1L)).thenReturn(Optional.of(component));
-    when(configurationRepository.findAllocatedQuantitiesByComponentIds(java.util.Set.of(1L)))
-        .thenReturn(Map.of(1L, 2));
+    when(configuratorRepository.getActiveComponents(1L))
+        .thenReturn(List.of(board, switchComponent));
+    when(componentRepository.getById(1L)).thenReturn(Optional.of(board));
+    when(componentRepository.getById(2L)).thenReturn(Optional.of(switchComponent));
+    when(configurationRepository.findAllocatedQuantitiesByComponentIds(java.util.Set.of(1L, 2L)))
+        .thenReturn(Map.of(1L, 2, 2L, 1));
 
     assertThatThrownBy(
             () ->
@@ -266,11 +272,53 @@ class ConfigurationServiceImplTest {
                         "Tracked build",
                         null,
                         true,
-                        List.of(new ConfigurationComponentItem(1L, 3)))))
-        .isInstanceOf(ConfigurationConflictException.class)
-        .hasMessageContaining("only 2 are available");
+                        List.of(
+                            new ConfigurationComponentItem(1L, 3),
+                            new ConfigurationComponentItem(2L, 2)))))
+        .isInstanceOfSatisfying(
+            InsufficientComponentAvailabilityException.class,
+            exception ->
+                assertThat(exception.getShortages())
+                    .containsExactly(
+                        new InsufficientComponentAvailabilityException.ComponentShortage(
+                            1L, "Component 1", 3, 2),
+                        new InsufficientComponentAvailabilityException.ComponentShortage(
+                            2L, "Component 2", 2, 0)));
 
     verify(configurationRepository, never()).create(any(Configuration.class));
+  }
+
+  @Test
+  void shouldReuseTrackedConfigurationsOwnAllocationDuringUpdate() {
+    Component component = component(1L, 10L, false);
+    component.setTotalQuantity(5);
+    Configuration existing =
+        Configuration.builder()
+            .id(7L)
+            .domainId(1L)
+            .name("Initial")
+            .createdByUserId(42L)
+            .createdAt(LocalDateTime.now())
+            .trackInventory(true)
+            .components(List.of(ConfigurationComponent.builder().id(1L).quantity(3).build()))
+            .build();
+    when(currentUserProvider.getCurrentUserId()).thenReturn(42L);
+    when(configurationRepository.findByIdAndUserIdForUpdate(7L, 42L))
+        .thenReturn(Optional.of(existing));
+    when(domainService.getById(1L)).thenReturn(domain());
+    when(configuratorRepository.getActiveComponents(1L)).thenReturn(List.of(component));
+    when(componentRepository.getById(1L)).thenReturn(Optional.of(component));
+    when(configurationRepository.findAllocatedQuantitiesByComponentIds(java.util.Set.of(1L)))
+        .thenReturn(Map.of(1L, 3));
+    when(configurationRepository.update(any(), any(), any(Configuration.class)))
+        .thenReturn(Optional.of(existing));
+
+    service.update(
+        7L,
+        new ConfigurationDraft(
+            "Updated", null, true, List.of(new ConfigurationComponentItem(1L, 5))));
+
+    verify(configurationRepository).update(any(), any(), any(Configuration.class));
   }
 
   @Test

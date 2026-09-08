@@ -356,6 +356,36 @@ abstract class AbstractComponentControllerContract extends Specification impleme
         put("/components/1", updateRequest).status == 409
     }
 
+    def "should return structured conflict when total quantity is below reserved quantity"() {
+        given:
+        prepareComponentUpdateData()
+        def updateRequest = validUpdateRequest().name("Keychron Q1").totalQuantity(3)
+        assert put("/components/1", updateRequest).status == 200
+        assert post(
+                "/domains/1/configurations",
+                [
+                        name          : "Tracked component",
+                        components    : [[componentId: 1L, quantity: 2]],
+                        trackInventory: true
+                ]
+        ).status == 201
+
+        when:
+        def result = put("/components/1", updateRequest.totalQuantity(1))
+
+        then:
+        result.status == 409
+        def errorResponse = objectMapper.readValue(result.body, ErrorResponse)
+        errorResponse.code == ApiErrorCode.COMPONENT_TOTAL_BELOW_ALLOCATED
+        errorResponse.details*.code == ["COMPONENT_TOTAL_BELOW_ALLOCATED"]
+        errorResponse.details.first().parameters == [
+                componentId      : "1",
+                componentName    : "Keychron Q1",
+                totalQuantity    : "1",
+                allocatedQuantity: "2"
+        ]
+    }
+
     def "should return bad request when update contains duplicate attribute ids"() {
         given:
         prepareComponentUpdateData()

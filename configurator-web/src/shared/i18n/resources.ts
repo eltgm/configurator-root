@@ -1158,10 +1158,18 @@ export const resources = {
             'Невозможно удалить область: в ней есть конфигурации. Сначала удалите все конфигурации.',
           COMPONENT_ARCHIVED: 'Компонент находится в архиве',
           CONFIGURATION_CONFLICT: 'Компоненты конфигурации несовместимы',
+          INSUFFICIENT_COMPONENT_AVAILABILITY: 'Недостаточно компонентов',
+          COMPONENT_TOTAL_BELOW_ALLOCATED: 'Количество меньше зарезервированного',
           VALIDATION_ERROR: 'Проверьте введённые данные',
           IMAGE_TOO_LARGE: 'Изображение слишком большое',
           UNSUPPORTED_IMAGE_FORMAT: 'Формат изображения не поддерживается',
           EXTERNAL_STORAGE_UNAVAILABLE: 'Хранилище изображений недоступно',
+        },
+        details: {
+          INSUFFICIENT_COMPONENT_AVAILABILITY:
+            '«{{componentName}}»: требуется {{requestedQuantity}}, доступно {{availableQuantity}}.',
+          COMPONENT_TOTAL_BELOW_ALLOCATED:
+            '«{{componentName}}»: указано {{totalQuantity}}, уже зарезервировано {{allocatedQuantity}}.',
         },
       },
       routeError: {
@@ -2289,10 +2297,18 @@ export const resources = {
             'Cannot delete the domain because it has configurations. Delete all configurations first.',
           COMPONENT_ARCHIVED: 'The component is archived',
           CONFIGURATION_CONFLICT: 'Configuration components are incompatible',
+          INSUFFICIENT_COMPONENT_AVAILABILITY: 'Not enough components available',
+          COMPONENT_TOTAL_BELOW_ALLOCATED: 'Quantity is below the reserved amount',
           VALIDATION_ERROR: 'Check the entered data',
           IMAGE_TOO_LARGE: 'The image is too large',
           UNSUPPORTED_IMAGE_FORMAT: 'The image format is not supported',
           EXTERNAL_STORAGE_UNAVAILABLE: 'Image storage is unavailable',
+        },
+        details: {
+          INSUFFICIENT_COMPONENT_AVAILABILITY:
+            '“{{componentName}}”: {{requestedQuantity}} required, {{availableQuantity}} available.',
+          COMPONENT_TOTAL_BELOW_ALLOCATED:
+            '“{{componentName}}”: {{totalQuantity}} specified, {{allocatedQuantity}} already reserved.',
         },
       },
       routeError: {

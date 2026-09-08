@@ -30,6 +30,8 @@ export type ApiErrorCode =
   | 'DOMAIN_HAS_CONFIGURATIONS'
   | 'COMPONENT_ARCHIVED'
   | 'CONFIGURATION_CONFLICT'
+  | 'INSUFFICIENT_COMPONENT_AVAILABILITY'
+  | 'COMPONENT_TOTAL_BELOW_ALLOCATED'
   | 'VALIDATION_ERROR'
   | 'IMAGE_TOO_LARGE'
   | 'UNSUPPORTED_IMAGE_FORMAT'
@@ -48,6 +50,12 @@ export type ApiErrorDetail = {
    * Human-readable detail without rejected values or internal diagnostics
    */
   message: string;
+  /**
+   * Safe string parameters for localized client-side error presentation
+   */
+  parameters?: {
+    [key: string]: string;
+  } | null;
 };
 
 export type DomainPage = {
@@ -1606,7 +1614,7 @@ export type PutComponentsByIdErrors = {
    */
   404: ErrorResponse;
   /**
-   * Component with the same name already exists within the component type
+   * Component name conflict or total quantity below the amount reserved by tracked configurations
    */
   409: ErrorResponse;
 };
@@ -2384,7 +2392,9 @@ export type PostDomainsByIdConfigurationsErrors = {
    */
   404: ErrorResponse;
   /**
-   * Archived component, insufficient component availability or incompatible component set
+   * Archived component, incompatible component set or insufficient availability
+   * (INSUFFICIENT_COMPONENT_AVAILABILITY with one structured detail per deficient component)
+   *
    */
   409: ErrorResponse;
 };
@@ -2495,7 +2505,9 @@ export type PutConfigurationsByIdErrors = {
    */
   404: ErrorResponse;
   /**
-   * Archived component, insufficient component availability or incompatible component set
+   * Archived component, incompatible component set or insufficient availability
+   * (INSUFFICIENT_COMPONENT_AVAILABILITY with one structured detail per deficient component)
+   *
    */
   409: ErrorResponse;
 };

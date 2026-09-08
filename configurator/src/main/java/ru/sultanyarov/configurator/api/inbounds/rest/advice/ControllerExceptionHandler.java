@@ -8,12 +8,14 @@ import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 import static org.springframework.http.HttpStatus.UNSUPPORTED_MEDIA_TYPE;
 import static ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode.BUSINESS_ERROR;
 import static ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode.COMPONENT_ARCHIVED;
+import static ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode.COMPONENT_TOTAL_BELOW_ALLOCATED;
 import static ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode.CONFIGURATION_CONFLICT;
 import static ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode.DOMAIN_HAS_CONFIGURATIONS;
 import static ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode.ENTITY_ALREADY_EXISTS;
 import static ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode.ENTITY_HAS_RELATED_ENTITIES;
 import static ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode.EXTERNAL_STORAGE_UNAVAILABLE;
 import static ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode.IMAGE_TOO_LARGE;
+import static ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode.INSUFFICIENT_COMPONENT_AVAILABILITY;
 import static ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode.INTERNAL_ERROR;
 import static ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode.NOT_FOUND;
 import static ru.sultanyarov.configurator.api.inbounds.rest.dto.ApiErrorCode.UNSUPPORTED_IMAGE_FORMAT;
@@ -25,6 +27,7 @@ import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -46,12 +49,14 @@ import ru.sultanyarov.configurator.api.inbounds.rest.dto.ErrorResponse;
 import ru.sultanyarov.configurator.domain.exception.AttributeNameConflictException;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
 import ru.sultanyarov.configurator.domain.exception.ComponentArchivedException;
+import ru.sultanyarov.configurator.domain.exception.ComponentTotalBelowAllocatedException;
 import ru.sultanyarov.configurator.domain.exception.ConfigurationConflictException;
 import ru.sultanyarov.configurator.domain.exception.DomainHasConfigurationsException;
 import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
 import ru.sultanyarov.configurator.domain.exception.EntityHasRelatedEntitiesException;
 import ru.sultanyarov.configurator.domain.exception.ExternalStorageException;
 import ru.sultanyarov.configurator.domain.exception.ImageTooLargeException;
+import ru.sultanyarov.configurator.domain.exception.InsufficientComponentAvailabilityException;
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
 import ru.sultanyarov.configurator.domain.exception.UnsupportedImageFormatException;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
@@ -92,10 +97,7 @@ public class ControllerExceptionHandler {
   })
   public ResponseEntity<ErrorResponse> handleEntityAlreadyExistsException(
       Exception exception, HttpServletRequest request) {
-    List<ApiErrorDetail> details =
-        exception instanceof AttributeNameConflictException
-            ? List.of(detail("name", "ENTITY_ALREADY_EXISTS", exception.getLocalizedMessage()))
-            : List.of();
+    List<ApiErrorDetail> details = conflictDetails(exception);
     return getBody(
         CONFLICT, conflictCode(exception), exception.getLocalizedMessage(), request, details);
   }
@@ -142,6 +144,12 @@ public class ControllerExceptionHandler {
   }
 
   private static ApiErrorCode conflictCode(Exception exception) {
+    if (exception instanceof InsufficientComponentAvailabilityException) {
+      return INSUFFICIENT_COMPONENT_AVAILABILITY;
+    }
+    if (exception instanceof ComponentTotalBelowAllocatedException) {
+      return COMPONENT_TOTAL_BELOW_ALLOCATED;
+    }
     if (exception instanceof DomainHasConfigurationsException) {
       return DOMAIN_HAS_CONFIGURATIONS;
     }
@@ -158,6 +166,40 @@ public class ControllerExceptionHandler {
       return CONFIGURATION_CONFLICT;
     }
     throw new IllegalArgumentException("Unsupported conflict exception: " + exception.getClass());
+  }
+
+  private static List<ApiErrorDetail> conflictDetails(Exception exception) {
+    if (exception instanceof AttributeNameConflictException) {
+      return List.of(detail("name", "ENTITY_ALREADY_EXISTS", exception.getLocalizedMessage()));
+    }
+    if (exception instanceof InsufficientComponentAvailabilityException availabilityException) {
+      return availabilityException.getShortages().stream()
+          .map(
+              shortage ->
+                  detail(
+                      null,
+                      "INSUFFICIENT_COMPONENT_AVAILABILITY",
+                      "Insufficient component availability",
+                      Map.of(
+                          "componentId", String.valueOf(shortage.componentId()),
+                          "componentName", shortage.componentName(),
+                          "requestedQuantity", String.valueOf(shortage.requestedQuantity()),
+                          "availableQuantity", String.valueOf(shortage.availableQuantity()))))
+          .toList();
+    }
+    if (exception instanceof ComponentTotalBelowAllocatedException quantityException) {
+      return List.of(
+          detail(
+              null,
+              "COMPONENT_TOTAL_BELOW_ALLOCATED",
+              "Component total quantity is below allocated quantity",
+              Map.of(
+                  "componentId", String.valueOf(quantityException.getComponentId()),
+                  "componentName", quantityException.getComponentName(),
+                  "totalQuantity", String.valueOf(quantityException.getTotalQuantity()),
+                  "allocatedQuantity", String.valueOf(quantityException.getAllocatedQuantity()))));
+    }
+    return List.of();
   }
 
   private static String validationMessage(
@@ -251,6 +293,11 @@ public class ControllerExceptionHandler {
             code == null || code.isBlank() ? "INVALID_VALUE" : code,
             message == null || message.isBlank() ? "Invalid value" : message);
     return field == null || field.isBlank() ? detail : detail.field(field);
+  }
+
+  private static ApiErrorDetail detail(
+      String field, String code, String message, Map<String, String> parameters) {
+    return detail(field, code, message).parameters(parameters);
   }
 
   private static String normalizeCode(String code) {

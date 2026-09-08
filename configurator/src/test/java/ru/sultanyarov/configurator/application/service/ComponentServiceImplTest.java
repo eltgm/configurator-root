@@ -216,6 +216,40 @@ class ComponentServiceImplTest {
   }
 
   @Test
+  void update_shouldReportComponentWhenTotalQuantityIsBelowAllocatedQuantity() {
+    Component existingComponent =
+        Component.builder()
+            .id(7L)
+            .componentTypeId(5L)
+            .name("Ryzen")
+            .totalQuantity(5)
+            .allocatedQuantity(3)
+            .build();
+    Component componentToUpdate =
+        Component.builder()
+            .componentTypeId(5L)
+            .name("Ryzen")
+            .totalQuantity(2)
+            .attributes(List.of())
+            .build();
+    when(componentRepository.getById(7L)).thenReturn(Optional.of(existingComponent));
+    when(componentTypeService.getById(5L))
+        .thenReturn(ComponentType.builder().id(5L).attributeDefinitions(List.of()).build());
+
+    assertThatThrownBy(() -> componentService.update(7L, componentToUpdate))
+        .isInstanceOfSatisfying(
+            ComponentTotalBelowAllocatedException.class,
+            exception -> {
+              assertThat(exception.getComponentId()).isEqualTo(7L);
+              assertThat(exception.getComponentName()).isEqualTo("Ryzen");
+              assertThat(exception.getTotalQuantity()).isEqualTo(2);
+              assertThat(exception.getAllocatedQuantity()).isEqualTo(3);
+            });
+
+    verify(componentRepository, never()).updateComponent(any(), any());
+  }
+
+  @Test
   void update_shouldThrowBusinessExceptionWhenRepositoryDidNotUpdateComponent() {
     Component existingComponent =
         Component.builder().id(7L).componentTypeId(5L).name("Existing").build();

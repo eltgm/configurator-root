@@ -15,7 +15,7 @@ import ru.sultanyarov.configurator.application.validator.ComponentImageValidator
 import ru.sultanyarov.configurator.application.validator.ComponentValidator;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
 import ru.sultanyarov.configurator.domain.exception.ComponentArchivedException;
-import ru.sultanyarov.configurator.domain.exception.ConfigurationConflictException;
+import ru.sultanyarov.configurator.domain.exception.ComponentTotalBelowAllocatedException;
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
 import ru.sultanyarov.configurator.domain.model.AttributeDefinition;
@@ -132,10 +132,8 @@ public class ComponentServiceImpl implements ComponentService {
             ? 0
             : existingComponent.getAllocatedQuantity();
     if (component.getTotalQuantity() < allocatedQuantity) {
-      throw new ConfigurationConflictException(
-          "Component with id {} has {} allocated instances, so total quantity cannot be lower",
-          id,
-          allocatedQuantity);
+      throw new ComponentTotalBelowAllocatedException(
+          id, existingComponent.getName(), component.getTotalQuantity(), allocatedQuantity);
     }
     componentValidator.validateUpdate(
         component, existingComponent, componentType, componentTypeAttributesMap);
