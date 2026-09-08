@@ -438,6 +438,9 @@ export function AvailableComponentBrowser({
                     getItemProps={(value) => ({
                       'aria-label': t('configurator.browser.page', { page: value }),
                     })}
+                    getControlProps={(control) => ({
+                      'aria-label': t(`configurator.browser.pagination.${control}`),
+                    })}
                   />
                 </Group>
               ) : null}
