@@ -37,6 +37,9 @@ class ConfiguratorRepositoryImplTest extends AbstractJooqRepositoryTest {
         .containsExactly(2L, 3L);
 
     Component first = repository.getActiveCandidates(1L, 1L).getFirst();
+    assertThat(first.getTotalQuantity()).isEqualTo(10);
+    assertThat(first.getAllocatedQuantity()).isZero();
+    assertThat(first.getAvailableQuantity()).isEqualTo(10);
     assertThat(first.getAttributes())
         .singleElement()
         .satisfies(
@@ -96,6 +99,7 @@ class ConfiguratorRepositoryImplTest extends AbstractJooqRepositoryTest {
         .set(Tables.COMPONENT.COMPONENT_TYPE_ID, componentTypeId)
         .set(Tables.COMPONENT.NAME, name)
         .set(Tables.COMPONENT.ARCHIVED, archived)
+        .set(Tables.COMPONENT.TOTAL_QUANTITY, 10)
         .execute();
   }
 

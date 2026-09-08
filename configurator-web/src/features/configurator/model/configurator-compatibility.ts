@@ -13,6 +13,7 @@ export interface ConfiguratorComponentSelection {
   name: string;
   brand?: string | null;
   componentTypeId: number;
+  availableQuantity: number;
   primaryImage?: Component['primaryImage'];
 }
 
@@ -112,6 +113,7 @@ export function candidatesFromIntersectionResponse(response: ConfiguratorInterse
         name: component.name,
         ...(component.brand === undefined ? {} : { brand: component.brand }),
         componentTypeId: component.componentTypeId,
+        availableQuantity: component.availableQuantity,
         componentTypeName: group.componentTypeName,
         relation: candidateRelation(compatibilityByBase),
         compatibilityByBase,
@@ -135,6 +137,7 @@ export function candidatesFromAssemblyResponse(response: ConfiguratorCandidatesR
           name: component.name,
           ...(component.brand === undefined ? {} : { brand: component.brand }),
           componentTypeId: component.componentTypeId,
+          availableQuantity: component.availableQuantity,
           componentTypeName: group.componentTypeName,
           relation: 'direct',
           compatibilityByBase,
@@ -154,6 +157,7 @@ export function blockedCandidatesFromAssemblyResponse(response: ConfiguratorCand
         name: component.name,
         ...(component.brand === undefined ? {} : { brand: component.brand }),
         componentTypeId: component.componentTypeId,
+        availableQuantity: component.availableQuantity,
         componentTypeName: group.componentTypeName,
         blockingByBase: component.compatibilityByBase
           .filter((entry) => entry.status === 'DENIED')

@@ -21,6 +21,7 @@ export async function openConfigurationEditor(page: Page, componentCount = 2) {
       componentTypeName: `Тип ${index + 1}`,
       archived: false,
       quantity: 1,
+      availableQuantity: 8,
     })),
   };
   const componentTypes = configuration.components.map((component, index) => ({
@@ -36,6 +37,7 @@ export async function openConfigurationEditor(page: Page, componentCount = 2) {
       componentTypeId: type.id,
       componentTypeName: type.name,
       archived: false,
+      availableQuantity: 8,
     })),
   );
   await page.route(`${frontendApiBaseUrl}/domains/101/component-types`, (route) =>

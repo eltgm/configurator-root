@@ -81,6 +81,10 @@ class ConfigurationRepositoryImplTest extends AbstractJooqRepositoryTest {
         .singleElement()
         .extracting(ConfigurationComponent::quantity)
         .isEqualTo(4);
+    assertThat(tracked.components())
+        .singleElement()
+        .extracting(ConfigurationComponent::availableQuantity)
+        .isEqualTo(6);
     assertThat(repository.findPageByDomainIdAndUserId(1L, -1L, true, 0, 10).items())
         .extracting(Configuration::id)
         .containsExactly(tracked.id());
@@ -210,6 +214,7 @@ class ConfigurationRepositoryImplTest extends AbstractJooqRepositoryTest {
         .set(COMPONENT.COMPONENT_TYPE_ID, typeId)
         .set(COMPONENT.NAME, name)
         .set(COMPONENT.ARCHIVED, archived)
+        .set(COMPONENT.TOTAL_QUANTITY, 10)
         .execute();
   }
 

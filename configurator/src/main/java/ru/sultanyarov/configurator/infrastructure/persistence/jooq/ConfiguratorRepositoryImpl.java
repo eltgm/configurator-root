@@ -1,18 +1,23 @@
 package ru.sultanyarov.configurator.infrastructure.persistence.jooq;
 
+import static org.jooq.impl.DSL.coalesce;
 import static org.jooq.impl.DSL.multiset;
+import static org.jooq.impl.DSL.sum;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.ATTRIBUTE_DEFINITION;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.ATTRIBUTE_VALUE;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.COMPATIBILITY_LINK;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.COMPONENT;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.COMPONENT_TYPE;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.COMPONENT_TYPE_ATTRIBUTE;
+import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.CONFIGURATION;
+import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.CONFIGURATION_COMPONENT;
 
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.ObjectUtils;
 import org.jooq.DSLContext;
+import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.RecordMapper;
 import org.jooq.SelectField;
@@ -28,6 +33,8 @@ import ru.sultanyarov.configurator.domain.model.DataType;
 @Repository
 @RequiredArgsConstructor
 public class ConfiguratorRepositoryImpl implements ConfiguratorRepository {
+  private static final String ALLOCATED_QUANTITY_FIELD = "allocatedQuantity";
+
   private final DSLContext dslContext;
 
   @Override
@@ -41,7 +48,9 @@ public class ConfiguratorRepositoryImpl implements ConfiguratorRepository {
                 COMPONENT.BRAND,
                 COMPONENT.DESCRIPTION,
                 COMPONENT.ARCHIVED,
+                COMPONENT.TOTAL_QUANTITY,
                 COMPONENT.CREATED_AT));
+    fields.add(allocatedQuantityField());
     fields.add(attributeValuesField());
     fields.add(ComponentImageFields.primaryImage());
 
@@ -71,7 +80,9 @@ public class ConfiguratorRepositoryImpl implements ConfiguratorRepository {
                 COMPONENT.BRAND,
                 COMPONENT.DESCRIPTION,
                 COMPONENT.ARCHIVED,
+                COMPONENT.TOTAL_QUANTITY,
                 COMPONENT.CREATED_AT));
+    fields.add(allocatedQuantityField());
     fields.add(attributeValuesField());
     fields.add(ComponentImageFields.primaryImage());
 
@@ -165,18 +176,37 @@ public class ConfiguratorRepositoryImpl implements ConfiguratorRepository {
   }
 
   private RecordMapper<Record, Component> componentMapper() {
-    return record ->
-        Component.builder()
-            .id(record.get(COMPONENT.ID))
-            .componentTypeId(record.get(COMPONENT.COMPONENT_TYPE_ID))
-            .name(record.get(COMPONENT.NAME))
-            .brand(record.get(COMPONENT.BRAND))
-            .description(record.get(COMPONENT.DESCRIPTION))
-            .archived(record.get(COMPONENT.ARCHIVED))
-            .attributes(JooqMapperUtils.getListOrNull(record, "attributes"))
-            .primaryImage(ComponentImageFields.readPrimaryImage(record))
-            .createdAt(record.get(COMPONENT.CREATED_AT))
-            .build();
+    return record -> {
+      Integer totalQuantity = record.get(COMPONENT.TOTAL_QUANTITY);
+      Integer allocatedQuantity = record.get(ALLOCATED_QUANTITY_FIELD, Integer.class);
+      return Component.builder()
+          .id(record.get(COMPONENT.ID))
+          .componentTypeId(record.get(COMPONENT.COMPONENT_TYPE_ID))
+          .name(record.get(COMPONENT.NAME))
+          .brand(record.get(COMPONENT.BRAND))
+          .description(record.get(COMPONENT.DESCRIPTION))
+          .archived(record.get(COMPONENT.ARCHIVED))
+          .totalQuantity(totalQuantity)
+          .allocatedQuantity(allocatedQuantity)
+          .availableQuantity(totalQuantity - allocatedQuantity)
+          .attributes(JooqMapperUtils.getListOrNull(record, "attributes"))
+          .primaryImage(ComponentImageFields.readPrimaryImage(record))
+          .createdAt(record.get(COMPONENT.CREATED_AT))
+          .build();
+    };
+  }
+
+  private Field<Integer> allocatedQuantityField() {
+    Field<Integer> allocatedQuantity =
+        dslContext
+            .select(sum(CONFIGURATION_COMPONENT.QUANTITY).cast(Integer.class))
+            .from(CONFIGURATION_COMPONENT)
+            .join(CONFIGURATION)
+            .on(CONFIGURATION.ID.eq(CONFIGURATION_COMPONENT.CONFIGURATION_ID))
+            .where(CONFIGURATION_COMPONENT.COMPONENT_ID.eq(COMPONENT.ID))
+            .and(CONFIGURATION.TRACK_INVENTORY.isTrue())
+            .asField();
+    return coalesce(allocatedQuantity, org.jooq.impl.DSL.inline(0)).as(ALLOCATED_QUANTITY_FIELD);
   }
 
   private AttributeValue mapAttributeValue(Record record) {

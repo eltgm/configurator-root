@@ -32,8 +32,18 @@ describe('CreateConfigurationModal', () => {
         <CreateConfigurationModal
           opened
           domainId={101}
+          trackInventory={false}
           componentItems={[{ componentId: 7, quantity: 1 }]}
-          components={[{ id: 7, name: 'Ryzen', typeName: 'Процессор', brand: 'AMD', quantity: 1 }]}
+          components={[
+            {
+              id: 7,
+              name: 'Ryzen',
+              typeName: 'Процессор',
+              brand: 'AMD',
+              quantity: 1,
+              availableQuantity: 0,
+            },
+          ]}
           onClose={onClose}
           onSaved={vi.fn()}
         />
@@ -75,15 +85,24 @@ describe('CreateConfigurationModal', () => {
           opened
           mode="copy"
           domainId={101}
+          trackInventory={false}
           componentItems={[
             { componentId: 7, quantity: 1 },
             { componentId: 8, quantity: 1 },
           ]}
-          components={[{ id: 7, name: 'Ryzen', typeName: 'Процессор', brand: 'AMD', quantity: 1 }]}
+          components={[
+            {
+              id: 7,
+              name: 'Ryzen',
+              typeName: 'Процессор',
+              brand: 'AMD',
+              quantity: 1,
+              availableQuantity: 0,
+            },
+          ]}
           initialValues={{
             name: 'Домашний ПК — копия',
             description: 'Тихая сборка',
-            trackInventory: false,
           }}
           onClose={vi.fn()}
           onSaved={vi.fn()}
@@ -147,15 +166,28 @@ describe('CreateConfigurationModal', () => {
         <CreateConfigurationModal
           opened
           domainId={101}
+          trackInventory
           componentItems={[
             { componentId: 7, quantity: 3 },
             { componentId: 8, quantity: 2 },
           ]}
           components={[
-            { id: 7, name: 'Ryzen', typeName: 'Процессор', quantity: 3 },
-            { id: 8, name: 'GeForce', typeName: 'Видеокарта', quantity: 2 },
+            {
+              id: 7,
+              name: 'Ryzen',
+              typeName: 'Процессор',
+              quantity: 3,
+              availableQuantity: 3,
+            },
+            {
+              id: 8,
+              name: 'GeForce',
+              typeName: 'Видеокарта',
+              quantity: 2,
+              availableQuantity: 2,
+            },
           ]}
-          initialValues={{ name: 'Игровой ПК', description: '', trackInventory: true }}
+          initialValues={{ name: 'Игровой ПК', description: '' }}
           onClose={vi.fn()}
           onSaved={vi.fn()}
         />
@@ -170,5 +202,36 @@ describe('CreateConfigurationModal', () => {
     expect(alert).toHaveTextContent('«Ryzen»: требуется 3, доступно 2.');
     expect(alert).toHaveTextContent('«GeForce»: требуется 2, доступно 0.');
     expect(alert).not.toHaveTextContent('Insufficient component availability');
+  });
+
+  it('blocks a tracked copy before submitting when the requested quantity exceeds stock', () => {
+    render(
+      <AppProviders>
+        <CreateConfigurationModal
+          opened
+          mode="copy"
+          domainId={101}
+          trackInventory
+          componentItems={[{ componentId: 7, quantity: 3 }]}
+          components={[
+            {
+              id: 7,
+              name: 'Ryzen',
+              typeName: 'Процессор',
+              quantity: 3,
+              availableQuantity: 2,
+            },
+          ]}
+          initialValues={{ name: 'Игровой ПК — копия', description: '' }}
+          onClose={vi.fn()}
+          onSaved={vi.fn()}
+        />
+      </AppProviders>,
+    );
+
+    const dialog = screen.getByRole('dialog', { name: 'Копирование конфигурации' });
+    expect(within(dialog).getByText('Доступно: 2 · выбрано: 3')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Создать копию' })).toBeDisabled();
+    expect(within(dialog).queryByRole('checkbox')).toBeNull();
   });
 });

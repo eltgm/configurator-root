@@ -920,6 +920,11 @@ components:
         componentTypeId:
           type: integer
           format: int64
+        availableQuantity:
+          type: integer
+          minimum: 0
+          readOnly: true
+          description: Unallocated instances currently available to a new tracked configuration
         explanations:
           type: array
           description: All manual links and enabled automatic rule sets that matched
@@ -929,6 +934,7 @@ components:
         - id
         - name
         - componentTypeId
+        - availableQuantity
         - explanations
 
     ConfiguratorTypeGroup:
@@ -1046,6 +1052,11 @@ components:
         componentTypeId:
           type: integer
           format: int64
+        availableQuantity:
+          type: integer
+          minimum: 0
+          readOnly: true
+          description: Unallocated instances currently available to a new tracked configuration
         compatibilityByBase:
           type: array
           description: Compatibility evidence for every selected base component in request order
@@ -1055,6 +1066,7 @@ components:
         - id
         - name
         - componentTypeId
+        - availableQuantity
         - compatibilityByBase
 
     ConfiguratorIntersectionTypeGroup:
@@ -1215,6 +1227,11 @@ components:
         componentTypeId:
           type: integer
           format: int64
+        availableQuantity:
+          type: integer
+          minimum: 0
+          readOnly: true
+          description: Unallocated instances currently available to a new tracked configuration
         status:
           $ref: '#/components/schemas/ConfiguratorCandidateStatus'
         compatibilityByBase:
@@ -1226,6 +1243,7 @@ components:
         - id
         - name
         - componentTypeId
+        - availableQuantity
         - status
         - compatibilityByBase
 
@@ -1299,6 +1317,11 @@ components:
           minimum: 1
           maximum: 999999
           description: Number of instances of this component in the configuration
+        availableQuantity:
+          type: integer
+          minimum: 0
+          readOnly: true
+          description: Unallocated instances excluding all saved tracked configurations
       required:
         - id
         - name
@@ -1306,6 +1329,7 @@ components:
         - componentTypeName
         - archived
         - quantity
+        - availableQuantity
 
     ConfigurationComponentInput:
       type: object

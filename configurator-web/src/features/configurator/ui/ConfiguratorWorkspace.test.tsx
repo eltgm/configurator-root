@@ -55,9 +55,9 @@ const motherboard: Component = {
   name: 'B650 Tomahawk',
   brand: 'MSI',
   archived: false,
-  totalQuantity: 8,
+  totalQuantity: 0,
   allocatedQuantity: 0,
-  availableQuantity: 8,
+  availableQuantity: 0,
   createdAt: '2026-08-04T12:00:00Z',
 };
 const components = [ryzen, intel, radeon, motherboard];
@@ -95,6 +95,7 @@ function toCompatibilityResponse(baseComponentId: number) {
         name: component.name,
         brand: component.brand,
         componentTypeId: component.componentTypeId,
+        availableQuantity: component.availableQuantity,
         explanations: [{ source: 'MANUAL' as const, linkId: component.id + baseComponentId }],
       })),
     })),
@@ -228,6 +229,7 @@ function useHandlers() {
               name: component.name,
               brand: component.brand,
               componentTypeId,
+              availableQuantity: component.availableQuantity,
               compatibilityByBase: body.componentIds.map((baseComponentId) => ({
                 baseComponentId,
                 explanations: [{ source: 'MANUAL', linkId: component.id + baseComponentId }],
@@ -333,7 +335,7 @@ describe('configurator workspace', () => {
     });
     expect(
       JSON.parse(window.localStorage.getItem(configuratorDraftStorageKey(domainId)) ?? ''),
-    ).toMatchObject({ version: 2, items: [] });
+    ).toMatchObject({ version: 3, items: [], trackInventory: false });
   });
 
   it('adds direct and intersected candidates, replaces and clears the draft', async () => {
@@ -353,7 +355,8 @@ describe('configurator workspace', () => {
     expect(
       JSON.parse(window.localStorage.getItem(configuratorDraftStorageKey(domainId)) ?? ''),
     ).toMatchObject({
-      version: 2,
+      version: 3,
+      trackInventory: false,
       items: [{ componentId: ryzen.id, componentTypeId: ryzen.componentTypeId, quantity: 1 }],
     });
 
@@ -397,6 +400,41 @@ describe('configurator workspace', () => {
     expect(
       await within(assembly).findByRole('heading', { name: 'Сборка пока пуста' }),
     ).toBeInTheDocument();
+  });
+
+  it('shows and validates quantities only when inventory tracking is enabled', async () => {
+    const user = userEvent.setup();
+    useHandlers();
+    renderPage();
+
+    const inventoryCheckbox = await screen.findByRole('checkbox', {
+      name: 'Учитывать количество компонентов',
+    });
+    expect(inventoryCheckbox).not.toBeChecked();
+    const browser = await screen.findByRole('region', { name: 'Доступные компоненты' });
+    const motherboardCard = (await within(browser).findByText(motherboard.name)).closest(
+      '[data-with-border="true"]',
+    );
+    expect(motherboardCard).not.toBeNull();
+    expect(within(motherboardCard as HTMLElement).queryByText('Нет в наличии')).toBeNull();
+
+    await user.click(inventoryCheckbox);
+
+    expect(within(motherboardCard as HTMLElement).getByText('Нет в наличии')).toBeInTheDocument();
+    expect(
+      within(motherboardCard as HTMLElement).getByRole('button', { name: 'Недоступно' }),
+    ).toBeDisabled();
+    expect(
+      JSON.parse(window.localStorage.getItem(configuratorDraftStorageKey(domainId)) ?? ''),
+    ).toMatchObject({ version: 3, trackInventory: true });
+
+    const ryzenCard = (await within(browser).findByText(ryzen.name)).closest(
+      '[data-with-border="true"]',
+    );
+    await user.click(within(ryzenCard as HTMLElement).getByRole('button', { name: 'Добавить' }));
+    const assembly = screen.getByRole('region', { name: 'Текущая сборка' });
+    expect(await within(assembly).findByText('Доступно: 8 · выбрано: 1')).toBeInTheDocument();
+    expect(within(assembly).getByLabelText(`Количество «${ryzen.name}»`)).toBeInTheDocument();
   });
 
   it('keeps blocked candidates out of suggestions and explains the blocking rule', async () => {

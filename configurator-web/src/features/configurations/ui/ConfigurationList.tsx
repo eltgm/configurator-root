@@ -88,9 +88,11 @@ export function ConfigurationList({
                       </Text>
                     </Stack>
                     <Group gap="xs">
-                      <Badge size="sm" variant="light">
-                        {t('configurations.components.quantity', { count: component.quantity })}
-                      </Badge>
+                      {configuration.trackInventory ? (
+                        <Badge size="sm" variant="light">
+                          {t('configurations.components.quantity', { count: component.quantity })}
+                        </Badge>
+                      ) : null}
                       {component.archived ? (
                         <Badge
                           color="gray"

@@ -39,6 +39,7 @@ interface CurrentAssemblyProps {
   conflictComponentIds: ReadonlySet<number>;
   conflictCount: number;
   pairResults: ReadonlyArray<ConfiguratorPairResult>;
+  trackInventory: boolean;
   onRetryCompatibility: () => void;
   onReplace: (slot: ConfiguratorDraftSlot) => void;
   onQuantityChange: (componentId: number, quantity: number) => void;
@@ -57,6 +58,7 @@ export function CurrentAssembly({
   conflictComponentIds,
   conflictCount,
   pairResults,
+  trackInventory,
   onRetryCompatibility,
   onReplace,
   onQuantityChange,
@@ -190,6 +192,8 @@ export function CurrentAssembly({
                   );
                 }
                 const component = slot.component;
+                const inventoryUnavailable =
+                  trackInventory && slot.item.quantity > component.availableQuantity;
                 return (
                   <Paper key={component.id} className={classes['assembly-card']} p="sm" withBorder>
                     <Group align="center" wrap="nowrap">
@@ -227,24 +231,36 @@ export function CurrentAssembly({
                         <Text size="xs" c="dimmed" truncate>
                           {[component.brand, typeName].filter(Boolean).join(' · ')}
                         </Text>
+                        {trackInventory ? (
+                          <Text size="xs" c={inventoryUnavailable ? 'red' : 'teal'} fw={500}>
+                            {t('configurator.inventory.selectedAvailability', {
+                              available: component.availableQuantity,
+                              selected: slot.item.quantity,
+                            })}
+                          </Text>
+                        ) : null}
                       </Stack>
-                      <NumberInput
-                        aria-label={t('configurator.assembly.quantityNamed', {
-                          name: component.name,
-                        })}
-                        min={1}
-                        max={999999}
-                        allowDecimal={false}
-                        allowNegative={false}
-                        value={slot.item.quantity}
-                        w={92}
-                        size="xs"
-                        onChange={(value) => {
-                          if (typeof value === 'number' && Number.isInteger(value)) {
-                            onQuantityChange(component.id, value);
-                          }
-                        }}
-                      />
+                      {trackInventory ? (
+                        <NumberInput
+                          aria-label={t('configurator.assembly.quantityNamed', {
+                            name: component.name,
+                          })}
+                          min={1}
+                          max={Math.max(1, component.availableQuantity)}
+                          allowDecimal={false}
+                          allowNegative={false}
+                          value={slot.item.quantity}
+                          error={inventoryUnavailable}
+                          disabled={component.availableQuantity === 0}
+                          w={92}
+                          size="xs"
+                          onChange={(value) => {
+                            if (typeof value === 'number' && Number.isInteger(value)) {
+                              onQuantityChange(component.id, value);
+                            }
+                          }}
+                        />
+                      ) : null}
                       <Group gap={2} wrap="nowrap">
                         {!component.archived ? (
                           <Button

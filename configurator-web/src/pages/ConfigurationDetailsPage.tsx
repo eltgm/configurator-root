@@ -124,6 +124,7 @@ export function ConfigurationDetailsPage() {
         opened={copying}
         mode="copy"
         domainId={configuration.domainId}
+        trackInventory={configuration.trackInventory}
         componentItems={configuration.components.map((component) => ({
           componentId: component.id,
           quantity: component.quantity,
@@ -135,6 +136,7 @@ export function ConfigurationDetailsPage() {
           ...(component.brand ? { brand: component.brand } : {}),
           archived: component.archived,
           quantity: component.quantity,
+          availableQuantity: component.availableQuantity,
         }))}
         initialValues={copyInitialValues}
         onClose={() => setCopying(false)}

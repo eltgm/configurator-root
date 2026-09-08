@@ -368,6 +368,7 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         def trackedBody = objectMapper.readValue(tracked.body, SavedConfiguration)
         trackedBody.trackInventory
         trackedBody.components*.quantity == [2, 1]
+        trackedBody.components*.availableQuantity == [1, 1]
 
         and: "tracked requests cannot exceed the remaining inventory"
         def unavailable = post(

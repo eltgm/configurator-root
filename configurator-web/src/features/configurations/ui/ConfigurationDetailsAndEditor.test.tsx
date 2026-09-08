@@ -35,6 +35,7 @@ const configuration: Configuration = {
       componentTypeName: 'Процессор',
       archived: false,
       quantity: 1,
+      availableQuantity: 8,
     },
     {
       id: 8,
@@ -43,6 +44,7 @@ const configuration: Configuration = {
       componentTypeName: 'Видеокарта',
       archived: false,
       quantity: 1,
+      availableQuantity: 8,
     },
   ],
 };
@@ -101,6 +103,38 @@ afterEach(() => {
 });
 
 describe('configuration details and editor', () => {
+  it('shows contextual stock in a tracked editor and hides quantities when tracking is disabled', async () => {
+    const user = userEvent.setup();
+    const trackedConfiguration: Configuration = {
+      ...configuration,
+      trackInventory: true,
+      components: [
+        { ...configuration.components[0]!, quantity: 3, availableQuantity: 0 },
+        configuration.components[1]!,
+      ],
+    };
+    useConfigurationHandlers(trackedConfiguration);
+    renderAt('/configurations/91/edit');
+
+    await screen.findByRole('heading', { name: 'Редактирование конфигурации' });
+    const inventoryCheckbox = screen.getByRole('checkbox', {
+      name: 'Учитывать количество компонентов',
+    });
+    expect(inventoryCheckbox).toBeChecked();
+    expect(screen.getByText('Доступно: 3 · выбрано: 3')).toBeInTheDocument();
+    expect(screen.getByLabelText('Количество «Ryzen 9»')).toBeInTheDocument();
+
+    await user.click(inventoryCheckbox);
+
+    expect(screen.queryByLabelText('Количество «Ryzen 9»')).toBeNull();
+    expect(screen.queryByText('Доступно: 3 · выбрано: 3')).toBeNull();
+
+    await user.click(inventoryCheckbox);
+
+    expect(screen.getByLabelText('Количество «Ryzen 9»')).toHaveValue('3');
+    expect(screen.getByText('Доступно: 3 · выбрано: 3')).toBeInTheDocument();
+  });
+
   it('shows current metadata, ordered composition and archived state', async () => {
     useConfigurationHandlers({
       ...configuration,
@@ -309,6 +343,7 @@ describe('configuration details and editor', () => {
           componentTypeName: 'Оперативная память',
           archived: false,
           quantity: 1,
+          availableQuantity: 8,
         },
       ],
     };
@@ -404,6 +439,7 @@ describe('configuration details and editor', () => {
                     id: 9,
                     name: 'DDR5 bridge',
                     componentTypeId: 13,
+                    availableQuantity: 8,
                     status: 'AVAILABLE',
                     compatibilityByBase: [
                       {

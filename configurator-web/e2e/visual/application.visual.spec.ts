@@ -14,6 +14,19 @@ test('configurator workspace', async ({ page }) => {
   await waitForVisualReady(page);
 
   await expect(page).toHaveScreenshot('configurator-light.png', { fullPage: true });
+
+  await page.getByRole('checkbox', { name: 'Учитывать количество компонентов' }).check();
+  await page
+    .getByRole('region', { name: 'Доступные компоненты' })
+    .getByRole('button', { name: 'Добавить' })
+    .first()
+    .click();
+  await expect(
+    page.getByRole('region', { name: 'Текущая сборка' }).getByText('Доступно: 8 · выбрано: 1'),
+  ).toBeVisible();
+  await waitForVisualReady(page);
+
+  await expect(page).toHaveScreenshot('configurator-inventory-light.png', { fullPage: true });
 });
 
 test('component catalog cards and table', async ({ page }) => {

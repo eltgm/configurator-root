@@ -9,11 +9,14 @@ import type {
   ConfigurationEditorComponent,
   ConfigurationEditorEligibility,
 } from '@/features/configurations/model/configuration-editor';
+import { getSelectableQuantity } from '@/features/configurations/model/configuration-inventory';
 
 import classes from './configuration-editor.module.css';
 
 interface ConfigurationAssemblyEditorProps {
   components: ReadonlyArray<ConfigurationEditorComponent>;
+  trackInventory: boolean;
+  ownAllocations: ReadonlyMap<number, number>;
   eligibility: ConfigurationEditorEligibility;
   replacementComponentId: number | null;
   onRemove: (componentId: number) => void;
@@ -29,6 +32,8 @@ function eligibilityKey(reason: ConfigurationEditorBlockReason) {
 
 export function ConfigurationAssemblyEditor({
   components,
+  trackInventory,
+  ownAllocations,
   eligibility,
   replacementComponentId,
   onRemove,
@@ -77,76 +82,92 @@ export function ConfigurationAssemblyEditor({
           <Text c="dimmed">{t('configurations.editor.emptyComposition')}</Text>
         ) : null}
 
-        {components.map((component) => (
-          <Paper
-            key={component.id}
-            className={classes.component}
-            p="sm"
-            withBorder
-            data-replacement-target={replacementComponentId === component.id || undefined}
-          >
-            <Group justify="space-between" align="flex-start" wrap="wrap">
-              <Stack gap={2} miw={0}>
-                <Group gap="xs">
-                  <Text component={Link} to={`/components/${component.id}`} fw={600}>
-                    {component.name}
+        {components.map((component) => {
+          const selectableQuantity = getSelectableQuantity(component, ownAllocations);
+          const inventoryUnavailable = trackInventory && component.quantity > selectableQuantity;
+          return (
+            <Paper
+              key={component.id}
+              className={classes.component}
+              p="sm"
+              withBorder
+              data-replacement-target={replacementComponentId === component.id || undefined}
+            >
+              <Group justify="space-between" align="flex-start" wrap="wrap">
+                <Stack gap={2} miw={0}>
+                  <Group gap="xs">
+                    <Text component={Link} to={`/components/${component.id}`} fw={600}>
+                      {component.name}
+                    </Text>
+                    {component.archived ? (
+                      <Badge
+                        color="gray"
+                        size="sm"
+                        leftSection={<IconArchive size={12} aria-hidden="true" />}
+                      >
+                        {t('configurations.components.archived')}
+                      </Badge>
+                    ) : null}
+                  </Group>
+                  <Text size="sm" c="dimmed">
+                    {[component.componentTypeName, component.brand].filter(Boolean).join(' · ')}
                   </Text>
-                  {component.archived ? (
-                    <Badge
-                      color="gray"
-                      size="sm"
-                      leftSection={<IconArchive size={12} aria-hidden="true" />}
-                    >
-                      {t('configurations.components.archived')}
-                    </Badge>
+                  {trackInventory ? (
+                    <Text size="xs" c={inventoryUnavailable ? 'red' : 'teal'} fw={500}>
+                      {t('configurator.inventory.selectedAvailability', {
+                        available: selectableQuantity,
+                        selected: component.quantity,
+                      })}
+                    </Text>
                   ) : null}
+                </Stack>
+                <Group gap="xs">
+                  {trackInventory ? (
+                    <NumberInput
+                      aria-label={t('configurations.components.quantityNamed', {
+                        name: component.name,
+                      })}
+                      min={1}
+                      max={Math.max(1, selectableQuantity)}
+                      allowDecimal={false}
+                      allowNegative={false}
+                      value={component.quantity}
+                      error={inventoryUnavailable}
+                      disabled={selectableQuantity === 0}
+                      w={92}
+                      size="xs"
+                      onChange={(value) => {
+                        if (typeof value === 'number' && Number.isInteger(value)) {
+                          onQuantityChange(component.id, value);
+                        }
+                      }}
+                    />
+                  ) : null}
+                  <Button
+                    ref={(element) => onReplaceButtonRef(component.id, element)}
+                    size="xs"
+                    aria-pressed={replacementComponentId === component.id}
+                    aria-controls="available-components-browser"
+                    variant={replacementComponentId === component.id ? 'filled' : 'light'}
+                    leftSection={<IconRefresh size={14} aria-hidden="true" />}
+                    onClick={() => onReplace(component.id)}
+                  >
+                    {t('configurations.editor.replace')}
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="subtle"
+                    color="red"
+                    leftSection={<IconTrash size={14} aria-hidden="true" />}
+                    onClick={() => onRemove(component.id)}
+                  >
+                    {t('configurations.editor.remove')}
+                  </Button>
                 </Group>
-                <Text size="sm" c="dimmed">
-                  {[component.componentTypeName, component.brand].filter(Boolean).join(' · ')}
-                </Text>
-              </Stack>
-              <Group gap="xs">
-                <NumberInput
-                  aria-label={t('configurations.components.quantityNamed', {
-                    name: component.name,
-                  })}
-                  min={1}
-                  max={999999}
-                  allowDecimal={false}
-                  allowNegative={false}
-                  value={component.quantity}
-                  w={92}
-                  size="xs"
-                  onChange={(value) => {
-                    if (typeof value === 'number' && Number.isInteger(value)) {
-                      onQuantityChange(component.id, value);
-                    }
-                  }}
-                />
-                <Button
-                  ref={(element) => onReplaceButtonRef(component.id, element)}
-                  size="xs"
-                  aria-pressed={replacementComponentId === component.id}
-                  aria-controls="available-components-browser"
-                  variant={replacementComponentId === component.id ? 'filled' : 'light'}
-                  leftSection={<IconRefresh size={14} aria-hidden="true" />}
-                  onClick={() => onReplace(component.id)}
-                >
-                  {t('configurations.editor.replace')}
-                </Button>
-                <Button
-                  size="xs"
-                  variant="subtle"
-                  color="red"
-                  leftSection={<IconTrash size={14} aria-hidden="true" />}
-                  onClick={() => onRemove(component.id)}
-                >
-                  {t('configurations.editor.remove')}
-                </Button>
               </Group>
-            </Group>
-          </Paper>
-        ))}
+            </Paper>
+          );
+        })}
       </Stack>
       <Stack gap="md" className={classes['assembly-actions']}>
         {actions}

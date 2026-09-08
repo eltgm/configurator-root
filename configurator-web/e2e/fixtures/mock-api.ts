@@ -172,6 +172,7 @@ function configuratorResponse(
         name: component.name,
         brand: component.brand,
         componentTypeId,
+        availableQuantity: component.availableQuantity,
         explanations: [{ source: 'MANUAL' as const, linkId: component.id + baseComponentId }],
       })),
     })),
@@ -230,6 +231,7 @@ function configuratorCandidatesResponse(
         name: component.name,
         brand: component.brand,
         componentTypeId: component.componentTypeId,
+        availableQuantity: component.availableQuantity,
         status: compatibilityByBase.some((decision) => decision.status === 'ALLOWED')
           ? ('AVAILABLE' as const)
           : ('UNRELATED' as const),
@@ -388,6 +390,7 @@ async function installMockApi(page: Page) {
       componentTypeName: string;
       archived: boolean;
       quantity: number;
+      availableQuantity: number;
     }>;
     trackInventory: boolean;
   }> = [];
@@ -810,6 +813,7 @@ async function installMockApi(page: Page) {
                 'Unknown',
               archived: false,
               quantity: item.quantity,
+              availableQuantity: component.availableQuantity,
             },
           ];
         }),
@@ -916,6 +920,7 @@ async function installMockApi(page: Page) {
                 'Unknown',
               archived: false,
               quantity: item.quantity,
+              availableQuantity: component.availableQuantity,
             },
           ];
         }),
@@ -990,6 +995,7 @@ async function installMockApi(page: Page) {
               name: component.name,
               brand: component.brand,
               componentTypeId,
+              availableQuantity: component.availableQuantity,
               compatibilityByBase: body.componentIds.map((baseComponentId) => ({
                 baseComponentId,
                 explanations: [{ source: 'MANUAL', linkId: component.id + baseComponentId }],

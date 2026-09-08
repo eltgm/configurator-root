@@ -59,6 +59,7 @@ interface AvailableComponentBrowserProps {
   baseComponentIds: ReadonlyArray<number>;
   baseComponentNames: ReadonlyMap<number, string>;
   includeTransitive: boolean;
+  trackInventory: boolean;
   compatibilityBlocked: boolean;
   replacementTarget?: ConfiguratorComponentSelection;
   onCancelReplacement: () => void;
@@ -75,6 +76,7 @@ export function AvailableComponentBrowser({
   baseComponentIds,
   baseComponentNames,
   includeTransitive,
+  trackInventory,
   compatibilityBlocked,
   replacementTarget,
   onCancelReplacement,
@@ -366,6 +368,7 @@ export function AvailableComponentBrowser({
                         : {})}
                       catalogMode={catalogMode}
                       replacementMode={Boolean(replacementTarget)}
+                      trackInventory={trackInventory}
                       onExplain={setExplanationCandidate}
                       onSelect={onSelect}
                     />
