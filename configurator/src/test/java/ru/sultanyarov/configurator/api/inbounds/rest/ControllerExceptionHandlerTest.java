@@ -10,6 +10,7 @@ import jakarta.validation.Validation;
 import jakarta.validation.ValidatorFactory;
 import jakarta.validation.constraints.Positive;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -32,12 +33,14 @@ import ru.sultanyarov.configurator.api.inbounds.rest.dto.ErrorResponse;
 import ru.sultanyarov.configurator.domain.exception.AttributeNameConflictException;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
 import ru.sultanyarov.configurator.domain.exception.ComponentArchivedException;
+import ru.sultanyarov.configurator.domain.exception.ComponentTotalBelowAllocatedException;
 import ru.sultanyarov.configurator.domain.exception.ConfigurationConflictException;
 import ru.sultanyarov.configurator.domain.exception.DomainHasConfigurationsException;
 import ru.sultanyarov.configurator.domain.exception.EntityAlreadyExistsException;
 import ru.sultanyarov.configurator.domain.exception.EntityHasRelatedEntitiesException;
 import ru.sultanyarov.configurator.domain.exception.ExternalStorageException;
 import ru.sultanyarov.configurator.domain.exception.ImageTooLargeException;
+import ru.sultanyarov.configurator.domain.exception.InsufficientComponentAvailabilityException;
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
 import ru.sultanyarov.configurator.domain.exception.UnsupportedImageFormatException;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
@@ -106,6 +109,55 @@ class ControllerExceptionHandlerTest {
         HttpStatus.CONFLICT,
         ApiErrorCode.DOMAIN_HAS_CONFIGURATIONS,
         exception.getMessage());
+  }
+
+  @Test
+  void inventoryConflicts_shouldReturnLocalizedPresentationParameters() {
+    var availabilityException =
+        new InsufficientComponentAvailabilityException(
+            List.of(
+                new InsufficientComponentAvailabilityException.ComponentShortage(7L, "Ryzen", 3, 2),
+                new InsufficientComponentAvailabilityException.ComponentShortage(
+                    8L, "GeForce", 2, 0)));
+    assertErrorResponse(
+        handler.handleEntityAlreadyExistsException(availabilityException, request),
+        HttpStatus.CONFLICT,
+        ApiErrorCode.INSUFFICIENT_COMPONENT_AVAILABILITY,
+        "Insufficient component availability",
+        List.of(
+            new ApiErrorDetail(
+                    "INSUFFICIENT_COMPONENT_AVAILABILITY", "Insufficient component availability")
+                .parameters(
+                    Map.of(
+                        "componentId", "7",
+                        "componentName", "Ryzen",
+                        "requestedQuantity", "3",
+                        "availableQuantity", "2")),
+            new ApiErrorDetail(
+                    "INSUFFICIENT_COMPONENT_AVAILABILITY", "Insufficient component availability")
+                .parameters(
+                    Map.of(
+                        "componentId", "8",
+                        "componentName", "GeForce",
+                        "requestedQuantity", "2",
+                        "availableQuantity", "0"))));
+
+    var totalException = new ComponentTotalBelowAllocatedException(7L, "Ryzen", 2, 3);
+    assertErrorResponse(
+        handler.handleEntityAlreadyExistsException(totalException, request),
+        HttpStatus.CONFLICT,
+        ApiErrorCode.COMPONENT_TOTAL_BELOW_ALLOCATED,
+        "Component total quantity cannot be lower than allocated quantity",
+        List.of(
+            new ApiErrorDetail(
+                    "COMPONENT_TOTAL_BELOW_ALLOCATED",
+                    "Component total quantity is below allocated quantity")
+                .parameters(
+                    Map.of(
+                        "componentId", "7",
+                        "componentName", "Ryzen",
+                        "totalQuantity", "2",
+                        "allocatedQuantity", "3"))));
   }
 
   @Test

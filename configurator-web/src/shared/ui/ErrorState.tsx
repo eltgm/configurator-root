@@ -1,8 +1,12 @@
-import { Alert, Button, Stack, Text } from '@mantine/core';
+import { Alert, Button, List, Stack, Text } from '@mantine/core';
 import { IconAlertTriangle, IconRefresh } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 
-import { getErrorTranslationKey, normalizeApiError } from '@/shared/api/errors';
+import {
+  getErrorDetailTranslations,
+  getErrorTranslationKey,
+  normalizeApiError,
+} from '@/shared/api/errors';
 
 interface ErrorStateProps {
   error: unknown;
@@ -13,6 +17,9 @@ export function ErrorState({ error, onRetry }: ErrorStateProps) {
   const { t } = useTranslation();
   const normalizedError = normalizeApiError(error);
   const title = t(getErrorTranslationKey(normalizedError));
+  const localizedDetails = getErrorDetailTranslations(normalizedError).map(({ key, parameters }) =>
+    t(key, parameters),
+  );
   const description =
     normalizedError.kind === 'api' && normalizedError.publicMessage !== title
       ? normalizedError.publicMessage
@@ -27,7 +34,15 @@ export function ErrorState({ error, onRetry }: ErrorStateProps) {
       role="alert"
     >
       <Stack align="flex-start" gap="md">
-        <Text size="sm">{description}</Text>
+        {localizedDetails.length === 1 ? <Text size="sm">{localizedDetails[0]}</Text> : null}
+        {localizedDetails.length > 1 ? (
+          <List size="sm">
+            {localizedDetails.map((detail, index) => (
+              <List.Item key={`${index}-${detail}`}>{detail}</List.Item>
+            ))}
+          </List>
+        ) : null}
+        {localizedDetails.length === 0 ? <Text size="sm">{description}</Text> : null}
         {onRetry && normalizedError.retryable ? (
           <Button
             size="xs"

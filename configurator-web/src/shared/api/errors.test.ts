@@ -5,6 +5,7 @@ import {
   apiRequest,
   AppError,
   getErrorTranslationKey,
+  getErrorDetailTranslations,
   getFieldErrors,
   isErrorResponse,
   normalizeApiError,
@@ -53,7 +54,14 @@ describe('API error normalization', () => {
   it('accepts a nullable field emitted for an object-level backend detail', () => {
     const objectLevelError = {
       ...validationError,
-      details: [{ field: null, code: 'MALFORMED_REQUEST', message: 'Request is malformed' }],
+      details: [
+        {
+          field: null,
+          code: 'MALFORMED_REQUEST',
+          message: 'Request is malformed',
+          parameters: null,
+        },
+      ],
     };
 
     expect(isErrorResponse(objectLevelError)).toBe(true);
@@ -61,6 +69,44 @@ describe('API error normalization', () => {
       { code: 'MALFORMED_REQUEST', message: 'Request is malformed' },
     ]);
     expect(getFieldErrors(objectLevelError)).toEqual({});
+  });
+
+  it('preserves safe parameters used for localized error details', () => {
+    const availabilityError: ErrorResponse = {
+      ...validationError,
+      code: 'INSUFFICIENT_COMPONENT_AVAILABILITY',
+      status: 409,
+      details: [
+        {
+          code: 'INSUFFICIENT_COMPONENT_AVAILABILITY',
+          message: 'Insufficient component availability',
+          parameters: {
+            componentId: '7',
+            componentName: 'Ryzen',
+            requestedQuantity: '3',
+            availableQuantity: '2',
+          },
+        },
+      ],
+    };
+
+    expect(normalizeApiError(availabilityError).details[0]?.parameters).toEqual({
+      componentId: '7',
+      componentName: 'Ryzen',
+      requestedQuantity: '3',
+      availableQuantity: '2',
+    });
+    expect(getErrorDetailTranslations(availabilityError)).toEqual([
+      {
+        key: 'errors.details.INSUFFICIENT_COMPONENT_AVAILABILITY',
+        parameters: {
+          componentId: '7',
+          componentName: 'Ryzen',
+          requestedQuantity: '3',
+          availableQuantity: '2',
+        },
+      },
+    ]);
   });
 
   it('classifies fetch failures as retryable network errors', () => {

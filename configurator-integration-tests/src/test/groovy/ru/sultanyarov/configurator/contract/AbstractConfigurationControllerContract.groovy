@@ -5,6 +5,11 @@ import ru.sultanyarov.configurator.api.inbounds.rest.dto.ConfigurationPage
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.SavedConfiguration
 import spock.lang.Specification
 
+import java.util.concurrent.Callable
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+
 abstract class AbstractConfigurationControllerContract extends Specification implements ApiTestSupport {
 
     def "should create configuration with direct manual compatibility"() {
@@ -365,10 +370,25 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
         trackedBody.components*.quantity == [2, 1]
 
         and: "tracked requests cannot exceed the remaining inventory"
-        post(
+        def unavailable = post(
                 "/domains/1/configurations",
-                [name: "Unavailable tracked build", components: components, trackInventory: true]
-        ).status == 409
+                [
+                        name          : "Unavailable tracked build",
+                        components    : [[componentId: 1L, quantity: 2], [componentId: 5L, quantity: 2]],
+                        trackInventory: true
+                ]
+        )
+        unavailable.status == 409
+        def availabilityError = objectMapper.readTree(unavailable.body)
+        availabilityError.code.asText() == "INSUFFICIENT_COMPONENT_AVAILABILITY"
+        availabilityError.details*.code*.asText() == [
+                "INSUFFICIENT_COMPONENT_AVAILABILITY",
+                "INSUFFICIENT_COMPONENT_AVAILABILITY"
+        ]
+        availabilityError.details*.parameters*.componentId*.asText() == ["1", "5"]
+        availabilityError.details*.parameters*.componentName*.asText() == ["Base CPU", "Manual cooler"]
+        availabilityError.details*.parameters*.requestedQuantity*.asText() == ["2", "2"]
+        availabilityError.details*.parameters*.availableQuantity*.asText() == ["1", "1"]
 
         and: "untracked configurations do not reserve the inventory"
         post(
@@ -385,6 +405,104 @@ abstract class AbstractConfigurationControllerContract extends Specification imp
                 get("/domains/1/configurations", [trackInventory: true]).body,
                 ConfigurationPage
         ).items*.id == [trackedBody.id]
+    }
+
+    def "should atomically reserve inventory during concurrent configuration creation"() {
+        given:
+        prepareData()
+        runSqlScripts("/sql/set-configurator-component-inventory.sql")
+        def executor = Executors.newFixedThreadPool(2)
+        def start = new CountDownLatch(1)
+        def futures = (1..2).collect { index ->
+            executor.submit({
+                assert start.await(10, TimeUnit.SECONDS)
+                post(
+                        "/domains/1/configurations",
+                        [
+                                name          : "Concurrent tracked build " + index,
+                                components    : [[componentId: 1L, quantity: 2]],
+                                trackInventory: true
+                        ]
+                )
+            } as Callable<TestResponse>)
+        }
+
+        when:
+        start.countDown()
+        def responses = futures.collect { it.get(30, TimeUnit.SECONDS) }
+        def outcomes = responses.collect { [status: it.status, body: it.body] }
+
+        then:
+        outcomes*.status.sort() == [201, 409]
+        objectMapper.readTree(responses.find { it.status == 409 }.body).code.asText() ==
+                "INSUFFICIENT_COMPONENT_AVAILABILITY"
+        def component = objectMapper.readTree(get("/components/1").body)
+        component.allocatedQuantity.asInt() == 2
+        component.availableQuantity.asInt() == 1
+
+        cleanup:
+        executor?.shutdownNow()
+    }
+
+    def "should reuse and release a configurations own inventory allocation"() {
+        given:
+        prepareData()
+        runSqlScripts("/sql/set-configurator-component-inventory.sql")
+        def tracked = objectMapper.readValue(
+                post(
+                        "/domains/1/configurations",
+                        [
+                                name          : "Tracked build",
+                                components    : [[componentId: 1L, quantity: 2]],
+                                trackInventory: true
+                        ]
+                ).body,
+                SavedConfiguration
+        )
+
+        when: "the configuration consumes its last available instance"
+        def expanded = put(
+                "/configurations/${tracked.id}",
+                [
+                        name          : "Expanded tracked build",
+                        components    : [[componentId: 1L, quantity: 3]],
+                        trackInventory: true
+                ]
+        )
+
+        then:
+        expanded.status == 200
+        objectMapper.readTree(get("/components/1").body).availableQuantity.asInt() == 0
+
+        when: "inventory tracking is disabled"
+        def untracked = put(
+                "/configurations/${tracked.id}",
+                [
+                        name          : "Untracked build",
+                        components    : [[componentId: 1L, quantity: 3]],
+                        trackInventory: false
+                ]
+        )
+
+        then:
+        untracked.status == 200
+        objectMapper.readTree(get("/components/1").body).availableQuantity.asInt() == 3
+
+        when: "tracking is enabled again and the configuration is deleted"
+        def retracked = put(
+                "/configurations/${tracked.id}",
+                [
+                        name          : "Tracked again",
+                        components    : [[componentId: 1L, quantity: 3]],
+                        trackInventory: true
+                ]
+        )
+        def deleted = delete("/configurations/${tracked.id}")
+
+        then:
+        retracked.status == 200
+        deleted.status == 204
+        objectMapper.readTree(get("/components/1").body).availableQuantity.asInt() == 3
     }
 
     private void prepareData() {

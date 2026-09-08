@@ -102,4 +102,73 @@ describe('CreateConfigurationModal', () => {
     );
     expect(within(dialog).getByRole('textbox', { name: 'Описание' })).toHaveValue('Тихая сборка');
   });
+
+  it('shows every unavailable component using the current site language', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post(`${testApiBaseUrl}/domains/101/configurations`, () =>
+        HttpResponse.json(
+          {
+            timestamp: '2026-09-08T12:00:00Z',
+            status: 409,
+            error: 'Conflict',
+            code: 'INSUFFICIENT_COMPONENT_AVAILABILITY',
+            message: 'Insufficient component availability',
+            path: '/domains/101/configurations',
+            details: [
+              {
+                code: 'INSUFFICIENT_COMPONENT_AVAILABILITY',
+                message: 'Insufficient component availability',
+                parameters: {
+                  componentId: '7',
+                  componentName: 'Ryzen',
+                  requestedQuantity: '3',
+                  availableQuantity: '2',
+                },
+              },
+              {
+                code: 'INSUFFICIENT_COMPONENT_AVAILABILITY',
+                message: 'Insufficient component availability',
+                parameters: {
+                  componentId: '8',
+                  componentName: 'GeForce',
+                  requestedQuantity: '2',
+                  availableQuantity: '0',
+                },
+              },
+            ],
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+    render(
+      <AppProviders>
+        <CreateConfigurationModal
+          opened
+          domainId={101}
+          componentItems={[
+            { componentId: 7, quantity: 3 },
+            { componentId: 8, quantity: 2 },
+          ]}
+          components={[
+            { id: 7, name: 'Ryzen', typeName: 'Процессор', quantity: 3 },
+            { id: 8, name: 'GeForce', typeName: 'Видеокарта', quantity: 2 },
+          ]}
+          initialValues={{ name: 'Игровой ПК', description: '', trackInventory: true }}
+          onClose={vi.fn()}
+          onSaved={vi.fn()}
+        />
+      </AppProviders>,
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Сохранение конфигурации' });
+
+    await user.click(within(dialog).getByRole('button', { name: 'Сохранить конфигурацию' }));
+
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toHaveTextContent('Недостаточно компонентов');
+    expect(alert).toHaveTextContent('«Ryzen»: требуется 3, доступно 2.');
+    expect(alert).toHaveTextContent('«GeForce»: требуется 2, доступно 0.');
+    expect(alert).not.toHaveTextContent('Insufficient component availability');
+  });
 });

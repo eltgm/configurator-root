@@ -48,4 +48,40 @@ describe('application notifications', () => {
     expect(await screen.findByText('Сохранено')).toBeInTheDocument();
     expect(screen.getByText('Изменения применены')).toBeInTheDocument();
   });
+
+  it('uses localized inventory details instead of the backend message', async () => {
+    const error: ErrorResponse = {
+      timestamp: '2026-09-08T12:00:00Z',
+      status: 409,
+      error: 'Conflict',
+      code: 'COMPONENT_TOTAL_BELOW_ALLOCATED',
+      message: 'Component total quantity cannot be lower than allocated quantity',
+      path: '/components/7',
+      details: [
+        {
+          code: 'COMPONENT_TOTAL_BELOW_ALLOCATED',
+          message: 'Component total quantity is below allocated quantity',
+          parameters: {
+            componentId: '7',
+            componentName: 'Ryzen',
+            totalQuantity: '2',
+            allocatedQuantity: '3',
+          },
+        },
+      ],
+    };
+    render(
+      <AppProviders>
+        <div />
+      </AppProviders>,
+    );
+
+    showErrorNotification(error);
+
+    expect(await screen.findByText('Количество меньше зарезервированного')).toBeInTheDocument();
+    expect(screen.getByText('«Ryzen»: указано 2, уже зарезервировано 3.')).toBeInTheDocument();
+    expect(
+      screen.queryByText('Component total quantity cannot be lower than allocated quantity'),
+    ).toBeNull();
+  });
 });
