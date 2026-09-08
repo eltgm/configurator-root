@@ -149,6 +149,12 @@ export const resources = {
           replace: 'Заменить',
           replaces: 'Тип уже выбран',
           page: 'Страница {{page}}',
+          pagination: {
+            first: 'Первая страница',
+            previous: 'Предыдущая страница',
+            next: 'Следующая страница',
+            last: 'Последняя страница',
+          },
         },
         assembly: {
           title: 'Текущая сборка',
@@ -1319,6 +1325,12 @@ export const resources = {
           replace: 'Replace',
           replaces: 'Type selected',
           page: 'Page {{page}}',
+          pagination: {
+            first: 'First page',
+            previous: 'Previous page',
+            next: 'Next page',
+            last: 'Last page',
+          },
         },
         assembly: {
           title: 'Current assembly',
