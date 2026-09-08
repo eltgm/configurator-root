@@ -8,6 +8,7 @@ import {
   getConfigurationEditorEligibility,
   removeConfigurationEditorComponent,
   replaceConfigurationEditorComponent,
+  setConfigurationEditorComponentQuantity,
   toUpdateConfigurationRequest,
   type ConfigurationEditorComponent,
 } from '@/features/configurations/model/configuration-editor';
@@ -69,6 +70,17 @@ describe('configuration editor model', () => {
       board,
     ]);
     expect(removeConfigurationEditorComponent([processor, board], 1)).toEqual([board]);
+  });
+
+  it('keeps existing positions for a duplicate or missing replacement and normalizes quantities', () => {
+    expect(addConfigurationEditorComponent([processor], processor)).toEqual([processor]);
+    expect(replaceConfigurationEditorComponent([processor], board.id, board)).toEqual([processor]);
+    expect(setConfigurationEditorComponentQuantity([processor], processor.id, 0)).toEqual([
+      { ...processor, quantity: 1 },
+    ]);
+    expect(setConfigurationEditorComponentQuantity([processor], processor.id, 1_000_000)).toEqual([
+      { ...processor, quantity: 999_999 },
+    ]);
   });
 
   it('compares composition as a set instead of display order', () => {
