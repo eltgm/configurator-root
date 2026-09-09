@@ -20,7 +20,8 @@ Docker. Архив передаётся между контейнерами и �
 
 ## Установка
 
-1. Установите и запустите актуальный Docker Desktop.
+1. Установите и запустите актуальный Docker Desktop. В Windows используйте
+   [подробное руководство по включению виртуализации, установке WSL 2 и Docker Desktop](../user/WINDOWS_DOCKER_DESKTOP_SETUP.md).
 2. Скачайте архив своей операционной системы и файл `SHA256SUMS` из
    [выпуска `v1.3.0`](https://github.com/eltgm/configurator-root/releases/tag/v1.3.0). При расширенной проверке также
    скачайте `IMAGE_DIGESTS`.

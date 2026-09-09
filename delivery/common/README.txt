@@ -2,6 +2,9 @@ CONFIGURATOR — ЛОКАЛЬНАЯ PREVIEW-ВЕРСИЯ
 
 Требование: установленный Docker Desktop и доступ в интернет при первом запуске и обновлении.
 
+Подробная подготовка Windows 10/11, включая BIOS/UEFI, WSL 2 и Docker Desktop:
+https://github.com/eltgm/configurator-root/blob/master/docs/user/WINDOWS_DOCKER_DESKTOP_SETUP.md
+
 1. Распакуйте весь архив в обычную пользовательскую папку.
 2. Запустите Start двойным кликом.
 3. Дождитесь сообщения о готовности — браузер откроется автоматически.
