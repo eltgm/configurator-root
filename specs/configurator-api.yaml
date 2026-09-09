@@ -903,6 +903,11 @@ components:
     ConfiguratorCompatibleComponent:
       type: object
       properties:
+        attributes:
+          type: array
+          description: Attribute values in component type display order, then identifier; empty when none are defined
+          items:
+            $ref: '#/components/schemas/AttributeValue'
         primaryImage:
           nullable: true
           readOnly: true
@@ -1035,6 +1040,11 @@ components:
     ConfiguratorIntersectionCompatibleComponent:
       type: object
       properties:
+        attributes:
+          type: array
+          description: Attribute values in component type display order, then identifier; empty when none are defined
+          items:
+            $ref: '#/components/schemas/AttributeValue'
         primaryImage:
           nullable: true
           readOnly: true
@@ -1210,6 +1220,11 @@ components:
     ConfiguratorAssemblyCandidate:
       type: object
       properties:
+        attributes:
+          type: array
+          description: Attribute values in component type display order, then identifier; empty when none are defined
+          items:
+            $ref: '#/components/schemas/AttributeValue'
         primaryImage:
           nullable: true
           readOnly: true
@@ -3319,8 +3334,9 @@ paths:
       summary: List configurations of domain (paged)
       operationId: getDomainsByIdConfigurations
       description: |
-        Returns only configurations owned by the current user. Results are ordered by createdAt
-        descending and then by id descending. An empty page is returned when no configurations exist.
+        Returns only configurations owned by the current user. By default results are ordered by createdAt
+        descending and then by id descending. Optional name filtering and sort parameters apply
+        before pagination; identifier descending breaks ties for every sort order. An empty page is returned when no configurations exist.
       parameters:
         - name: id
           in: path
@@ -3346,6 +3362,24 @@ paths:
           description: Optional inventory-mode filter. Omit to return all configurations.
           schema:
             type: boolean
+        - name: name
+          in: query
+          description: Case-insensitive literal substring of the configuration name; whitespace is trimmed
+          schema:
+            type: string
+            maxLength: 255
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [createdAt, name]
+            default: createdAt
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
       responses:
         '200':
           description: Success

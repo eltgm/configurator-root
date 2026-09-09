@@ -15,6 +15,70 @@ function renderPage() {
 }
 
 describe('ConfigurationsPage', () => {
+  it('keeps a fifty-model composition compact until it is expanded', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get(`${testApiBaseUrl}/domains/101/configurations`, () =>
+        HttpResponse.json({
+          page: 0,
+          size: 10,
+          totalItems: 1,
+          items: [
+            {
+              id: 91,
+              domainId: 101,
+              name: 'Большая сборка',
+              createdAt: '2026-09-09T12:00:00Z',
+              trackInventory: false,
+              components: Array.from({ length: 50 }, (_, index) => ({
+                id: index + 1,
+                name: `Модель ${index + 1}`,
+                componentTypeId: 11,
+                componentTypeName: 'Модуль',
+                quantity: 1,
+                availableQuantity: 1,
+                archived: false,
+              })),
+            },
+          ],
+        }),
+      ),
+    );
+    renderPage();
+    await screen.findByRole('heading', { name: 'Большая сборка' });
+    expect(screen.getAllByRole('link', { name: /^Модель / })).toHaveLength(3);
+    await user.click(screen.getByRole('button', { name: 'Ещё 47' }));
+    expect(screen.getAllByRole('link', { name: /^Модель / })).toHaveLength(50);
+    await user.click(screen.getByRole('button', { name: 'Свернуть' }));
+    expect(screen.getAllByRole('link', { name: /^Модель / })).toHaveLength(3);
+  });
+
+  it('sends debounced search and sorting to the server and resets empty filters', async () => {
+    const user = userEvent.setup();
+    const requests: URL[] = [];
+    server.use(
+      http.get(`${testApiBaseUrl}/domains/101/configurations`, ({ request }) => {
+        requests.push(new URL(request.url));
+        return HttpResponse.json({ page: 0, size: 10, totalItems: 0, items: [] });
+      }),
+    );
+    renderPage();
+    const search = await screen.findByRole('textbox', { name: 'Поиск конфигураций' });
+    await user.type(search, 'Work');
+    await waitFor(() => expect(requests.at(-1)?.searchParams.get('name')).toBe('Work'));
+    await user.tab();
+    expect(screen.getByRole('combobox', { name: 'Сортировка' })).toHaveFocus();
+    await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}{Enter}');
+    await waitFor(() => expect(requests.at(-1)?.searchParams.get('sortBy')).toBe('name'));
+    expect(requests.at(-1)?.searchParams.get('sortDirection')).toBe('asc');
+    expect(await screen.findByRole('heading', { name: 'Ничего не найдено' })).toBeInTheDocument();
+    await user.click(screen.getAllByRole('button', { name: 'Сбросить фильтры' })[0]!);
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: 'Ничего не найдено' })).not.toBeInTheDocument(),
+    );
+    expect(search).toHaveValue('');
+  });
+
   it('renders server-ordered cards, archived composition and pagination', async () => {
     const user = userEvent.setup();
     const requestedPages: number[] = [];

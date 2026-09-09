@@ -138,6 +138,7 @@ test('uses the same name rule from both creation screens and reuses the definiti
     dialog.getByText(/Атрибут с таким системным именем уже есть в области/),
   ).toBeVisible();
   await dialog.getByRole('button', { name: 'Отмена', exact: true }).click();
+  await page.getByRole('button', { name: 'Отбросить изменения', exact: true }).click();
 
   await page.goto('/settings/types');
   await page.getByRole('button', { name: /Материнская плата/ }).click();
@@ -151,6 +152,7 @@ test('uses the same name rule from both creation screens and reuses the definiti
     dialog.getByText(/Атрибут с таким системным именем уже есть в области/),
   ).toBeVisible();
   await dialog.getByRole('button', { name: 'Отмена', exact: true }).click();
+  await page.getByRole('button', { name: 'Отбросить изменения', exact: true }).click();
 
   await page.getByRole('button', { name: 'Добавить', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Использовать существующий' }).click();

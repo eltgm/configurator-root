@@ -1,15 +1,7 @@
+import { useFormCompletion } from '@/features/domains/model/use-form-completion';
+import { GuardedFormModal, FormModalCancelButton } from '@/features/domains/ui/GuardedFormModal';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  Badge,
-  Button,
-  Group,
-  Modal,
-  Paper,
-  Stack,
-  Text,
-  Textarea,
-  TextInput,
-} from '@mantine/core';
+import { Badge, Button, Group, Paper, Stack, Text, Textarea, TextInput } from '@mantine/core';
 import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -60,7 +52,8 @@ export function CreateConfigurationModal({
   onSaved,
 }: CreateConfigurationModalProps) {
   const { t } = useTranslation();
-  const createConfiguration = useCreateConfigurationMutation();
+  const { markComplete, canLeave } = useFormCompletion(opened);
+  const createConfiguration = useCreateConfigurationMutation(true);
   const resetMutation = createConfiguration.reset;
   const schema = useMemo(
     () =>
@@ -109,6 +102,7 @@ export function CreateConfigurationModal({
             : 'configurations.notifications.created',
         ),
       );
+      markComplete();
       onSaved(configuration);
       onClose();
     } catch (error) {
@@ -123,7 +117,10 @@ export function CreateConfigurationModal({
   });
 
   return (
-    <Modal
+    <GuardedFormModal
+      canLeave={canLeave}
+      dirty={form.formState.isDirty}
+      pending={createConfiguration.isPending}
       opened={opened}
       onClose={close}
       title={t(mode === 'copy' ? 'configurations.copy.title' : 'configurations.form.title')}
@@ -155,7 +152,9 @@ export function CreateConfigurationModal({
             error={form.formState.errors.description?.message}
             {...form.register('description')}
           />
-          {createConfiguration.error ? <ErrorState error={createConfiguration.error} /> : null}
+          {createConfiguration.error ? (
+            <ErrorState autoFocus error={createConfiguration.error} />
+          ) : null}
           <Stack gap="xs">
             <Group justify="space-between">
               <Text fw={600} size="sm">
@@ -193,9 +192,9 @@ export function CreateConfigurationModal({
             ))}
           </Stack>
           <Group justify="flex-end">
-            <Button variant="default" onClick={close} disabled={createConfiguration.isPending}>
+            <FormModalCancelButton variant="default" disabled={createConfiguration.isPending}>
               {t('common.cancel')}
-            </Button>
+            </FormModalCancelButton>
             <Button
               type="submit"
               loading={createConfiguration.isPending}
@@ -210,6 +209,6 @@ export function CreateConfigurationModal({
           </Group>
         </Stack>
       </form>
-    </Modal>
+    </GuardedFormModal>
   );
 }

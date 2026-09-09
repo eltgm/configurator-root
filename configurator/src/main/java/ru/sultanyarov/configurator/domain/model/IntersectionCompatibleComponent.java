@@ -11,4 +11,5 @@ public record IntersectionCompatibleComponent(
     Long componentTypeId,
     Integer availableQuantity,
     ComponentImage primaryImage,
+    List<AttributeValue> attributes,
     List<BaseComponentCompatibility> compatibilityByBase) {}

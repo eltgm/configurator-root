@@ -27,6 +27,7 @@ interface ConfiguratorCandidateCardProps {
   replacementMode: boolean;
   trackInventory: boolean;
   onSelect: (component: ConfiguratorComponentSelection) => void;
+  onQuickView?: (id: number) => void;
   onExplain?: (component: ConfiguratorCandidate) => void;
 }
 
@@ -38,6 +39,7 @@ export function ConfiguratorCandidateCard({
   trackInventory,
   onSelect,
   onExplain,
+  onQuickView,
 }: ConfiguratorCandidateCardProps) {
   const { t } = useTranslation();
 
@@ -49,7 +51,7 @@ export function ConfiguratorCandidateCard({
         </div>
         <Stack gap={7} flex={1} miw={0}>
           <Stack gap={2}>
-            <Text component={Link} to={`/components/${component.id}`} fw={650} truncate>
+            <Text component={Link} to={`/components/${component.id}`} fw={650}>
               {component.name}
             </Text>
             <Text size="xs" c="dimmed" truncate>
@@ -67,6 +69,21 @@ export function ConfiguratorCandidateCard({
               </Text>
             ) : null}
           </Stack>
+          {(component.attributes ?? []).slice(0, 3).map((attribute) => (
+            <Text key={attribute.attributeDefinitionId} size="xs">
+              {attribute.label}: {attribute.value || t('components.item.noValue')}
+            </Text>
+          ))}
+          {onQuickView ? (
+            <Button
+              variant="subtle"
+              size="xs"
+              aria-label={t('ux.quickViewNamed', { name: component.name })}
+              onClick={() => onQuickView(component.id)}
+            >
+              {t('ux.quickView')}
+            </Button>
+          ) : null}
           <Group justify="space-between" align="center" mt="auto" wrap="wrap">
             {!catalogMode ? (
               <Group gap={5}>
@@ -104,18 +121,22 @@ export function ConfiguratorCandidateCard({
                 size="xs"
                 leftSection={<IconPlus size={14} />}
                 aria-label={
-                  replacementMode
-                    ? t('configurator.browser.selectReplacementNamed', { name: component.name })
-                    : undefined
+                  trackInventory && component.availableQuantity === 0
+                    ? `${t('configurator.inventory.unavailable')}: ${component.name}`
+                    : replacementMode
+                      ? t('configurator.browser.selectReplacementNamed', { name: component.name })
+                      : t('ux.addNamed', { name: component.name })
                 }
                 onClick={() => onSelect(component)}
                 disabled={trackInventory && component.availableQuantity === 0}
               >
                 {trackInventory && component.availableQuantity === 0
                   ? t('configurator.inventory.unavailable')
-                  : replacementMode
-                    ? t('configurator.browser.selectReplacement')
-                    : t('configurator.browser.add')}
+                  : trackInventory && component.availableQuantity === 0
+                    ? `${t('configurator.inventory.unavailable')}: ${component.name}`
+                    : replacementMode
+                      ? t('configurator.browser.selectReplacement')
+                      : t('configurator.browser.add')}
               </Button>
             </Group>
           </Group>

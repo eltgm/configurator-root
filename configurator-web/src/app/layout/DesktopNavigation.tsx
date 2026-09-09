@@ -22,7 +22,7 @@ function DesktopNavigationItem({ item }: { item: NavigationItem }) {
       label={t(item.labelKey)}
       leftSection={<Icon size={20} stroke={1.7} />}
       active={active}
-      aria-current={active ? 'page' : undefined}
+      aria-current={active ? (pathname === item.path ? 'page' : 'location') : undefined}
       variant="light"
     />
   );
@@ -43,6 +43,7 @@ export function DesktopNavigation() {
           {t('navigation.settings')}
         </Text>
 
+        <NavLink component={Link} to="/help" label={t('ux.help')} />
         {settingsNavigation.map((item) => (
           <DesktopNavigationItem key={item.path} item={item} />
         ))}

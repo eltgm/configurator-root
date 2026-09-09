@@ -1,5 +1,7 @@
-import { Button, Group, Modal, NumberInput, Select, Stack, Switch } from '@mantine/core';
-import { useMemo, useState } from 'react';
+import { ErrorState } from '@/shared/ui';
+import { GuardedFormModal, FormModalCancelButton } from '@/features/domains/ui/GuardedFormModal';
+import { Button, Group, NumberInput, Select, Stack, Switch } from '@mantine/core';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -26,7 +28,11 @@ export function AttachAttributeModal({
 }: AttachAttributeModalProps) {
   const { t } = useTranslation();
   const catalogQuery = useAttributeCatalogQuery(domainId);
-  const attachAttribute = useAttachAttributeMutation();
+  const attachAttribute = useAttachAttributeMutation(true);
+  const resetMutation = attachAttribute.reset;
+  useEffect(() => {
+    if (opened) resetMutation();
+  }, [opened, resetMutation]);
   const [attributeId, setAttributeId] = useState<string | null>(null);
   const [isRequired, setIsRequired] = useState(false);
   const [orderIndex, setOrderIndex] = useState<number | string>('');
@@ -74,12 +80,14 @@ export function AttachAttributeModal({
       setOrderIndex('');
       onClose();
     } catch {
-      // The global mutation policy presents the structured API error.
+      // Keep the normalized error visible in the dialog.
     }
   };
 
   return (
-    <Modal
+    <GuardedFormModal
+      dirty={Boolean(attributeId || isRequired || orderIndex !== '')}
+      pending={attachAttribute.isPending}
       opened={opened}
       onClose={close}
       title={t('attributes.attach.title')}
@@ -88,6 +96,7 @@ export function AttachAttributeModal({
       closeOnEscape={!attachAttribute.isPending}
     >
       <Stack gap="md">
+        {attachAttribute.error ? <ErrorState error={attachAttribute.error} /> : null}
         <Select
           label={t('attributes.attach.attribute')}
           placeholder={t('attributes.attach.placeholder')}
@@ -114,9 +123,9 @@ export function AttachAttributeModal({
           onChange={setOrderIndex}
         />
         <Group justify="flex-end">
-          <Button variant="default" onClick={close} disabled={attachAttribute.isPending}>
+          <FormModalCancelButton variant="default" disabled={attachAttribute.isPending}>
             {t('common.cancel')}
-          </Button>
+          </FormModalCancelButton>
           <Button
             onClick={() => void submit()}
             disabled={!canAttach}
@@ -126,6 +135,6 @@ export function AttachAttributeModal({
           </Button>
         </Group>
       </Stack>
-    </Modal>
+    </GuardedFormModal>
   );
 }

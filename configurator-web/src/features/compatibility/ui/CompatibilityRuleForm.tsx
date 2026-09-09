@@ -35,6 +35,7 @@ import {
   type CompatibilityRuleFormValues,
 } from '@/features/compatibility/model/compatibility-rules';
 import { CompatibilityRuleConditionFields } from '@/features/compatibility/ui/CompatibilityRuleConditionFields';
+import { useRegisterDomainChangeGuard } from '@/features/domains/model/use-domain-change-guard';
 import { useUnsavedChangesGuard } from '@/features/components/model/use-unsaved-changes-guard';
 import type { CompatibilityRuleSet, ComponentType } from '@/shared/api';
 import { showSuccessNotification } from '@/shared/notifications/notifications';
@@ -125,10 +126,11 @@ export function CompatibilityRuleForm({
   const rightAttributesQuery = useAttributesQuery(domainId, componentTypeBId);
   const leftAttributes = leftAttributesQuery.data ?? [];
   const rightAttributes = rightAttributesQuery.data ?? [];
-  const createRule = useCreateCompatibilityRuleMutation();
-  const updateRule = useUpdateCompatibilityRuleMutation();
+  const createRule = useCreateCompatibilityRuleMutation(true);
+  const updateRule = useUpdateCompatibilityRuleMutation(true);
   const isPending = createRule.isPending || updateRule.isPending;
   const { blocker, allowNavigation } = useUnsavedChangesGuard(form.formState.isDirty);
+  useRegisterDomainChangeGuard(form.formState.isDirty, allowNavigation);
   const previousTypes = useRef({ a: componentTypeAValue, b: componentTypeBValue });
 
   const validateAttributeSemantics = (values: CompatibilityRuleFormValues) => {
@@ -236,6 +238,9 @@ export function CompatibilityRuleForm({
     <>
       <form onSubmit={(event) => void submit(event)} noValidate>
         <Stack gap="lg">
+          {(createRule.error ?? updateRule.error) ? (
+            <ErrorState autoFocus error={createRule.error ?? updateRule.error} />
+          ) : null}
           <Paper p={{ base: 'md', sm: 'lg' }} radius="md" withBorder>
             <Stack gap="md">
               <Group justify="space-between" align="flex-start">
@@ -277,6 +282,7 @@ export function CompatibilityRuleForm({
                       data={typeOptions.filter((option) => option.value !== componentTypeBValue)}
                       value={field.value || null}
                       onChange={(value) => field.onChange(value ?? '')}
+                      ref={field.ref}
                       onBlur={field.onBlur}
                       searchable
                       withAsterisk
@@ -296,6 +302,7 @@ export function CompatibilityRuleForm({
                       data={typeOptions.filter((option) => option.value !== componentTypeAValue)}
                       value={field.value || null}
                       onChange={(value) => field.onChange(value ?? '')}
+                      ref={field.ref}
                       onBlur={field.onBlur}
                       searchable
                       withAsterisk
@@ -360,6 +367,13 @@ export function CompatibilityRuleForm({
                     <CompatibilityRuleConditionFields
                       key={field.id}
                       index={index}
+                      leftInputRef={
+                        form.register(`conditions.${index}.leftAttributeDefinitionId`).ref
+                      }
+                      operatorInputRef={form.register(`conditions.${index}.operator`).ref}
+                      rightInputRef={
+                        form.register(`conditions.${index}.rightAttributeDefinitionId`).ref
+                      }
                       value={value}
                       leftAttributes={leftAttributes}
                       rightAttributes={rightAttributes}

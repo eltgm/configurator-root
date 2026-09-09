@@ -1,8 +1,9 @@
+import { useDomainContext } from '@/features/domains/model/domain-context';
 import { Anchor, AppShell, Group, Text, ThemeIcon, VisuallyHidden } from '@mantine/core';
 import { IconAssembly } from '@tabler/icons-react';
 import { Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, ScrollRestoration } from 'react-router-dom';
 
 import { DesktopNavigation } from '@/app/layout/DesktopNavigation';
 import { MobileNavigation } from '@/app/layout/MobileNavigation';
@@ -28,6 +29,7 @@ export function AppLayout() {
 }
 
 function AppLayoutContent() {
+  const { selectedDomainId } = useDomainContext();
   const { t } = useTranslation();
   const [pageAnnouncement, setPageAnnouncement] = useState('');
 
@@ -41,6 +43,9 @@ function AppLayoutContent() {
 
   return (
     <>
+      <ScrollRestoration
+        getKey={(location) => `${selectedDomainId}:${location.pathname}${location.search}`}
+      />
       <VisuallyHidden
         role="status"
         aria-live="polite"
@@ -92,7 +97,7 @@ function AppLayoutContent() {
           </Group>
         </AppShell.Header>
 
-        <AppShell.Navbar>
+        <AppShell.Navbar visibleFrom="sm">
           <DesktopNavigation />
         </AppShell.Navbar>
 

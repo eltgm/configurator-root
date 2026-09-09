@@ -402,6 +402,10 @@ export type CompatibilityExplanation = {
 
 export type ConfiguratorCompatibleComponent = {
   /**
+   * Attribute values in component type display order, then identifier; empty when none are defined
+   */
+  attributes?: Array<AttributeValue>;
+  /**
    * First image by orderIndex ascending (nulls last), then id ascending; null when no images exist
    */
   primaryImage?: ComponentImage | null;
@@ -468,6 +472,10 @@ export type ConfiguratorBaseCompatibility = {
 };
 
 export type ConfiguratorIntersectionCompatibleComponent = {
+  /**
+   * Attribute values in component type display order, then identifier; empty when none are defined
+   */
+  attributes?: Array<AttributeValue>;
   /**
    * First image by orderIndex ascending (nulls last), then id ascending; null when no images exist
    */
@@ -552,6 +560,10 @@ export type ConfiguratorAssemblyPairDecision = {
 };
 
 export type ConfiguratorAssemblyCandidate = {
+  /**
+   * Attribute values in component type display order, then identifier; empty when none are defined
+   */
+  attributes?: Array<AttributeValue>;
   /**
    * First image by orderIndex ascending (nulls last), then id ascending; null when no images exist
    */
@@ -747,6 +759,10 @@ export type ComponentWritable = {
 };
 
 export type ConfiguratorCompatibleComponentWritable = {
+  /**
+   * Attribute values in component type display order, then identifier; empty when none are defined
+   */
+  attributes?: Array<AttributeValue>;
   id: number;
   name: string;
   brand?: string | null;
@@ -776,6 +792,10 @@ export type ConfiguratorBatchSearchResponseWritable = {
 };
 
 export type ConfiguratorIntersectionCompatibleComponentWritable = {
+  /**
+   * Attribute values in component type display order, then identifier; empty when none are defined
+   */
+  attributes?: Array<AttributeValue>;
   id: number;
   name: string;
   brand?: string | null;
@@ -804,6 +824,10 @@ export type ConfiguratorIntersectionResponseWritable = {
 };
 
 export type ConfiguratorAssemblyCandidateWritable = {
+  /**
+   * Attribute values in component type display order, then identifier; empty when none are defined
+   */
+  attributes?: Array<AttributeValue>;
   id: number;
   name: string;
   brand?: string | null;
@@ -2406,6 +2430,12 @@ export type GetDomainsByIdConfigurationsData = {
      * Optional inventory-mode filter. Omit to return all configurations.
      */
     trackInventory?: boolean;
+    /**
+     * Case-insensitive literal substring of the configuration name; whitespace is trimmed
+     */
+    name?: string;
+    sortBy?: 'createdAt' | 'name';
+    sortDirection?: 'asc' | 'desc';
   };
   url: '/domains/{id}/configurations';
 };

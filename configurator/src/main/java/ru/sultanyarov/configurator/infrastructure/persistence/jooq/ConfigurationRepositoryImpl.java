@@ -27,6 +27,7 @@ import ru.sultanyarov.configurator.application.port.out.ConfigurationRepository;
 import ru.sultanyarov.configurator.common.util.JooqMapperUtils;
 import ru.sultanyarov.configurator.domain.model.Configuration;
 import ru.sultanyarov.configurator.domain.model.ConfigurationComponent;
+import ru.sultanyarov.configurator.domain.model.ConfigurationListFilter;
 import ru.sultanyarov.configurator.domain.model.Page;
 
 @Repository
@@ -149,19 +150,32 @@ public class ConfigurationRepositoryImpl implements ConfigurationRepository {
 
   @Override
   public Page<Configuration> findPageByDomainIdAndUserId(
-      Long domainId, Long userId, Boolean trackInventory, int page, int size) {
+      Long domainId,
+      Long userId,
+      Boolean trackInventory,
+      int page,
+      int size,
+      ConfigurationListFilter filter) {
     Condition condition =
         CONFIGURATION.DOMAIN_ID.eq(domainId).and(CONFIGURATION.CREATED_BY_USER_ID.eq(userId));
     if (trackInventory != null) {
       condition = condition.and(CONFIGURATION.TRACK_INVENTORY.eq(trackInventory));
     }
+    if (!filter.name().isEmpty()) {
+      condition = condition.and(CONFIGURATION.NAME.containsIgnoreCase(filter.name()));
+    }
+    org.jooq.Field<?> sortField =
+        filter.sortBy() == ConfigurationListFilter.SortBy.NAME
+            ? org.jooq.impl.DSL.lower(CONFIGURATION.NAME)
+            : CONFIGURATION.CREATED_AT;
+    var ordering = filter.ascending() ? sortField.asc() : sortField.desc();
     return jooqPage(
         dslContext,
         dslContext
             .select(configurationFields())
             .from(CONFIGURATION)
             .where(condition)
-            .orderBy(List.of(CONFIGURATION.CREATED_AT.desc(), CONFIGURATION.ID.desc())),
+            .orderBy(List.of(ordering, CONFIGURATION.ID.desc())),
         condition,
         CONFIGURATION,
         page,

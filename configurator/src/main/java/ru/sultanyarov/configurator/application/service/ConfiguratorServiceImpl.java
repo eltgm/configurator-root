@@ -191,6 +191,8 @@ public class ConfiguratorServiceImpl implements ConfiguratorService {
         .componentTypeId(candidate.getComponentTypeId())
         .availableQuantity(candidate.getAvailableQuantity())
         .primaryImage(candidate.getPrimaryImage())
+        .attributes(
+            candidate.getAttributes() == null ? List.of() : List.copyOf(candidate.getAttributes()))
         .status(status)
         .compatibilityByBase(List.copyOf(decisions))
         .build();

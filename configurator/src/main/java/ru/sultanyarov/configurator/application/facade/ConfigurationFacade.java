@@ -13,7 +13,14 @@ public interface ConfigurationFacade {
 
   void delete(Long id);
 
-  ConfigurationPage getPage(Long domainId, Integer page, Integer size, Boolean trackInventory);
+  ConfigurationPage getPage(
+      Long domainId,
+      Integer page,
+      Integer size,
+      Boolean trackInventory,
+      String name,
+      String sortBy,
+      String sortDirection);
 
   SavedConfiguration getById(Long id);
 

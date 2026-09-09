@@ -81,5 +81,7 @@ export const mobileNavigation: NavigationItem[] = [
 ];
 
 export function isNavigationItemActive(item: NavigationItem, pathname: string) {
-  return item.matchPrefix ? pathname.startsWith('/settings') : pathname === item.path;
+  return item.matchPrefix
+    ? pathname === '/settings' || pathname.startsWith('/settings/')
+    : pathname === item.path || pathname.startsWith(`${item.path}/`);
 }

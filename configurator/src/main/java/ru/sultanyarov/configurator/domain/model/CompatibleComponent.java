@@ -11,4 +11,5 @@ public record CompatibleComponent(
     Long componentTypeId,
     Integer availableQuantity,
     ComponentImage primaryImage,
+    List<AttributeValue> attributes,
     List<CompatibilityExplanation> explanations) {}

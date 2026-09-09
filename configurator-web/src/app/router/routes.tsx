@@ -1,3 +1,4 @@
+import { HelpPage } from '@/pages/HelpPage';
 import { IconSettings } from '@tabler/icons-react';
 import { Navigate, type RouteObject } from 'react-router-dom';
 
@@ -28,6 +29,7 @@ export const appRoutes: RouteObject[] = [
     element: <AppLayout />,
     errorElement: <RouteErrorPage />,
     children: [
+      { path: 'help', element: <HelpPage /> },
       { index: true, element: <Navigate to="/configurator" replace /> },
       {
         path: 'configurator',

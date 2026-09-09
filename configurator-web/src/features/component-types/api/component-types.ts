@@ -48,9 +48,10 @@ interface CreateComponentTypeVariables {
   body: CreateComponentTypeRequest;
 }
 
-export function useCreateComponentTypeMutation() {
+export function useCreateComponentTypeMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     mutationFn: ({ domainId, body }: CreateComponentTypeVariables) =>
       apiData(
         postDomainsByIdComponentTypes({
@@ -76,9 +77,10 @@ interface UpdateComponentTypeVariables {
   body: CreateComponentTypeRequest;
 }
 
-export function useUpdateComponentTypeMutation() {
+export function useUpdateComponentTypeMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     mutationFn: ({ id, body }: UpdateComponentTypeVariables) =>
       apiData(putComponentTypesById({ client, path: { id }, body, throwOnError: true })),
     onSuccess: async (updatedType, { domainId }) => {
@@ -96,9 +98,10 @@ interface DeleteComponentTypeVariables {
   id: number;
 }
 
-export function useDeleteComponentTypeMutation() {
+export function useDeleteComponentTypeMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     mutationFn: ({ id }: DeleteComponentTypeVariables) =>
       apiData(deleteComponentTypesById({ client, path: { id }, throwOnError: true })),
     onSuccess: async (_response, { domainId, id }) => {

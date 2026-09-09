@@ -31,6 +31,10 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
         batchedBoard.primaryImage == board.primaryImage
         def assemblyBoard = candidates.candidatesByType.collectMany { it.components.toList() }.find { it.id.asLong() == 2L }
         assemblyBoard.primaryImage == board.primaryImage
+        !board.attributes.isEmpty()
+        board.attributes == objectMapper.readTree(get("/components/2").body).attributes
+        batchedBoard.attributes == board.attributes
+        assemblyBoard.attributes == board.attributes
         def intersected = intersection.compatibleByType.collectMany { it.components.toList() }
         !intersected.isEmpty()
         intersected.every { it.primaryImage.isNull() || it.primaryImage.thumbnailUrl.asText().endsWith('/thumbnail') }

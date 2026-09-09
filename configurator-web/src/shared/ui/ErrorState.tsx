@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Alert, Button, List, Stack, Text } from '@mantine/core';
 import { IconAlertTriangle, IconRefresh } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
@@ -10,10 +11,15 @@ import {
 
 interface ErrorStateProps {
   error: unknown;
+  autoFocus?: boolean;
   onRetry?: (() => void) | undefined;
 }
 
-export function ErrorState({ error, onRetry }: ErrorStateProps) {
+export function ErrorState({ error, onRetry, autoFocus = false }: ErrorStateProps) {
+  const alertRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (autoFocus) alertRef.current?.focus();
+  }, [autoFocus]);
   const { t } = useTranslation();
   const normalizedError = normalizeApiError(error);
   const title = t(getErrorTranslationKey(normalizedError));
@@ -27,6 +33,8 @@ export function ErrorState({ error, onRetry }: ErrorStateProps) {
 
   return (
     <Alert
+      ref={alertRef}
+      tabIndex={autoFocus ? -1 : undefined}
       color="red"
       variant="light"
       icon={<IconAlertTriangle aria-hidden="true" />}

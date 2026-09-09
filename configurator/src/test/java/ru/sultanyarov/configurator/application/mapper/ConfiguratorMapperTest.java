@@ -53,6 +53,7 @@ class ConfiguratorMapperTest {
                             20L,
                             4,
                             null,
+                            List.of(),
                             List.of(
                                 CompatibilityExplanation.builder()
                                     .source(CompatibilityExplanationSource.MANUAL)
@@ -160,6 +161,7 @@ class ConfiguratorMapperTest {
                             20L,
                             4,
                             null,
+                            List.of(),
                             List.of(
                                 new BaseComponentCompatibility(3L, List.of()),
                                 new BaseComponentCompatibility(1L, List.of())))))));
@@ -199,6 +201,7 @@ class ConfiguratorMapperTest {
                             20L,
                             4,
                             null,
+                            List.of(),
                             ConfiguratorCandidateStatus.BLOCKED,
                             List.of(
                                 new ConfiguratorCandidateBaseDecision(

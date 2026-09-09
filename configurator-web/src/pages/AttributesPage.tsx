@@ -32,7 +32,7 @@ export function AttributesPage() {
   const { selectedDomainId, selectedDomain } = useDomainContext();
   const catalogQuery = useAttributeCatalogQuery(selectedDomainId);
   const typesQuery = useComponentTypesQuery(selectedDomainId);
-  const deleteAttribute = useDeleteAttributeMutation();
+  const deleteAttribute = useDeleteAttributeMutation(true);
   const [formOpened, form] = useDisclosure(false);
   const [editingAttribute, setEditingAttribute] = useState<AttributeDefinition>();
   const [deletingAttribute, setDeletingAttribute] = useState<AttributeDefinition>();
@@ -140,7 +140,10 @@ export function AttributesPage() {
                       variant="subtle"
                       color="red"
                       aria-label={t('attributes.actions.deleteNamed', { name: attribute.label })}
-                      onClick={() => setDeletingAttribute(attribute)}
+                      onClick={() => {
+                        deleteAttribute.reset();
+                        setDeletingAttribute(attribute);
+                      }}
                     >
                       <IconTrash size={18} />
                     </ActionIcon>
@@ -172,6 +175,7 @@ export function AttributesPage() {
         closeOnEscape={!deleteAttribute.isPending}
       >
         <Stack gap="md">
+          {deleteAttribute.error ? <ErrorState error={deleteAttribute.error} /> : null}
           <Text>
             {t('attributes.delete.description', { name: deletingAttribute?.label ?? '' })}
           </Text>

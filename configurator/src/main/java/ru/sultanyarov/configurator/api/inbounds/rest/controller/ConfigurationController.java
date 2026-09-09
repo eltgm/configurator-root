@@ -27,8 +27,15 @@ public class ConfigurationController implements ConfigurationsApi {
 
   @Override
   public ResponseEntity<ConfigurationPage> getDomainsByIdConfigurations(
-      Long id, Integer page, Integer size, Boolean trackInventory) {
-    return ResponseEntity.ok(configurationFacade.getPage(id, page, size, trackInventory));
+      Long id,
+      Integer page,
+      Integer size,
+      Boolean trackInventory,
+      String name,
+      String sortBy,
+      String sortDirection) {
+    return ResponseEntity.ok(
+        configurationFacade.getPage(id, page, size, trackInventory, name, sortBy, sortDirection));
   }
 
   @Override

@@ -1,5 +1,8 @@
+import { useFormCompletion } from '@/features/domains/model/use-form-completion';
+import { ErrorState } from '@/shared/ui';
+import { GuardedFormModal, FormModalCancelButton } from '@/features/domains/ui/GuardedFormModal';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Group, Modal, NumberInput, Stack, Textarea, TextInput } from '@mantine/core';
+import { Button, Group, NumberInput, Stack, Textarea, TextInput } from '@mantine/core';
 import { useEffect, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -46,8 +49,17 @@ export function ComponentTypeFormModal({
   onSaved,
 }: ComponentTypeFormModalProps) {
   const { t } = useTranslation();
-  const createType = useCreateComponentTypeMutation();
-  const updateType = useUpdateComponentTypeMutation();
+  const { markComplete, canLeave } = useFormCompletion(opened);
+  const createType = useCreateComponentTypeMutation(true);
+  const updateType = useUpdateComponentTypeMutation(true);
+  const resetCreateType = createType.reset;
+  const resetUpdateType = updateType.reset;
+  useEffect(() => {
+    if (opened) {
+      resetCreateType();
+      resetUpdateType();
+    }
+  }, [opened, resetCreateType, resetUpdateType]);
   const isEditing = Boolean(componentType);
   const isPending = createType.isPending || updateType.isPending;
   const schema = useMemo(
@@ -100,6 +112,7 @@ export function ComponentTypeFormModal({
           ? t('componentTypes.notifications.updated')
           : t('componentTypes.notifications.created'),
       );
+      markComplete();
       onSaved(savedType);
       onClose();
     } catch (error) {
@@ -114,7 +127,10 @@ export function ComponentTypeFormModal({
   });
 
   return (
-    <Modal
+    <GuardedFormModal
+      canLeave={canLeave}
+      dirty={form.formState.isDirty}
+      pending={isPending}
       opened={opened}
       onClose={close}
       title={isEditing ? t('componentTypes.form.editTitle') : t('componentTypes.form.createTitle')}
@@ -129,6 +145,9 @@ export function ComponentTypeFormModal({
         noValidate
       >
         <Stack gap="md">
+          {(createType.error ?? updateType.error) ? (
+            <ErrorState autoFocus error={createType.error ?? updateType.error} />
+          ) : null}
           <TextInput
             label={t('componentTypes.form.name')}
             placeholder={t('componentTypes.form.namePlaceholder')}
@@ -164,6 +183,7 @@ export function ComponentTypeFormModal({
                 allowNegative={false}
                 clampBehavior="strict"
                 value={field.value}
+                ref={field.ref}
                 onBlur={field.onBlur}
                 onChange={field.onChange}
                 error={fieldState.error?.message}
@@ -171,15 +191,15 @@ export function ComponentTypeFormModal({
             )}
           />
           <Group justify="flex-end">
-            <Button variant="default" onClick={close} disabled={isPending}>
+            <FormModalCancelButton variant="default" disabled={isPending}>
               {t('common.cancel')}
-            </Button>
+            </FormModalCancelButton>
             <Button type="submit" loading={isPending}>
               {isEditing ? t('common.save') : t('common.create')}
             </Button>
           </Group>
         </Stack>
       </form>
-    </Modal>
+    </GuardedFormModal>
   );
 }

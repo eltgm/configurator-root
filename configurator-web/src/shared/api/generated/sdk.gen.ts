@@ -1164,8 +1164,9 @@ export const postDomainsByIdConfiguratorCandidates = <ThrowOnError extends boole
 /**
  * List configurations of domain (paged)
  *
- * Returns only configurations owned by the current user. Results are ordered by createdAt
- * descending and then by id descending. An empty page is returned when no configurations exist.
+ * Returns only configurations owned by the current user. By default results are ordered by createdAt
+ * descending and then by id descending. Optional name filtering and sort parameters apply
+ * before pagination; identifier descending breaks ties for every sort order. An empty page is returned when no configurations exist.
  *
  */
 export const getDomainsByIdConfigurations = <ThrowOnError extends boolean = false>(

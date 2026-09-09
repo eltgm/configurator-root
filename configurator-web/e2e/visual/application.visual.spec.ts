@@ -134,9 +134,10 @@ test('mobile dark catalog, details and configurations', async ({ page }) => {
   const mobileNavigationLinks = page
     .getByRole('navigation', { name: 'Мобильная навигация' })
     .getByRole('link');
-  await expect(mobileNavigationLinks).toHaveCount(4);
-  for (let index = 0; index < 4; index += 1) {
+  await expect(mobileNavigationLinks).toHaveCount(3);
+  for (let index = 0; index < 3; index += 1) {
     await expect(mobileNavigationLinks.nth(index)).toBeInViewport();
   }
+  await expect(page.getByRole('button', { name: 'Настройка', exact: true })).toBeInViewport();
   await expect(page).toHaveScreenshot('configurations-mobile-dark.png');
 });
