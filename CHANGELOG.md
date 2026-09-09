@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-09-09
+
 ### Added
 
 - Быстрый просмотр компонентов и три характеристики в карточке подбора; серверный поиск и сортировка конфигураций.
@@ -134,7 +136,8 @@
 - Единственная поддерживаемая точка входа — `http://127.0.0.1:8080`; LAN/public/server deployment не входит в v1.0.0.
 - Совместимость с данными и backup формата до `v1.0.0` не гарантируется; разрешена чистая переустановка.
 
-[Unreleased]: https://github.com/eltgm/configurator-root/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/eltgm/configurator-root/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/eltgm/configurator-root/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/eltgm/configurator-root/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/eltgm/configurator-root/compare/v1.1.3...v1.2.0
 [1.1.3]: https://github.com/eltgm/configurator-root/compare/v1.1.2...v1.1.3
