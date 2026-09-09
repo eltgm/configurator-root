@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/mock-api';
 import { expectNoAxeViolations } from './axe-test';
 
 const routes = [
+  ['/help', 'Как собрать конфигурацию'],
   ['/configurator', 'Конфигуратор'],
   ['/components', 'Компоненты'],
   ['/configurations', 'Конфигурации'],

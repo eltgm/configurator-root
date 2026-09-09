@@ -1,5 +1,8 @@
+import { useFormCompletion } from '@/features/domains/model/use-form-completion';
+import { ErrorState } from '@/shared/ui';
+import { GuardedFormModal, FormModalCancelButton } from '@/features/domains/ui/GuardedFormModal';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Group, Modal, Stack, Textarea, TextInput } from '@mantine/core';
+import { Button, Group, Stack, Textarea, TextInput } from '@mantine/core';
 import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -30,8 +33,17 @@ function toRequest(values: DomainFormValues) {
 
 export function DomainFormModal({ opened, domain, onClose, onSaved }: DomainFormModalProps) {
   const { t } = useTranslation();
-  const createDomain = useCreateDomainMutation();
-  const updateDomain = useUpdateDomainMutation();
+  const { markComplete, canLeave } = useFormCompletion(opened);
+  const createDomain = useCreateDomainMutation(true);
+  const updateDomain = useUpdateDomainMutation(true);
+  const resetCreateDomain = createDomain.reset;
+  const resetUpdateDomain = updateDomain.reset;
+  useEffect(() => {
+    if (opened) {
+      resetCreateDomain();
+      resetUpdateDomain();
+    }
+  }, [opened, resetCreateDomain, resetUpdateDomain]);
   const isEditing = Boolean(domain);
   const isPending = createDomain.isPending || updateDomain.isPending;
   const schema = useMemo(
@@ -72,6 +84,7 @@ export function DomainFormModal({ opened, domain, onClose, onSaved }: DomainForm
       showSuccessNotification(
         isEditing ? t('domains.notifications.updated') : t('domains.notifications.created'),
       );
+      markComplete();
       onSaved(savedDomain);
       onClose();
     } catch (error) {
@@ -86,7 +99,10 @@ export function DomainFormModal({ opened, domain, onClose, onSaved }: DomainForm
   });
 
   return (
-    <Modal
+    <GuardedFormModal
+      canLeave={canLeave}
+      dirty={form.formState.isDirty}
+      pending={isPending}
       opened={opened}
       onClose={close}
       title={isEditing ? t('domains.form.editTitle') : t('domains.form.createTitle')}
@@ -101,6 +117,9 @@ export function DomainFormModal({ opened, domain, onClose, onSaved }: DomainForm
         noValidate
       >
         <Stack gap="md">
+          {(createDomain.error ?? updateDomain.error) ? (
+            <ErrorState autoFocus error={createDomain.error ?? updateDomain.error} />
+          ) : null}
           <TextInput
             label={t('domains.form.name')}
             placeholder={t('domains.form.namePlaceholder')}
@@ -118,15 +137,15 @@ export function DomainFormModal({ opened, domain, onClose, onSaved }: DomainForm
             {...form.register('description')}
           />
           <Group justify="flex-end">
-            <Button variant="default" onClick={close} disabled={isPending}>
+            <FormModalCancelButton variant="default" disabled={isPending}>
               {t('common.cancel')}
-            </Button>
+            </FormModalCancelButton>
             <Button type="submit" loading={isPending}>
               {isEditing ? t('common.save') : t('common.create')}
             </Button>
           </Group>
         </Stack>
       </form>
-    </Modal>
+    </GuardedFormModal>
   );
 }

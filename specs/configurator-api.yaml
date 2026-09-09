@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Configurator Backend API
-  version: 1.3.0
+  version: 1.3.1
   description: API спецификация локального приложения Configurator
 
 servers:
@@ -61,6 +61,8 @@ components:
         - DOMAIN_HAS_CONFIGURATIONS
         - COMPONENT_ARCHIVED
         - CONFIGURATION_CONFLICT
+        - INSUFFICIENT_COMPONENT_AVAILABILITY
+        - COMPONENT_TOTAL_BELOW_ALLOCATED
         - VALIDATION_ERROR
         - IMAGE_TOO_LARGE
         - UNSUPPORTED_IMAGE_FORMAT
@@ -79,6 +81,12 @@ components:
         message:
           type: string
           description: Human-readable detail without rejected values or internal diagnostics
+        parameters:
+          type: object
+          nullable: true
+          description: Safe string parameters for localized client-side error presentation
+          additionalProperties:
+            type: string
       required:
         - code
         - message
@@ -895,6 +903,11 @@ components:
     ConfiguratorCompatibleComponent:
       type: object
       properties:
+        attributes:
+          type: array
+          description: Attribute values in component type display order, then identifier; empty when none are defined
+          items:
+            $ref: '#/components/schemas/AttributeValue'
         primaryImage:
           nullable: true
           readOnly: true
@@ -912,6 +925,11 @@ components:
         componentTypeId:
           type: integer
           format: int64
+        availableQuantity:
+          type: integer
+          minimum: 0
+          readOnly: true
+          description: Unallocated instances currently available to a new tracked configuration
         explanations:
           type: array
           description: All manual links and enabled automatic rule sets that matched
@@ -921,6 +939,7 @@ components:
         - id
         - name
         - componentTypeId
+        - availableQuantity
         - explanations
 
     ConfiguratorTypeGroup:
@@ -1021,6 +1040,11 @@ components:
     ConfiguratorIntersectionCompatibleComponent:
       type: object
       properties:
+        attributes:
+          type: array
+          description: Attribute values in component type display order, then identifier; empty when none are defined
+          items:
+            $ref: '#/components/schemas/AttributeValue'
         primaryImage:
           nullable: true
           readOnly: true
@@ -1038,6 +1062,11 @@ components:
         componentTypeId:
           type: integer
           format: int64
+        availableQuantity:
+          type: integer
+          minimum: 0
+          readOnly: true
+          description: Unallocated instances currently available to a new tracked configuration
         compatibilityByBase:
           type: array
           description: Compatibility evidence for every selected base component in request order
@@ -1047,6 +1076,7 @@ components:
         - id
         - name
         - componentTypeId
+        - availableQuantity
         - compatibilityByBase
 
     ConfiguratorIntersectionTypeGroup:
@@ -1190,6 +1220,11 @@ components:
     ConfiguratorAssemblyCandidate:
       type: object
       properties:
+        attributes:
+          type: array
+          description: Attribute values in component type display order, then identifier; empty when none are defined
+          items:
+            $ref: '#/components/schemas/AttributeValue'
         primaryImage:
           nullable: true
           readOnly: true
@@ -1207,6 +1242,11 @@ components:
         componentTypeId:
           type: integer
           format: int64
+        availableQuantity:
+          type: integer
+          minimum: 0
+          readOnly: true
+          description: Unallocated instances currently available to a new tracked configuration
         status:
           $ref: '#/components/schemas/ConfiguratorCandidateStatus'
         compatibilityByBase:
@@ -1218,6 +1258,7 @@ components:
         - id
         - name
         - componentTypeId
+        - availableQuantity
         - status
         - compatibilityByBase
 
@@ -1291,6 +1332,11 @@ components:
           minimum: 1
           maximum: 999999
           description: Number of instances of this component in the configuration
+        availableQuantity:
+          type: integer
+          minimum: 0
+          readOnly: true
+          description: Unallocated instances excluding all saved tracked configurations
       required:
         - id
         - name
@@ -1298,6 +1344,7 @@ components:
         - componentTypeName
         - archived
         - quantity
+        - availableQuantity
 
     ConfigurationComponentInput:
       type: object
@@ -2319,7 +2366,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Component with the same name already exists within the component type
+          description: Component name conflict or total quantity below the amount reserved by tracked configurations
           content:
             application/json:
               schema:
@@ -3287,8 +3334,9 @@ paths:
       summary: List configurations of domain (paged)
       operationId: getDomainsByIdConfigurations
       description: |
-        Returns only configurations owned by the current user. Results are ordered by createdAt
-        descending and then by id descending. An empty page is returned when no configurations exist.
+        Returns only configurations owned by the current user. By default results are ordered by createdAt
+        descending and then by id descending. Optional name filtering and sort parameters apply
+        before pagination; identifier descending breaks ties for every sort order. An empty page is returned when no configurations exist.
       parameters:
         - name: id
           in: path
@@ -3314,6 +3362,24 @@ paths:
           description: Optional inventory-mode filter. Omit to return all configurations.
           schema:
             type: boolean
+        - name: name
+          in: query
+          description: Case-insensitive literal substring of the configuration name; whitespace is trimmed
+          schema:
+            type: string
+            maxLength: 255
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [createdAt, name]
+            default: createdAt
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
       responses:
         '200':
           description: Success
@@ -3390,7 +3456,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Archived component, insufficient component availability or incompatible component set
+          description: |
+            Archived component, incompatible component set or insufficient availability
+            (INSUFFICIENT_COMPONENT_AVAILABILITY with one structured detail per deficient component)
           content:
             application/json:
               schema:
@@ -3484,7 +3552,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Archived component, insufficient component availability or incompatible component set
+          description: |
+            Archived component, incompatible component set or insufficient availability
+            (INSUFFICIENT_COMPONENT_AVAILABILITY with one structured detail per deficient component)
           content:
             application/json:
               schema:

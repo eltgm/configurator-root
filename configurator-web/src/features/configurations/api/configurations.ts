@@ -1,5 +1,8 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { componentKeys } from '@/features/components/api/components';
+import { configuratorCompatibilityKeys } from '@/features/configurator/api/configurator-compatibility';
+
 import {
   apiData,
   client,
@@ -17,6 +20,12 @@ import {
 } from '@/shared/api';
 
 export const configurationListPageSize = 10;
+export interface ConfigurationSearch {
+  name?: string;
+  sortBy?: 'createdAt' | 'name';
+  sortDirection?: 'asc' | 'desc';
+}
+
 export type ConfigurationInventoryFilter = 'all' | 'tracked' | 'untracked';
 
 export const configurationKeys = {
@@ -27,16 +36,28 @@ export const configurationKeys = {
     page: number,
     size: number,
     inventoryFilter: ConfigurationInventoryFilter,
-  ) => [...configurationKeys.lists(domainId), page, size, inventoryFilter] as const,
+    search: ConfigurationSearch = {},
+  ) => [...configurationKeys.lists(domainId), page, size, inventoryFilter, search] as const,
   detail: (domainId: number | null, configurationId: number | null) =>
     [...configurationKeys.byDomain(domainId), 'detail', configurationId] as const,
 };
+
+async function invalidateInventoryQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  domainId: number,
+) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: componentKeys.byDomain(domainId) }),
+    queryClient.invalidateQueries({ queryKey: configuratorCompatibilityKeys.root(domainId) }),
+  ]);
+}
 
 export async function fetchConfigurations(
   domainId: number,
   page: number,
   size = configurationListPageSize,
   inventoryFilter: ConfigurationInventoryFilter = 'all',
+  search: ConfigurationSearch = {},
 ): Promise<ConfigurationPage> {
   return apiData(
     getDomainsByIdConfigurations({
@@ -45,6 +66,7 @@ export async function fetchConfigurations(
       query: {
         page,
         size,
+        ...search,
         ...(inventoryFilter === 'all' ? {} : { trackInventory: inventoryFilter === 'tracked' }),
       },
       throwOnError: true,
@@ -57,15 +79,17 @@ export function useConfigurationsQuery(
   page: number,
   size = configurationListPageSize,
   inventoryFilter: ConfigurationInventoryFilter = 'all',
+  search: ConfigurationSearch = {},
 ) {
   return useQuery({
-    queryKey: configurationKeys.list(domainId, page, size, inventoryFilter),
+    queryKey: configurationKeys.list(domainId, page, size, inventoryFilter, search),
     queryFn: () =>
       domainId === null
         ? Promise.resolve({ items: [], page: 0, size, totalItems: 0 })
-        : fetchConfigurations(domainId, page, size, inventoryFilter),
+        : fetchConfigurations(domainId, page, size, inventoryFilter, search),
     enabled: domainId !== null,
-    placeholderData: keepPreviousData,
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[1] === domainId ? keepPreviousData(previous) : undefined,
   });
 }
 
@@ -97,9 +121,10 @@ export interface CreateConfigurationVariables {
   body: CreateConfigurationRequest;
 }
 
-export function useCreateConfigurationMutation() {
+export function useCreateConfigurationMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     mutationFn: ({ domainId, body }: CreateConfigurationVariables) =>
       apiData(
         postDomainsByIdConfigurations({
@@ -111,7 +136,10 @@ export function useCreateConfigurationMutation() {
       ),
     onSuccess: async (configuration, { domainId }) => {
       queryClient.setQueryData(configurationKeys.detail(domainId, configuration.id), configuration);
-      await queryClient.invalidateQueries({ queryKey: configurationKeys.lists(domainId) });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: configurationKeys.lists(domainId) }),
+        invalidateInventoryQueries(queryClient, domainId),
+      ]);
     },
   });
 }
@@ -122,9 +150,10 @@ export interface UpdateConfigurationVariables {
   body: UpdateConfigurationRequest;
 }
 
-export function useUpdateConfigurationMutation() {
+export function useUpdateConfigurationMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     mutationFn: ({ configurationId, body }: UpdateConfigurationVariables) =>
       apiData(
         putConfigurationsById({
@@ -136,7 +165,10 @@ export function useUpdateConfigurationMutation() {
       ),
     onSuccess: async (configuration, { domainId, configurationId }) => {
       queryClient.setQueryData(configurationKeys.detail(domainId, configurationId), configuration);
-      await queryClient.invalidateQueries({ queryKey: configurationKeys.lists(domainId) });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: configurationKeys.lists(domainId) }),
+        invalidateInventoryQueries(queryClient, domainId),
+      ]);
     },
   });
 }
@@ -162,9 +194,10 @@ export interface DeleteConfigurationVariables {
   configurationId: number;
 }
 
-export function useDeleteConfigurationMutation() {
+export function useDeleteConfigurationMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     mutationFn: ({ configurationId }: DeleteConfigurationVariables) =>
       apiData(
         deleteConfigurationsById({
@@ -178,7 +211,10 @@ export function useDeleteConfigurationMutation() {
         queryKey: configurationKeys.detail(domainId, configurationId),
         exact: true,
       });
-      await queryClient.invalidateQueries({ queryKey: configurationKeys.lists(domainId) });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: configurationKeys.lists(domainId) }),
+        invalidateInventoryQueries(queryClient, domainId),
+      ]);
     },
   });
 }

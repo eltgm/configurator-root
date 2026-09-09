@@ -41,6 +41,12 @@ export function DomainSelector() {
     setPendingDomainId(null);
     if (location.pathname.startsWith('/configurations/')) {
       void navigate('/configurations');
+    } else if (location.pathname.startsWith('/components/')) {
+      void navigate('/components');
+    } else if (location.pathname.startsWith('/settings/compatibility/rules/')) {
+      void navigate('/settings/compatibility/rules');
+    } else {
+      void navigate({ pathname: location.pathname, search: '' }, { replace: true });
     }
   };
 

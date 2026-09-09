@@ -1,6 +1,8 @@
+import { uxRu, uxEn } from './ux';
 export const resources = {
   ru: {
     translation: {
+      ux: uxRu,
       app: {
         name: 'Конфигуратор',
         fullName: 'Конфигуратор компонентов',
@@ -96,9 +98,9 @@ export const resources = {
             'Черновик сохраняется в браузере. Для сохранения компоненты должны образовывать связную сборку без блокирующих правил.',
         },
         transitiveMode: {
-          label: 'Учитывать транзитивную совместимость',
+          label: 'Показать варианты через промежуточные компоненты',
           description:
-            'Дополнительно показывать компоненты, достижимые через цепочку. Итоговую сборку сервер проверяет по прямым связям выбранных элементов.',
+            'Для сохранения может понадобиться добавить промежуточную модель. Откройте «Почему совместим», чтобы увидеть путь.',
           enabledAnnouncement: 'Транзитивная совместимость включена',
           disabledAnnouncement: 'Включена строгая проверка прямой совместимости',
         },
@@ -262,6 +264,17 @@ export const resources = {
           unavailableDescription:
             'Браузер запретил локальное хранение. Текущая сборка останется доступна только до обновления страницы.',
         },
+        inventory: {
+          track: 'Учитывать количество компонентов',
+          trackDescription:
+            'Показывать остатки, выбирать количество и резервировать его при сохранении.',
+          available: 'Доступно: {{count}}',
+          selectedAvailability: 'Доступно: {{available}} · выбрано: {{selected}}',
+          outOfStock: 'Нет в наличии',
+          unavailable: 'Недоступно',
+          enabledAnnouncement: 'Учёт количества включён',
+          disabledAnnouncement: 'Учёт количества выключен',
+        },
         feedback: {
           added: '{{name}} добавлен в сборку',
           alreadySelected: '{{name}} уже находится в сборке',
@@ -300,6 +313,7 @@ export const resources = {
             conflict: 'Устраните пары, заблокированные автоматическими правилами.',
             disconnected: 'Свяжите все компоненты сборки подтверждёнными связями.',
             blocked: 'Дождитесь загрузки или удалите недоступные и архивные компоненты.',
+            inventory: 'Уменьшите количество компонентов до доступного остатка.',
             error: 'Повторите проверку совместимости перед сохранением.',
           },
         },
@@ -386,6 +400,7 @@ export const resources = {
             empty: 'Добавьте хотя бы один компонент.',
             limit: 'В конфигурации может быть не более 50 компонентов.',
             archived: 'Удалите или замените все архивные компоненты.',
+            inventory: 'Уменьшите количество компонентов до доступного остатка.',
             pending: 'Дождитесь проверки связности и блокирующих правил.',
             blocked:
               'Состав нарушает автоматические правила совместимости. Удалите или замените заблокированные компоненты.',
@@ -1158,10 +1173,18 @@ export const resources = {
             'Невозможно удалить область: в ней есть конфигурации. Сначала удалите все конфигурации.',
           COMPONENT_ARCHIVED: 'Компонент находится в архиве',
           CONFIGURATION_CONFLICT: 'Компоненты конфигурации несовместимы',
+          INSUFFICIENT_COMPONENT_AVAILABILITY: 'Недостаточно компонентов',
+          COMPONENT_TOTAL_BELOW_ALLOCATED: 'Количество меньше зарезервированного',
           VALIDATION_ERROR: 'Проверьте введённые данные',
           IMAGE_TOO_LARGE: 'Изображение слишком большое',
           UNSUPPORTED_IMAGE_FORMAT: 'Формат изображения не поддерживается',
           EXTERNAL_STORAGE_UNAVAILABLE: 'Хранилище изображений недоступно',
+        },
+        details: {
+          INSUFFICIENT_COMPONENT_AVAILABILITY:
+            '«{{componentName}}»: требуется {{requestedQuantity}}, доступно {{availableQuantity}}.',
+          COMPONENT_TOTAL_BELOW_ALLOCATED:
+            '«{{componentName}}»: указано {{totalQuantity}}, уже зарезервировано {{allocatedQuantity}}.',
         },
       },
       routeError: {
@@ -1179,6 +1202,7 @@ export const resources = {
   },
   en: {
     translation: {
+      ux: uxEn,
       app: {
         name: 'Configurator',
         fullName: 'Component Configurator',
@@ -1431,6 +1455,16 @@ export const resources = {
           unavailableDescription:
             'The browser denied local storage. The current assembly will only remain available until the page is refreshed.',
         },
+        inventory: {
+          track: 'Track component quantities',
+          trackDescription: 'Show stock, select quantities, and reserve them when saving.',
+          available: 'Available: {{count}}',
+          selectedAvailability: 'Available: {{available}} · selected: {{selected}}',
+          outOfStock: 'Out of stock',
+          unavailable: 'Unavailable',
+          enabledAnnouncement: 'Quantity tracking enabled',
+          disabledAnnouncement: 'Quantity tracking disabled',
+        },
         feedback: {
           added: '{{name}} added to the assembly',
           alreadySelected: '{{name}} is already in the assembly',
@@ -1469,6 +1503,7 @@ export const resources = {
             conflict: 'Resolve pairs blocked by automatic compatibility rules.',
             disconnected: 'Connect all assembly components through confirmed relationships.',
             blocked: 'Wait for loading or remove unavailable and archived components.',
+            inventory: 'Reduce component quantities to the available stock.',
             error: 'Retry compatibility validation before saving.',
           },
         },
@@ -1553,6 +1588,7 @@ export const resources = {
             empty: 'Add at least one component.',
             limit: 'A configuration cannot contain more than 50 components.',
             archived: 'Remove or replace every archived component.',
+            inventory: 'Reduce component quantities to the available stock.',
             pending: 'Wait for connectivity and blocking-rule validation to finish.',
             blocked:
               'The composition violates automatic compatibility rules. Remove or replace the blocked components.',
@@ -2289,10 +2325,18 @@ export const resources = {
             'Cannot delete the domain because it has configurations. Delete all configurations first.',
           COMPONENT_ARCHIVED: 'The component is archived',
           CONFIGURATION_CONFLICT: 'Configuration components are incompatible',
+          INSUFFICIENT_COMPONENT_AVAILABILITY: 'Not enough components available',
+          COMPONENT_TOTAL_BELOW_ALLOCATED: 'Quantity is below the reserved amount',
           VALIDATION_ERROR: 'Check the entered data',
           IMAGE_TOO_LARGE: 'The image is too large',
           UNSUPPORTED_IMAGE_FORMAT: 'The image format is not supported',
           EXTERNAL_STORAGE_UNAVAILABLE: 'Image storage is unavailable',
+        },
+        details: {
+          INSUFFICIENT_COMPONENT_AVAILABILITY:
+            '“{{componentName}}”: {{requestedQuantity}} required, {{availableQuantity}} available.',
+          COMPONENT_TOTAL_BELOW_ALLOCATED:
+            '“{{componentName}}”: {{totalQuantity}} specified, {{allocatedQuantity}} already reserved.',
         },
       },
       routeError: {

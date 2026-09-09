@@ -111,3 +111,30 @@ test('compatibility explanation remains accessible when expanded', async ({ page
 
   await expectNoAxeViolations(page, testInfo);
 });
+
+for (const colorScheme of ['light', 'dark'] as const) {
+  test(`new panels and unsaved confirmation remain accessible in ${colorScheme} mode`, async ({
+    page,
+  }, testInfo) => {
+    await page.addInitScript(
+      (scheme) => localStorage.setItem('configurator.color-scheme', scheme),
+      colorScheme,
+    );
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/configurator');
+    await page.getByRole('button', { name: 'Настройка', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Разделы настроек' })).toBeVisible();
+    await expectNoAxeViolations(page, testInfo);
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Быстрый просмотр: Ryzen 7 7800X3D' }).click();
+    await expect(page.getByRole('rowheader', { name: 'Количество ядер' })).toBeVisible();
+    await expectNoAxeViolations(page, testInfo);
+    await page.keyboard.press('Escape');
+    await page.goto('/settings/domain');
+    await page.getByRole('button', { name: 'Новая область' }).click();
+    await page.getByRole('textbox', { name: 'Название', exact: true }).fill('Draft');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: 'Отбросить изменения?' })).toBeVisible();
+    await expectNoAxeViolations(page, testInfo);
+  });
+}

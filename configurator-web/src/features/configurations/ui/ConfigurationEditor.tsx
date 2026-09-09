@@ -1,11 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Button,
+  Checkbox,
   Group,
   Modal,
   Paper,
   Stack,
-  Switch,
   Text,
   Textarea,
   TextInput,
@@ -13,7 +13,7 @@ import {
 } from '@mantine/core';
 import { IconArrowLeft, IconDeviceFloppy } from '@tabler/icons-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -42,6 +42,7 @@ import {
 } from '@/features/configurations/model/configuration-editor';
 import { useUnsavedChangesGuard } from '@/features/components/model/use-unsaved-changes-guard';
 import { ConfigurationAssemblyEditor } from '@/features/configurations/ui/ConfigurationAssemblyEditor';
+import { getInventoryShortages } from '@/features/configurations/model/configuration-inventory';
 import { useRegisterDomainChangeGuard } from '@/features/domains/model/use-domain-change-guard';
 import { showSuccessNotification } from '@/shared/notifications/notifications';
 import { ErrorState, PageHeader } from '@/shared/ui';
@@ -79,6 +80,16 @@ export function ConfigurationEditor({ configuration, componentTypes }: Configura
     [configuration],
   );
   const [components, setComponents] = useState<ConfigurationEditorComponent[]>(baselineComponents);
+  const trackInventory = useWatch({ control: form.control, name: 'trackInventory' });
+  const ownAllocations = useMemo(
+    () =>
+      new Map(
+        configuration.trackInventory
+          ? baselineComponents.map((component) => [component.id, component.quantity] as const)
+          : [],
+      ),
+    [baselineComponents, configuration.trackInventory],
+  );
   const [replacementComponentId, setReplacementComponentId] = useState<number | null>(null);
   const browserHeadingRef = useRef<HTMLHeadingElement>(null);
   const replacementButtonsRef = useRef(new Map<number, HTMLButtonElement>());
@@ -135,10 +146,17 @@ export function ConfigurationEditor({ configuration, componentTypes }: Configura
               : assemblyQuery.data?.assemblyStatus === 'BLOCKED'
                 ? 'blocked'
                 : 'disconnected';
-  const eligibility = getConfigurationEditorEligibility(components, validationState);
+  const inventoryShortages = trackInventory
+    ? getInventoryShortages(components, ownAllocations)
+    : [];
+  const eligibility = getConfigurationEditorEligibility(
+    components,
+    validationState,
+    inventoryShortages.length === 0,
+  );
   const compositionDirty = configurationComponentsChanged(baselineComponents, components);
   const isDirty = form.formState.isDirty || compositionDirty;
-  const updateMutation = useUpdateConfigurationMutation();
+  const updateMutation = useUpdateConfigurationMutation(true);
   const { blocker, allowNavigation } = useUnsavedChangesGuard(isDirty);
   useRegisterDomainChangeGuard(isDirty, allowNavigation);
   const replacementTarget = components.find((component) => component.id === replacementComponentId);
@@ -168,6 +186,7 @@ export function ConfigurationEditor({ configuration, componentTypes }: Configura
       t('components.item.unknownType'),
     archived: false,
     quantity: 1,
+    availableQuantity: component.availableQuantity,
   });
 
   const selectComponent = (selection: ConfiguratorComponentSelection) => {
@@ -229,6 +248,13 @@ export function ConfigurationEditor({ configuration, componentTypes }: Configura
         <form onSubmit={(event) => void submit(event)} noValidate>
           <Stack gap="lg">
             <Paper p="lg" withBorder>
+              <Checkbox
+                label={t('configurator.inventory.track')}
+                description={t('configurator.inventory.trackDescription')}
+                {...form.register('trackInventory', { onChange: resetServerError })}
+              />
+            </Paper>
+            <Paper p="lg" withBorder>
               <Stack gap="md">
                 <Title order={2} size="h3">
                   {t('configurations.editor.metadataTitle')}
@@ -249,17 +275,14 @@ export function ConfigurationEditor({ configuration, componentTypes }: Configura
                   error={form.formState.errors.description?.message}
                   {...form.register('description', { onChange: resetServerError })}
                 />
-                <Switch
-                  label={t('configurations.inventory.track')}
-                  description={t('configurations.inventory.trackDescription')}
-                  {...form.register('trackInventory', { onChange: resetServerError })}
-                />
               </Stack>
             </Paper>
 
             <div className={classes.workspace}>
               <ConfigurationAssemblyEditor
                 components={components}
+                trackInventory={trackInventory}
+                ownAllocations={ownAllocations}
                 eligibility={eligibility}
                 replacementComponentId={replacementComponentId}
                 onReplace={(componentId) => {
@@ -307,7 +330,6 @@ export function ConfigurationEditor({ configuration, componentTypes }: Configura
                 data-replacing={Boolean(replacementTarget) || undefined}
               >
                 <AvailableComponentBrowser
-                  key={replacementComponentId ?? 'add'}
                   headingRef={browserHeadingRef}
                   domainId={configuration.domainId}
                   componentTypes={componentTypes}
@@ -317,6 +339,7 @@ export function ConfigurationEditor({ configuration, componentTypes }: Configura
                   baseComponentIds={baseComponentIds}
                   baseComponentNames={baseComponentNames}
                   includeTransitive={false}
+                  trackInventory={trackInventory}
                   compatibilityBlocked={browserBlocked}
                   {...(replacementTarget ? { replacementTarget } : {})}
                   onCancelReplacement={() => {

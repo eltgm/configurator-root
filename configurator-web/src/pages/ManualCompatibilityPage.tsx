@@ -34,7 +34,7 @@ function ManualCompatibilityContent({ domainId, domainName }: ManualCompatibilit
   const [search, setSearch] = useState('');
   const [formOpened, form] = useDisclosure(false);
   const [deletingLink, setDeletingLink] = useState<ManualCompatibilityLinkView>();
-  const deleteLink = useDeleteCompatibilityLinkMutation();
+  const deleteLink = useDeleteCompatibilityLinkMutation(true);
   const links = useMemo(() => (graph ? toManualCompatibilityLinks(graph) : []), [graph]);
   const filteredLinks = useMemo(
     () => filterManualCompatibilityLinks(links, search),
@@ -152,7 +152,13 @@ function ManualCompatibilityContent({ domainId, domainName }: ManualCompatibilit
           </Paper>
 
           {filteredLinks.length > 0 ? (
-            <ManualCompatibilityList links={filteredLinks} onDelete={setDeletingLink} />
+            <ManualCompatibilityList
+              links={filteredLinks}
+              onDelete={(value) => {
+                deleteLink.reset();
+                setDeletingLink(value);
+              }}
+            />
           ) : (
             <EmptyState
               title={t('manualCompatibility.states.noSearchResultsTitle')}
@@ -189,6 +195,7 @@ function ManualCompatibilityContent({ domainId, domainName }: ManualCompatibilit
         closeOnEscape={!deleteLink.isPending}
       >
         <Stack gap="md">
+          {deleteLink.error ? <ErrorState error={deleteLink.error} /> : null}
           <Text>
             {t('manualCompatibility.delete.description', {
               first: deletingLink?.componentA.name ?? '',

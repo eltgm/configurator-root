@@ -27,6 +27,7 @@ const direct: ConfiguratorResponse = {
           name: 'B650 Tomahawk',
           brand: 'MSI',
           componentTypeId: 20,
+          availableQuantity: 4,
           explanations: [{ source: 'AUTOMATIC', ruleSetId: 7 }],
         },
       ],
@@ -71,6 +72,7 @@ describe('configurator compatibility model', () => {
               id: 4,
               name: 'Available GPU',
               componentTypeId: 40,
+              availableQuantity: 3,
               status: 'AVAILABLE',
               compatibilityByBase: [
                 {
@@ -91,6 +93,7 @@ describe('configurator compatibility model', () => {
               id: 5,
               name: 'Blocked GPU',
               componentTypeId: 40,
+              availableQuantity: 0,
               status: 'BLOCKED',
               compatibilityByBase: [
                 {
@@ -164,6 +167,7 @@ describe('configurator compatibility model', () => {
               name: 'B650 Tomahawk',
               brand: 'MSI',
               componentTypeId: 20,
+              availableQuantity: 4,
               compatibilityByBase: [
                 { baseComponentId: 1, explanations: [{ source: 'AUTOMATIC', ruleSetId: 7 }] },
                 { baseComponentId: 3, explanations: [{ source: 'MANUAL', linkId: 8 }] },
@@ -202,6 +206,7 @@ describe('configurator compatibility model', () => {
         name: 'GeForce RTX',
         brand: 'NVIDIA',
         componentTypeId: 30,
+        availableQuantity: 2,
         componentTypeName: 'GPU',
         relation: 'direct' as const,
         compatibilityByBase: [],
@@ -242,6 +247,7 @@ describe('configurator compatibility model', () => {
               id: 2,
               name: 'B650 Tomahawk',
               componentTypeId: 20,
+              availableQuantity: 4,
               compatibilityByBase: [
                 { baseComponentId: 1, explanations: [{ source: 'MANUAL', linkId: 7 }] },
                 {

@@ -1,6 +1,8 @@
 package ru.sultanyarov.configurator.infrastructure.persistence.jooq;
 
+import static org.jooq.impl.DSL.coalesce;
 import static org.jooq.impl.DSL.multiset;
+import static org.jooq.impl.DSL.sum;
 import static ru.sultanyarov.configurator.common.util.PaginationHelper.jooqPage;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.COMPONENT;
 import static ru.sultanyarov.configurator.domain.entity.jooq.Tables.COMPONENT_TYPE;
@@ -25,12 +27,14 @@ import ru.sultanyarov.configurator.application.port.out.ConfigurationRepository;
 import ru.sultanyarov.configurator.common.util.JooqMapperUtils;
 import ru.sultanyarov.configurator.domain.model.Configuration;
 import ru.sultanyarov.configurator.domain.model.ConfigurationComponent;
+import ru.sultanyarov.configurator.domain.model.ConfigurationListFilter;
 import ru.sultanyarov.configurator.domain.model.Page;
 
 @Repository
 @RequiredArgsConstructor
 public class ConfigurationRepositoryImpl implements ConfigurationRepository {
   private static final String COMPONENTS_FIELD = "components";
+  private static final String ALLOCATED_QUANTITY_FIELD = "allocatedQuantity";
 
   private final DSLContext dslContext;
 
@@ -146,19 +150,32 @@ public class ConfigurationRepositoryImpl implements ConfigurationRepository {
 
   @Override
   public Page<Configuration> findPageByDomainIdAndUserId(
-      Long domainId, Long userId, Boolean trackInventory, int page, int size) {
+      Long domainId,
+      Long userId,
+      Boolean trackInventory,
+      int page,
+      int size,
+      ConfigurationListFilter filter) {
     Condition condition =
         CONFIGURATION.DOMAIN_ID.eq(domainId).and(CONFIGURATION.CREATED_BY_USER_ID.eq(userId));
     if (trackInventory != null) {
       condition = condition.and(CONFIGURATION.TRACK_INVENTORY.eq(trackInventory));
     }
+    if (!filter.name().isEmpty()) {
+      condition = condition.and(CONFIGURATION.NAME.containsIgnoreCase(filter.name()));
+    }
+    org.jooq.Field<?> sortField =
+        filter.sortBy() == ConfigurationListFilter.SortBy.NAME
+            ? org.jooq.impl.DSL.lower(CONFIGURATION.NAME)
+            : CONFIGURATION.CREATED_AT;
+    var ordering = filter.ascending() ? sortField.asc() : sortField.desc();
     return jooqPage(
         dslContext,
         dslContext
             .select(configurationFields())
             .from(CONFIGURATION)
             .where(condition)
-            .orderBy(List.of(CONFIGURATION.CREATED_AT.desc(), CONFIGURATION.ID.desc())),
+            .orderBy(List.of(ordering, CONFIGURATION.ID.desc())),
         condition,
         CONFIGURATION,
         page,
@@ -204,6 +221,8 @@ public class ConfigurationRepositoryImpl implements ConfigurationRepository {
                     COMPONENT.COMPONENT_TYPE_ID,
                     COMPONENT_TYPE.NAME,
                     COMPONENT.ARCHIVED,
+                    COMPONENT.TOTAL_QUANTITY,
+                    allocatedQuantityField(),
                     CONFIGURATION_COMPONENT.QUANTITY)
                 .from(CONFIGURATION_COMPONENT)
                 .join(COMPONENT)
@@ -228,7 +247,23 @@ public class ConfigurationRepositoryImpl implements ConfigurationRepository {
         .componentTypeName(record.get(COMPONENT_TYPE.NAME))
         .archived(Boolean.TRUE.equals(record.get(COMPONENT.ARCHIVED)))
         .quantity(record.get(CONFIGURATION_COMPONENT.QUANTITY))
+        .availableQuantity(
+            record.get(COMPONENT.TOTAL_QUANTITY)
+                - record.get(ALLOCATED_QUANTITY_FIELD, Integer.class))
         .build();
+  }
+
+  private Field<Integer> allocatedQuantityField() {
+    Field<Integer> allocatedQuantity =
+        dslContext
+            .select(sum(CONFIGURATION_COMPONENT.QUANTITY).cast(Integer.class))
+            .from(CONFIGURATION_COMPONENT)
+            .join(CONFIGURATION)
+            .on(CONFIGURATION.ID.eq(CONFIGURATION_COMPONENT.CONFIGURATION_ID))
+            .where(CONFIGURATION_COMPONENT.COMPONENT_ID.eq(COMPONENT.ID))
+            .and(CONFIGURATION.TRACK_INVENTORY.isTrue())
+            .asField();
+    return coalesce(allocatedQuantity, org.jooq.impl.DSL.inline(0)).as(ALLOCATED_QUANTITY_FIELD);
   }
 
   private RecordMapper<Record, Configuration> configurationMapper() {

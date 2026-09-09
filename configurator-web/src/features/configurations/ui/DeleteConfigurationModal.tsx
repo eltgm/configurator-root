@@ -19,7 +19,7 @@ export function DeleteConfigurationModal({
   onDeleted,
 }: DeleteConfigurationModalProps) {
   const { t } = useTranslation();
-  const deleteConfiguration = useDeleteConfigurationMutation();
+  const deleteConfiguration = useDeleteConfigurationMutation(true);
   const resetMutation = deleteConfiguration.reset;
 
   useEffect(() => {

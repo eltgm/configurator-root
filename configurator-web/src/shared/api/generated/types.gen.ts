@@ -30,6 +30,8 @@ export type ApiErrorCode =
   | 'DOMAIN_HAS_CONFIGURATIONS'
   | 'COMPONENT_ARCHIVED'
   | 'CONFIGURATION_CONFLICT'
+  | 'INSUFFICIENT_COMPONENT_AVAILABILITY'
+  | 'COMPONENT_TOTAL_BELOW_ALLOCATED'
   | 'VALIDATION_ERROR'
   | 'IMAGE_TOO_LARGE'
   | 'UNSUPPORTED_IMAGE_FORMAT'
@@ -48,6 +50,12 @@ export type ApiErrorDetail = {
    * Human-readable detail without rejected values or internal diagnostics
    */
   message: string;
+  /**
+   * Safe string parameters for localized client-side error presentation
+   */
+  parameters?: {
+    [key: string]: string;
+  } | null;
 };
 
 export type DomainPage = {
@@ -394,6 +402,10 @@ export type CompatibilityExplanation = {
 
 export type ConfiguratorCompatibleComponent = {
   /**
+   * Attribute values in component type display order, then identifier; empty when none are defined
+   */
+  attributes?: Array<AttributeValue>;
+  /**
    * First image by orderIndex ascending (nulls last), then id ascending; null when no images exist
    */
   primaryImage?: ComponentImage | null;
@@ -401,6 +413,10 @@ export type ConfiguratorCompatibleComponent = {
   name: string;
   brand?: string | null;
   componentTypeId: number;
+  /**
+   * Unallocated instances currently available to a new tracked configuration
+   */
+  readonly availableQuantity: number;
   /**
    * All manual links and enabled automatic rule sets that matched
    */
@@ -457,6 +473,10 @@ export type ConfiguratorBaseCompatibility = {
 
 export type ConfiguratorIntersectionCompatibleComponent = {
   /**
+   * Attribute values in component type display order, then identifier; empty when none are defined
+   */
+  attributes?: Array<AttributeValue>;
+  /**
    * First image by orderIndex ascending (nulls last), then id ascending; null when no images exist
    */
   primaryImage?: ComponentImage | null;
@@ -464,6 +484,10 @@ export type ConfiguratorIntersectionCompatibleComponent = {
   name: string;
   brand?: string | null;
   componentTypeId: number;
+  /**
+   * Unallocated instances currently available to a new tracked configuration
+   */
+  readonly availableQuantity: number;
   /**
    * Compatibility evidence for every selected base component in request order
    */
@@ -537,6 +561,10 @@ export type ConfiguratorAssemblyPairDecision = {
 
 export type ConfiguratorAssemblyCandidate = {
   /**
+   * Attribute values in component type display order, then identifier; empty when none are defined
+   */
+  attributes?: Array<AttributeValue>;
+  /**
    * First image by orderIndex ascending (nulls last), then id ascending; null when no images exist
    */
   primaryImage?: ComponentImage | null;
@@ -544,6 +572,10 @@ export type ConfiguratorAssemblyCandidate = {
   name: string;
   brand?: string | null;
   componentTypeId: number;
+  /**
+   * Unallocated instances currently available to a new tracked configuration
+   */
+  readonly availableQuantity: number;
   status: ConfiguratorCandidateStatus;
   /**
    * Pair decisions in componentIds request order
@@ -590,6 +622,10 @@ export type ConfigurationComponent = {
    * Number of instances of this component in the configuration
    */
   quantity: number;
+  /**
+   * Unallocated instances excluding all saved tracked configurations
+   */
+  readonly availableQuantity: number;
 };
 
 /**
@@ -699,6 +735,13 @@ export type ComponentPageWritable = {
   totalItems: number;
 };
 
+export type ConfigurationPageWritable = {
+  items: Array<SavedConfigurationWritable>;
+  page: number;
+  size: number;
+  totalItems: number;
+};
+
 export type ComponentWritable = {
   id: number;
   componentTypeId: number;
@@ -716,6 +759,10 @@ export type ComponentWritable = {
 };
 
 export type ConfiguratorCompatibleComponentWritable = {
+  /**
+   * Attribute values in component type display order, then identifier; empty when none are defined
+   */
+  attributes?: Array<AttributeValue>;
   id: number;
   name: string;
   brand?: string | null;
@@ -745,6 +792,10 @@ export type ConfiguratorBatchSearchResponseWritable = {
 };
 
 export type ConfiguratorIntersectionCompatibleComponentWritable = {
+  /**
+   * Attribute values in component type display order, then identifier; empty when none are defined
+   */
+  attributes?: Array<AttributeValue>;
   id: number;
   name: string;
   brand?: string | null;
@@ -773,6 +824,10 @@ export type ConfiguratorIntersectionResponseWritable = {
 };
 
 export type ConfiguratorAssemblyCandidateWritable = {
+  /**
+   * Attribute values in component type display order, then identifier; empty when none are defined
+   */
+  attributes?: Array<AttributeValue>;
   id: number;
   name: string;
   brand?: string | null;
@@ -804,6 +859,52 @@ export type ConfiguratorCandidatesResponseWritable = {
    * Direct pair decisions for selected components in deterministic pair order
    */
   assemblyDecisions: Array<ConfiguratorAssemblyPairDecision>;
+};
+
+/**
+ * Current component data and requested quantity included in a saved configuration
+ */
+export type ConfigurationComponentWritable = {
+  id: number;
+  name: string;
+  brand?: string | null;
+  componentTypeId: number;
+  componentTypeName: string;
+  /**
+   * Whether the component was archived after the configuration was saved
+   */
+  archived: boolean;
+  /**
+   * Number of instances of this component in the configuration
+   */
+  quantity: number;
+};
+
+/**
+ * Saved user configuration. Components contain their current catalog state and are ordered
+ * by component type orderIndex, component type name and component id.
+ *
+ */
+export type SavedConfigurationWritable = {
+  id: number;
+  domainId: number;
+  name: string;
+  description?: string | null;
+  createdAt: string;
+  /**
+   * Whether this configuration occupies component instances
+   */
+  trackInventory: boolean;
+  components: Array<ConfigurationComponentWritable>;
+};
+
+/**
+ * Versioned, self-contained JSON export of a saved configuration
+ */
+export type ConfigurationExportWritable = {
+  schemaVersion: number;
+  exportedAt: string;
+  configuration: SavedConfigurationWritable;
 };
 
 export type PostAuthRegisterData = {
@@ -1606,7 +1707,7 @@ export type PutComponentsByIdErrors = {
    */
   404: ErrorResponse;
   /**
-   * Component with the same name already exists within the component type
+   * Component name conflict or total quantity below the amount reserved by tracked configurations
    */
   409: ErrorResponse;
 };
@@ -2329,6 +2430,12 @@ export type GetDomainsByIdConfigurationsData = {
      * Optional inventory-mode filter. Omit to return all configurations.
      */
     trackInventory?: boolean;
+    /**
+     * Case-insensitive literal substring of the configuration name; whitespace is trimmed
+     */
+    name?: string;
+    sortBy?: 'createdAt' | 'name';
+    sortDirection?: 'asc' | 'desc';
   };
   url: '/domains/{id}/configurations';
 };
@@ -2384,7 +2491,9 @@ export type PostDomainsByIdConfigurationsErrors = {
    */
   404: ErrorResponse;
   /**
-   * Archived component, insufficient component availability or incompatible component set
+   * Archived component, incompatible component set or insufficient availability
+   * (INSUFFICIENT_COMPONENT_AVAILABILITY with one structured detail per deficient component)
+   *
    */
   409: ErrorResponse;
 };
@@ -2495,7 +2604,9 @@ export type PutConfigurationsByIdErrors = {
    */
   404: ErrorResponse;
   /**
-   * Archived component, insufficient component availability or incompatible component set
+   * Archived component, incompatible component set or insufficient availability
+   * (INSUFFICIENT_COMPONENT_AVAILABILITY with one structured detail per deficient component)
+   *
    */
   409: ErrorResponse;
 };

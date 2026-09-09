@@ -6,7 +6,7 @@
 запускает его через Docker Desktop. JDK, Gradle, Node.js, npm и Git не требуются. Приложение доступно только на
 <http://127.0.0.1:8080>; серверная установка и публикация порта за пределами локального компьютера не поддерживаются.
 
-Текущая стабильная версия — `v1.3.0`. Пакеты используют общедоступные многоплатформенные образы:
+Текущая стабильная версия — `v1.3.1`. Пакеты используют общедоступные многоплатформенные образы:
 
 - `ghcr.io/eltgm/configurator-app:stable`;
 - `ghcr.io/eltgm/configurator-web:stable`.
@@ -20,9 +20,10 @@ Docker. Архив передаётся между контейнерами и �
 
 ## Установка
 
-1. Установите и запустите актуальный Docker Desktop.
+1. Установите и запустите актуальный Docker Desktop. В Windows используйте
+   [подробное руководство по включению виртуализации, установке WSL 2 и Docker Desktop](../user/WINDOWS_DOCKER_DESKTOP_SETUP.md).
 2. Скачайте архив своей операционной системы и файл `SHA256SUMS` из
-   [выпуска `v1.3.0`](https://github.com/eltgm/configurator-root/releases/tag/v1.3.0). При расширенной проверке также
+   [выпуска `v1.3.1`](https://github.com/eltgm/configurator-root/releases/tag/v1.3.1). При расширенной проверке также
    скачайте `IMAGE_DIGESTS`.
 3. Проверьте контрольную сумму архива.
 4. Полностью распакуйте каталог `Configurator` в место с правом записи. Не запускайте файлы непосредственно из архива.
@@ -33,13 +34,13 @@ Docker. Архив передаётся между контейнерами и �
 Проверка в Windows PowerShell:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\configurator-windows-v1.3.0.zip
+Get-FileHash -Algorithm SHA256 .\configurator-windows-v1.3.1.zip
 ```
 
 Проверка в macOS:
 
 ```bash
-shasum -a 256 configurator-macos-v1.3.0.tar.gz
+shasum -a 256 configurator-macos-v1.3.1.tar.gz
 ```
 
 ## Команды пакета
@@ -77,8 +78,8 @@ docker compose --env-file configurator.env -f compose.yaml down --volumes --remo
 При установленной GitHub CLI подлинность файлов и образов можно проверить командами:
 
 ```bash
-gh attestation verify configurator-macos-v1.3.0.tar.gz -R eltgm/configurator-root
-gh attestation verify oci://ghcr.io/eltgm/configurator-web:1.3.0 -R eltgm/configurator-root
+gh attestation verify configurator-macos-v1.3.1.tar.gz -R eltgm/configurator-root
+gh attestation verify oci://ghcr.io/eltgm/configurator-web:1.3.1 -R eltgm/configurator-root
 ```
 
 ## Подготовка поставки владельцем
@@ -86,7 +87,7 @@ gh attestation verify oci://ghcr.io/eltgm/configurator-web:1.3.0 -R eltgm/config
 1. Убедиться, что контрольный список и отчёт выпуска актуальны, непрерывная интеграция прошла, а пакеты GHCR доступны
    без аутентификации.
 2. Влить релизный запрос на слияние `develop` в `master`.
-3. Создать аннотированный тег на коммите из `master`: `scripts/release/start-release-tag.sh 1.3.0`.
+3. Создать аннотированный тег на коммите из `master`: `scripts/release/start-release-tag.sh 1.3.1`.
 4. Дождаться процесса `Prepare GitHub release`: он повторно запускает все проверки, публикует образы с тегами точной
    версии, коммита и `stable`, создаёт аттестации и черновик выпуска.
 5. Проверить анонимную загрузку и установку на чистых Windows и macOS, контрольные суммы и команды
@@ -96,5 +97,5 @@ gh attestation verify oci://ghcr.io/eltgm/configurator-web:1.3.0 -R eltgm/config
 Локальная сборка структуры пакетов для проверки:
 
 ```bash
-scripts/release/build-delivery-packages.sh 1.3.0
+scripts/release/build-delivery-packages.sh 1.3.1
 ```

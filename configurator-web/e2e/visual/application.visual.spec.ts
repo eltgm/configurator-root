@@ -14,6 +14,19 @@ test('configurator workspace', async ({ page }) => {
   await waitForVisualReady(page);
 
   await expect(page).toHaveScreenshot('configurator-light.png', { fullPage: true });
+
+  await page.getByRole('checkbox', { name: 'Учитывать количество компонентов' }).check();
+  await page
+    .getByRole('region', { name: 'Доступные компоненты' })
+    .getByRole('button', { name: 'Добавить' })
+    .first()
+    .click();
+  await expect(
+    page.getByRole('region', { name: 'Текущая сборка' }).getByText('Доступно: 8 · выбрано: 1'),
+  ).toBeVisible();
+  await waitForVisualReady(page);
+
+  await expect(page).toHaveScreenshot('configurator-inventory-light.png', { fullPage: true });
 });
 
 test('component catalog cards and table', async ({ page }) => {
@@ -121,9 +134,10 @@ test('mobile dark catalog, details and configurations', async ({ page }) => {
   const mobileNavigationLinks = page
     .getByRole('navigation', { name: 'Мобильная навигация' })
     .getByRole('link');
-  await expect(mobileNavigationLinks).toHaveCount(4);
-  for (let index = 0; index < 4; index += 1) {
+  await expect(mobileNavigationLinks).toHaveCount(3);
+  for (let index = 0; index < 3; index += 1) {
     await expect(mobileNavigationLinks.nth(index)).toBeInViewport();
   }
+  await expect(page.getByRole('button', { name: 'Настройка', exact: true })).toBeInViewport();
   await expect(page).toHaveScreenshot('configurations-mobile-dark.png');
 });

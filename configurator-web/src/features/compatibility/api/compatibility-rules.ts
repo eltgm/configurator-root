@@ -64,9 +64,10 @@ interface CreateCompatibilityRuleVariables {
   body: SaveCompatibilityRuleSetRequest;
 }
 
-export function useCreateCompatibilityRuleMutation() {
+export function useCreateCompatibilityRuleMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     mutationFn: ({ domainId, body }: CreateCompatibilityRuleVariables) =>
       apiData(
         postDomainsByIdCompatibilityRules({
@@ -93,9 +94,10 @@ interface UpdateCompatibilityRuleVariables {
   body: SaveCompatibilityRuleSetRequest;
 }
 
-export function useUpdateCompatibilityRuleMutation() {
+export function useUpdateCompatibilityRuleMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     mutationFn: ({ domainId, ruleId, body }: UpdateCompatibilityRuleVariables) =>
       apiData(
         putDomainsByIdCompatibilityRulesByRuleId({
@@ -124,9 +126,10 @@ interface DeleteCompatibilityRuleVariables {
   ruleId: number;
 }
 
-export function useDeleteCompatibilityRuleMutation() {
+export function useDeleteCompatibilityRuleMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     mutationFn: ({ domainId, ruleId }: DeleteCompatibilityRuleVariables) =>
       apiData(
         deleteDomainsByIdCompatibilityRulesByRuleId({

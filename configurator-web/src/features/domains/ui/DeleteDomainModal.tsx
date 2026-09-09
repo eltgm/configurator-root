@@ -1,3 +1,4 @@
+import { ErrorState } from '@/shared/ui';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Group, Modal, Stack, Text, TextInput } from '@mantine/core';
 import { useMemo } from 'react';
@@ -16,7 +17,7 @@ interface DeleteDomainModalProps {
 
 export function DeleteDomainModal({ domain, onClose }: DeleteDomainModalProps) {
   const { t } = useTranslation();
-  const deleteDomain = useDeleteDomainMutation();
+  const deleteDomain = useDeleteDomainMutation(true);
   const schema = useMemo(
     () =>
       z.object({
@@ -39,7 +40,7 @@ export function DeleteDomainModal({ domain, onClose }: DeleteDomainModalProps) {
       showSuccessNotification(t('domains.notifications.deleted'));
       onClose();
     } catch {
-      // The global mutation policy shows the specific, localized API error; keep the modal open.
+      // Keep the normalized error in the dialog for a deliberate retry.
     }
   });
 
@@ -60,6 +61,7 @@ export function DeleteDomainModal({ domain, onClose }: DeleteDomainModalProps) {
         noValidate
       >
         <Stack gap="md">
+          {deleteDomain.error ? <ErrorState error={deleteDomain.error} /> : null}
           <Text>{t('domains.delete.description', { name: domain.name })}</Text>
           <Text size="sm" c="red">
             {t('domains.delete.warning')}

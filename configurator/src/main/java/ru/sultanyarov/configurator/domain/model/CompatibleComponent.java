@@ -9,5 +9,7 @@ public record CompatibleComponent(
     String name,
     String brand,
     Long componentTypeId,
+    Integer availableQuantity,
     ComponentImage primaryImage,
+    List<AttributeValue> attributes,
     List<CompatibilityExplanation> explanations) {}

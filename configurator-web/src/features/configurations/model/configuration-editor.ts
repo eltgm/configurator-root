@@ -18,7 +18,7 @@ export type ConfigurationEditorValidationState =
   'idle' | 'pending' | 'valid' | 'blocked' | 'disconnected' | 'error';
 
 export type ConfigurationEditorBlockReason =
-  'empty' | 'limit' | 'archived' | 'pending' | 'blocked' | 'disconnected' | 'error';
+  'empty' | 'limit' | 'archived' | 'inventory' | 'pending' | 'blocked' | 'disconnected' | 'error';
 
 export type ConfigurationEditorEligibility =
   { allowed: true } | { allowed: false; reason: ConfigurationEditorBlockReason };
@@ -107,6 +107,7 @@ export function configurationComponentsChanged(
 export function getConfigurationEditorEligibility(
   components: ReadonlyArray<ConfigurationEditorComponent>,
   validationState: ConfigurationEditorValidationState,
+  inventoryValid = true,
 ): ConfigurationEditorEligibility {
   if (components.length === 0) {
     return { allowed: false, reason: 'empty' };
@@ -116,6 +117,9 @@ export function getConfigurationEditorEligibility(
   }
   if (components.some((component) => component.archived)) {
     return { allowed: false, reason: 'archived' };
+  }
+  if (!inventoryValid) {
+    return { allowed: false, reason: 'inventory' };
   }
   if (components.length === 1) {
     return { allowed: true };

@@ -9,6 +9,8 @@ const apiErrorCodes = new Set<ApiErrorCode>([
   'DOMAIN_HAS_CONFIGURATIONS',
   'COMPONENT_ARCHIVED',
   'CONFIGURATION_CONFLICT',
+  'INSUFFICIENT_COMPONENT_AVAILABILITY',
+  'COMPONENT_TOTAL_BELOW_ALLOCATED',
   'VALIDATION_ERROR',
   'IMAGE_TOO_LARGE',
   'UNSUPPORTED_IMAGE_FORMAT',
@@ -66,7 +68,13 @@ function isApiErrorDetail(value: unknown): value is ApiErrorDetail {
     isRecord(value) &&
     typeof value['code'] === 'string' &&
     typeof value['message'] === 'string' &&
-    (value['field'] === undefined || value['field'] === null || typeof value['field'] === 'string')
+    (value['field'] === undefined ||
+      value['field'] === null ||
+      typeof value['field'] === 'string') &&
+    (value['parameters'] === undefined ||
+      value['parameters'] === null ||
+      (isRecord(value['parameters']) &&
+        Object.values(value['parameters']).every((parameter) => typeof parameter === 'string')))
   );
 }
 
@@ -101,8 +109,17 @@ export function normalizeApiError(error: unknown): AppError {
       publicMessage: error.message,
       details: error.details.map((detail) =>
         detail.field
-          ? { field: detail.field, code: detail.code, message: detail.message }
-          : { code: detail.code, message: detail.message },
+          ? {
+              field: detail.field,
+              code: detail.code,
+              message: detail.message,
+              ...(detail.parameters ? { parameters: detail.parameters } : {}),
+            }
+          : {
+              code: detail.code,
+              message: detail.message,
+              ...(detail.parameters ? { parameters: detail.parameters } : {}),
+            },
       ),
       retryable: error.status >= 500,
       cause: error,
@@ -167,4 +184,36 @@ export function getErrorTranslationKey(error: unknown): string {
   }
 
   return `errors.codes.${normalizedError.code}`;
+}
+
+export interface ErrorDetailTranslation {
+  key: string;
+  parameters: Readonly<Record<string, string>>;
+}
+
+export function getErrorDetailTranslations(error: unknown): ReadonlyArray<ErrorDetailTranslation> {
+  const normalizedError = normalizeApiError(error);
+
+  return normalizedError.details.flatMap((detail) => {
+    const parameters = detail.parameters;
+    if (!parameters) return [];
+
+    if (
+      detail.code === 'INSUFFICIENT_COMPONENT_AVAILABILITY' &&
+      parameters['componentName'] &&
+      parameters['requestedQuantity'] &&
+      parameters['availableQuantity']
+    ) {
+      return [{ key: 'errors.details.INSUFFICIENT_COMPONENT_AVAILABILITY', parameters }];
+    }
+    if (
+      detail.code === 'COMPONENT_TOTAL_BELOW_ALLOCATED' &&
+      parameters['componentName'] &&
+      parameters['totalQuantity'] &&
+      parameters['allocatedQuantity']
+    ) {
+      return [{ key: 'errors.details.COMPONENT_TOTAL_BELOW_ALLOCATED', parameters }];
+    }
+    return [];
+  });
 }

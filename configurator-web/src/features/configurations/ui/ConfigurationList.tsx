@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Badge, Button, Group, Paper, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 import { IconArchive, IconChevronRight } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +22,7 @@ export function ConfigurationList({
   onExport,
   onDelete,
 }: ConfigurationListProps) {
+  const [expanded, setExpanded] = useState<ReadonlySet<number>>(new Set());
   const { t, i18n } = useTranslation();
   const dateFormatter = new Intl.DateTimeFormat(i18n.resolvedLanguage, {
     dateStyle: 'long',
@@ -76,35 +78,64 @@ export function ConfigurationList({
               <Text size="sm" fw={600}>
                 {t('configurations.components.count', { count: configuration.components.length })}
               </Text>
-              {configuration.components.map((component) => (
-                <Paper key={component.id} p="xs" bg="var(--mantine-color-default-hover)">
-                  <Group justify="space-between" align="flex-start" wrap="nowrap">
-                    <Stack gap={2} miw={0}>
-                      <Text component={Link} to={`/components/${component.id}`} size="sm" fw={600}>
-                        {component.name}
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        {[component.componentTypeName, component.brand].filter(Boolean).join(' · ')}
-                      </Text>
-                    </Stack>
-                    <Group gap="xs">
-                      <Badge size="sm" variant="light">
-                        {t('configurations.components.quantity', { count: component.quantity })}
-                      </Badge>
-                      {component.archived ? (
-                        <Badge
-                          color="gray"
+              {configuration.components
+                .slice(0, expanded.has(configuration.id) ? undefined : 3)
+                .map((component) => (
+                  <Paper key={component.id} p="xs" bg="var(--mantine-color-default-hover)">
+                    <Group justify="space-between" align="flex-start" wrap="nowrap">
+                      <Stack gap={2} miw={0}>
+                        <Text
+                          component={Link}
+                          to={`/components/${component.id}`}
                           size="sm"
-                          leftSection={<IconArchive size={12} aria-hidden="true" />}
+                          fw={600}
                         >
-                          {t('configurations.components.archived')}
-                        </Badge>
-                      ) : null}
+                          {component.name}
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          {[component.componentTypeName, component.brand]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </Text>
+                      </Stack>
+                      <Group gap="xs">
+                        {configuration.trackInventory ? (
+                          <Badge size="sm" variant="light">
+                            {t('configurations.components.quantity', { count: component.quantity })}
+                          </Badge>
+                        ) : null}
+                        {component.archived ? (
+                          <Badge
+                            color="gray"
+                            size="sm"
+                            leftSection={<IconArchive size={12} aria-hidden="true" />}
+                          >
+                            {t('configurations.components.archived')}
+                          </Badge>
+                        ) : null}
+                      </Group>
                     </Group>
-                  </Group>
-                </Paper>
-              ))}
+                  </Paper>
+                ))}
             </Stack>
+            {configuration.components.length > 3 ? (
+              <Button
+                variant="subtle"
+                aria-expanded={expanded.has(configuration.id)}
+                onClick={() =>
+                  setExpanded((current) => {
+                    const next = new Set(current);
+                    if (next.has(configuration.id)) next.delete(configuration.id);
+                    else next.add(configuration.id);
+                    return next;
+                  })
+                }
+              >
+                {expanded.has(configuration.id)
+                  ? t('ux.less')
+                  : t('ux.moreItems', { count: configuration.components.length - 3 })}
+              </Button>
+            ) : null}
             <Button
               component={Link}
               to={`/configurations/${configuration.id}`}

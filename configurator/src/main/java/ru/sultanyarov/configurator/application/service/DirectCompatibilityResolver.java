@@ -41,7 +41,10 @@ class DirectCompatibilityResolver {
         .name(component.getName())
         .brand(component.getBrand())
         .componentTypeId(component.getComponentTypeId())
+        .availableQuantity(component.getAvailableQuantity())
         .primaryImage(component.getPrimaryImage())
+        .attributes(
+            component.getAttributes() == null ? List.of() : List.copyOf(component.getAttributes()))
         .explanations(List.copyOf(explanations))
         .build();
   }

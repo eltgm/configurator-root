@@ -19,6 +19,8 @@ import ru.sultanyarov.configurator.application.port.out.ConfiguratorRepository;
 import ru.sultanyarov.configurator.application.port.out.CurrentUserProvider;
 import ru.sultanyarov.configurator.domain.exception.BusinessException;
 import ru.sultanyarov.configurator.domain.exception.ConfigurationConflictException;
+import ru.sultanyarov.configurator.domain.exception.InsufficientComponentAvailabilityException;
+import ru.sultanyarov.configurator.domain.exception.InsufficientComponentAvailabilityException.ComponentShortage;
 import ru.sultanyarov.configurator.domain.exception.NotFoundException;
 import ru.sultanyarov.configurator.domain.exception.ValidationException;
 import ru.sultanyarov.configurator.domain.model.Component;
@@ -28,6 +30,7 @@ import ru.sultanyarov.configurator.domain.model.ConfigurationComponent;
 import ru.sultanyarov.configurator.domain.model.ConfigurationComponentItem;
 import ru.sultanyarov.configurator.domain.model.ConfigurationDraft;
 import ru.sultanyarov.configurator.domain.model.ConfigurationExport;
+import ru.sultanyarov.configurator.domain.model.ConfigurationListFilter;
 import ru.sultanyarov.configurator.domain.model.Domain;
 import ru.sultanyarov.configurator.domain.model.Page;
 
@@ -116,7 +119,11 @@ public class ConfigurationServiceImpl implements ConfigurationService {
   @Override
   @Transactional(readOnly = true)
   public Page<Configuration> getPage(
-      Long domainId, Integer page, Integer size, Boolean trackInventory) {
+      Long domainId,
+      Integer page,
+      Integer size,
+      Boolean trackInventory,
+      ConfigurationListFilter filter) {
     int resolvedPage = page == null ? DEFAULT_PAGE : page;
     int resolvedSize = size == null ? DEFAULT_SIZE : size;
     validatePagination(resolvedPage, resolvedSize);
@@ -126,7 +133,8 @@ public class ConfigurationServiceImpl implements ConfigurationService {
         currentUserProvider.getCurrentUserId(),
         trackInventory,
         resolvedPage,
-        resolvedSize);
+        resolvedSize,
+        filter);
   }
 
   @Override
@@ -177,6 +185,7 @@ public class ConfigurationServiceImpl implements ConfigurationService {
         existingConfiguration != null && existingConfiguration.trackInventory()
             ? quantitiesByComponent(existingConfiguration.components())
             : Map.of();
+    List<ComponentShortage> shortages = new ArrayList<>();
 
     for (ConfigurationComponentItem item : target.items()) {
       Component component =
@@ -190,12 +199,16 @@ public class ConfigurationServiceImpl implements ConfigurationService {
       int occupiedBySelf = occupiedByExisting.getOrDefault(item.componentId(), 0);
       int availableForTarget = total - allocated + occupiedBySelf;
       if (item.quantity() > availableForTarget) {
-        throw new ConfigurationConflictException(
-            "Component with id {} requires {} instances, but only {} are available",
-            item.componentId(),
-            item.quantity(),
-            Math.max(availableForTarget, 0));
+        shortages.add(
+            new ComponentShortage(
+                component.getId(),
+                component.getName(),
+                item.quantity(),
+                Math.max(availableForTarget, 0)));
       }
+    }
+    if (!shortages.isEmpty()) {
+      throw new InsufficientComponentAvailabilityException(shortages);
     }
   }
 

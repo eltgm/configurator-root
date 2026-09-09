@@ -17,6 +17,10 @@
   background: var(--mantine-color-default-hover);
 }
 
+.preview[data-empty] {
+  height: 4rem;
+}
+
 .preview-compact {
   display: grid;
   width: 2.75rem;

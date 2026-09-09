@@ -1,18 +1,9 @@
+import { useFormCompletion } from '@/features/domains/model/use-form-completion';
+import { GuardedFormModal, FormModalCancelButton } from '@/features/domains/ui/GuardedFormModal';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  Badge,
-  Button,
-  Group,
-  Modal,
-  Paper,
-  Stack,
-  Switch,
-  Text,
-  Textarea,
-  TextInput,
-} from '@mantine/core';
+import { Badge, Button, Group, Paper, Stack, Text, Textarea, TextInput } from '@mantine/core';
 import { useEffect, useMemo } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 
@@ -34,7 +25,7 @@ export interface ConfigurationSummaryItem {
   quantity: number;
   totalQuantity?: number;
   allocatedQuantity?: number;
-  availableQuantity?: number;
+  availableQuantity: number;
 }
 
 interface CreateConfigurationModalProps {
@@ -42,6 +33,7 @@ interface CreateConfigurationModalProps {
   domainId: number;
   componentItems: ReadonlyArray<{ componentId: number; quantity: number }>;
   components: ReadonlyArray<ConfigurationSummaryItem>;
+  trackInventory: boolean;
   mode?: 'create' | 'copy';
   initialValues?: ConfigurationFormValues | undefined;
   onClose: () => void;
@@ -53,13 +45,15 @@ export function CreateConfigurationModal({
   domainId,
   componentItems,
   components,
+  trackInventory,
   mode = 'create',
   initialValues,
   onClose,
   onSaved,
 }: CreateConfigurationModalProps) {
   const { t } = useTranslation();
-  const createConfiguration = useCreateConfigurationMutation();
+  const { markComplete, canLeave } = useFormCompletion(opened);
+  const createConfiguration = useCreateConfigurationMutation(true);
   const resetMutation = createConfiguration.reset;
   const schema = useMemo(
     () =>
@@ -70,19 +64,20 @@ export function CreateConfigurationModal({
           .min(1, t('configurations.form.validation.nameRequired'))
           .max(255, t('configurations.form.validation.nameTooLong')),
         description: z.string().max(4000, t('configurations.form.validation.descriptionTooLong')),
-        trackInventory: z.boolean(),
       }),
     [t],
   );
   const form = useForm<ConfigurationFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', description: '', trackInventory: false },
+    defaultValues: { name: '', description: '' },
   });
-  const trackInventory = useWatch({ control: form.control, name: 'trackInventory' });
+  const hasInventoryShortage =
+    trackInventory &&
+    components.some((component) => component.quantity > component.availableQuantity);
 
   useEffect(() => {
     if (opened) {
-      form.reset(initialValues ?? { name: '', description: '', trackInventory: false });
+      form.reset(initialValues ?? { name: '', description: '' });
       resetMutation();
     }
   }, [form, initialValues, opened, resetMutation]);
@@ -94,10 +89,11 @@ export function CreateConfigurationModal({
   };
 
   const submit = form.handleSubmit(async (values) => {
+    if (hasInventoryShortage) return;
     try {
       const configuration = await createConfiguration.mutateAsync({
         domainId,
-        body: toCreateConfigurationRequest(values, componentItems),
+        body: toCreateConfigurationRequest(values, componentItems, trackInventory),
       });
       showSuccessNotification(
         t(
@@ -106,6 +102,7 @@ export function CreateConfigurationModal({
             : 'configurations.notifications.created',
         ),
       );
+      markComplete();
       onSaved(configuration);
       onClose();
     } catch (error) {
@@ -120,7 +117,10 @@ export function CreateConfigurationModal({
   });
 
   return (
-    <Modal
+    <GuardedFormModal
+      canLeave={canLeave}
+      dirty={form.formState.isDirty}
+      pending={createConfiguration.isPending}
       opened={opened}
       onClose={close}
       title={t(mode === 'copy' ? 'configurations.copy.title' : 'configurations.form.title')}
@@ -152,12 +152,9 @@ export function CreateConfigurationModal({
             error={form.formState.errors.description?.message}
             {...form.register('description')}
           />
-          <Switch
-            label={t('configurations.inventory.track')}
-            description={t('configurations.inventory.trackDescription')}
-            {...form.register('trackInventory')}
-          />
-          {createConfiguration.error ? <ErrorState error={createConfiguration.error} /> : null}
+          {createConfiguration.error ? (
+            <ErrorState autoFocus error={createConfiguration.error} />
+          ) : null}
           <Stack gap="xs">
             <Group justify="space-between">
               <Text fw={600} size="sm">
@@ -175,14 +172,17 @@ export function CreateConfigurationModal({
                 <Text size="xs" c="dimmed">
                   {[component.typeName, component.brand].filter(Boolean).join(' · ')}
                 </Text>
-                <Text size="xs" c="dimmed">
-                  {t('configurations.components.quantity', { count: component.quantity })}
-                  {trackInventory && component.availableQuantity !== undefined
-                    ? ` · ${t('configurations.inventory.available', {
-                        count: component.availableQuantity,
-                      })}`
-                    : ''}
-                </Text>
+                {trackInventory ? (
+                  <Text
+                    size="xs"
+                    c={component.quantity > component.availableQuantity ? 'red' : 'dimmed'}
+                  >
+                    {t('configurator.inventory.selectedAvailability', {
+                      available: component.availableQuantity,
+                      selected: component.quantity,
+                    })}
+                  </Text>
+                ) : null}
                 {component.archived ? (
                   <Badge mt={4} color="gray" size="sm">
                     {t('configurations.components.archived')}
@@ -192,10 +192,14 @@ export function CreateConfigurationModal({
             ))}
           </Stack>
           <Group justify="flex-end">
-            <Button variant="default" onClick={close} disabled={createConfiguration.isPending}>
+            <FormModalCancelButton variant="default" disabled={createConfiguration.isPending}>
               {t('common.cancel')}
-            </Button>
-            <Button type="submit" loading={createConfiguration.isPending}>
+            </FormModalCancelButton>
+            <Button
+              type="submit"
+              loading={createConfiguration.isPending}
+              disabled={hasInventoryShortage}
+            >
               {t(
                 mode === 'copy'
                   ? 'configurations.actions.createCopy'
@@ -205,6 +209,6 @@ export function CreateConfigurationModal({
           </Group>
         </Stack>
       </form>
-    </Modal>
+    </GuardedFormModal>
   );
 }

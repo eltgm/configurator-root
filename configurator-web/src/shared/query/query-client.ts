@@ -22,7 +22,8 @@ export function createAppQueryClient(notifyError: ErrorNotifier = showErrorNotif
       },
     }),
     mutationCache: new MutationCache({
-      onError: (error) => {
+      onError: (error, _variables, _context, mutation) => {
+        if (mutation.meta?.['errorHandledLocally']) return;
         notifyError(normalizeApiError(error));
       },
     }),

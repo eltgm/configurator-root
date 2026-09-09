@@ -1,3 +1,4 @@
+import { catalogReturnUrl } from '@/features/components/model/catalog-return';
 import {
   Badge,
   Button,
@@ -37,7 +38,7 @@ export function ComponentDetailsPage() {
   const componentId = Number.isInteger(parsedId) && parsedId > 0 ? parsedId : null;
   const componentQuery = useComponentQuery(selectedDomainId, componentId);
   const componentTypesQuery = useComponentTypesQuery(selectedDomainId);
-  const archiveComponent = useArchiveComponentMutation();
+  const archiveComponent = useArchiveComponentMutation(true);
   const restoreComponent = useRestoreComponentMutation();
   const [archiveOpened, setArchiveOpened] = useState(false);
   const component = componentQuery.data;
@@ -111,7 +112,7 @@ export function ComponentDetailsPage() {
           <Group>
             <Button
               component={Link}
-              to="/components"
+              to={catalogReturnUrl(selectedDomainId)}
               variant="default"
               leftSection={<IconArrowLeft size={16} />}
             >
@@ -138,7 +139,10 @@ export function ComponentDetailsPage() {
                   color="orange"
                   variant="light"
                   leftSection={<IconArchive size={16} />}
-                  onClick={() => setArchiveOpened(true)}
+                  onClick={() => {
+                    archiveComponent.reset();
+                    setArchiveOpened(true);
+                  }}
                 >
                   {t('components.actions.archive')}
                 </Button>
@@ -258,6 +262,7 @@ export function ComponentDetailsPage() {
         closeOnEscape={!archiveComponent.isPending}
       >
         <Stack gap="md">
+          {archiveComponent.error ? <ErrorState error={archiveComponent.error} /> : null}
           <Text>{t('components.archive.description', { name: component.name })}</Text>
           <Text size="sm" c="dimmed">
             {t('components.archive.hint')}

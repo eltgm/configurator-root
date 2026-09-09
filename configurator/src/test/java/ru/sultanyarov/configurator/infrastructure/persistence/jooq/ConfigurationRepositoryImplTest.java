@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ru.sultanyarov.configurator.domain.model.Configuration;
 import ru.sultanyarov.configurator.domain.model.ConfigurationComponent;
+import ru.sultanyarov.configurator.domain.model.ConfigurationListFilter;
 
 class ConfigurationRepositoryImplTest extends AbstractJooqRepositoryTest {
   private ConfigurationRepositoryImpl repository;
@@ -41,6 +42,51 @@ class ConfigurationRepositoryImplTest extends AbstractJooqRepositoryTest {
         .execute();
     insertComponent(100L, 10L, "Board A", false);
     insertComponent(200L, 20L, "Switch A", false);
+  }
+
+  @Test
+  void shouldSearchAllRowsEscapeWildcardsAndSortWithStableTies() {
+    var percent =
+        repository
+            .create(configuration("Build 100%_ready", List.of(component(100L))))
+            .orElseThrow();
+    var first = repository.create(configuration("Alpha", List.of(component(100L)))).orElseThrow();
+    var second = repository.create(configuration("alpha", List.of(component(100L)))).orElseThrow();
+    dslContext
+        .batch(
+            java.util.stream.IntStream.range(0, 1000)
+                .mapToObj(
+                    i ->
+                        dslContext
+                            .insertInto(CONFIGURATION)
+                            .set(CONFIGURATION.DOMAIN_ID, 1L)
+                            .set(CONFIGURATION.CREATED_BY_USER_ID, -1L)
+                            .set(CONFIGURATION.NAME, "Other " + i))
+                .toList())
+        .execute();
+    var literal =
+        repository.findPageByDomainIdAndUserId(
+            1L, -1L, null, 0, 10, ConfigurationListFilter.of("%_", "name", "asc"));
+    assertThat(literal.totalItems()).isEqualTo(1);
+    assertThat(literal.items()).extracting(Configuration::id).containsExactly(percent.id());
+    var page =
+        repository.findPageByDomainIdAndUserId(
+            1L, -1L, null, 1, 1, ConfigurationListFilter.of(" ALPHA ", "name", "asc"));
+    assertThat(page.totalItems()).isEqualTo(2);
+    assertThat(page.items()).extracting(Configuration::id).containsExactly(first.id());
+    assertThat(
+            repository
+                .findPageByDomainIdAndUserId(
+                    1L, -1L, null, 0, 1, ConfigurationListFilter.of("alpha", "name", "desc"))
+                .items())
+        .extracting(Configuration::id)
+        .containsExactly(second.id());
+    assertThat(
+            repository
+                .findPageByDomainIdAndUserId(
+                    1L, 999L, null, 0, 10, ConfigurationListFilter.of("Alpha", null, null))
+                .totalItems())
+        .isZero();
   }
 
   @Test
@@ -81,7 +127,15 @@ class ConfigurationRepositoryImplTest extends AbstractJooqRepositoryTest {
         .singleElement()
         .extracting(ConfigurationComponent::quantity)
         .isEqualTo(4);
-    assertThat(repository.findPageByDomainIdAndUserId(1L, -1L, true, 0, 10).items())
+    assertThat(tracked.components())
+        .singleElement()
+        .extracting(ConfigurationComponent::availableQuantity)
+        .isEqualTo(6);
+    assertThat(
+            repository
+                .findPageByDomainIdAndUserId(
+                    1L, -1L, true, 0, 10, ConfigurationListFilter.of(null, null, null))
+                .items())
         .extracting(Configuration::id)
         .containsExactly(tracked.id());
     assertThat(repository.findAllocatedQuantitiesByComponentIds(List.of(100L)))
@@ -100,7 +154,9 @@ class ConfigurationRepositoryImplTest extends AbstractJooqRepositoryTest {
         .where(COMPONENT.ID.eq(200L))
         .execute();
 
-    var page = repository.findPageByDomainIdAndUserId(1L, -1L, null, 0, 10);
+    var page =
+        repository.findPageByDomainIdAndUserId(
+            1L, -1L, null, 0, 10, ConfigurationListFilter.of(null, null, null));
 
     assertThat(page.totalItems()).isEqualTo(2);
     assertThat(page.items()).extracting(Configuration::id).containsExactly(second.id(), first.id());
@@ -210,6 +266,7 @@ class ConfigurationRepositoryImplTest extends AbstractJooqRepositoryTest {
         .set(COMPONENT.COMPONENT_TYPE_ID, typeId)
         .set(COMPONENT.NAME, name)
         .set(COMPONENT.ARCHIVED, archived)
+        .set(COMPONENT.TOTAL_QUANTITY, 10)
         .execute();
   }
 

@@ -10,4 +10,5 @@ public record ConfigurationComponent(
     Long componentTypeId,
     String componentTypeName,
     boolean archived,
-    int quantity) {}
+    int quantity,
+    int availableQuantity) {}

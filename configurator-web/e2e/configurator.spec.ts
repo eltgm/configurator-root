@@ -11,8 +11,14 @@ test('opens the configurator frontend with the selected domain', async ({ page }
 
   const browser = page.getByRole('region', { name: 'Доступные компоненты' });
   const assembly = page.getByRole('region', { name: 'Текущая сборка' });
+  const inventoryMode = page.getByRole('checkbox', {
+    name: 'Учитывать количество компонентов',
+  });
+  await expect(inventoryMode).not.toBeChecked();
+  await inventoryMode.check();
   await browser.getByRole('button', { name: 'Добавить' }).first().click();
   await expect(assembly.getByText('Ryzen 7 7800X3D')).toBeVisible();
+  await expect(assembly.getByText('Доступно: 8 · выбрано: 1')).toBeVisible();
   await expect(browser.getByText('B650 Tomahawk')).toBeVisible();
   await browser.getByRole('button', { name: 'Добавить' }).click();
   await expect(assembly.getByText('B650 Tomahawk')).toBeVisible();
@@ -35,6 +41,7 @@ test('opens the configurator frontend with the selected domain', async ({ page }
 
   await page.reload();
   await expect(page.getByText(/Локальный черновик восстановлен/)).toBeVisible();
+  await expect(inventoryMode).toBeChecked();
   await expect(
     page.getByRole('region', { name: 'Текущая сборка' }).getByText('B650 Tomahawk'),
   ).toBeVisible();
@@ -106,6 +113,7 @@ test('explains a transitive candidate and returns the draft to strict validation
                     name: 'B650 Tomahawk',
                     brand: 'MSI',
                     componentTypeId: 12,
+                    availableQuantity: 8,
                     explanations: [{ source: 'TRANSITIVE', pathComponentIds: [101, 103, 102] }],
                   },
                 ],
@@ -179,7 +187,10 @@ test('explains a transitive candidate and returns the draft to strict validation
 
   await page.goto('/configurator');
 
-  const mode = page.getByRole('switch', { name: /Учитывать транзитивную совместимость/ });
+  await page.getByRole('button', { name: 'Дополнительные параметры' }).click();
+  const mode = page.getByRole('switch', {
+    name: /Показать варианты через промежуточные компоненты/,
+  });
   await expect(mode).not.toBeChecked();
   await mode.check();
   const browser = page.getByRole('region', { name: 'Доступные компоненты' });
@@ -280,6 +291,7 @@ test('keeps a conflicting draft and repairs it with a slot-aware replacement', a
                     name: 'Core Ultra 9 285K',
                     brand: 'Intel',
                     componentTypeId: 11,
+                    availableQuantity: 8,
                     status: compatibilityByBase.some((decision) => decision.status === 'ALLOWED')
                       ? 'AVAILABLE'
                       : 'UNRELATED',

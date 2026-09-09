@@ -1,8 +1,10 @@
+import { useFormCompletion } from '@/features/domains/model/use-form-completion';
+import { ErrorState } from '@/shared/ui';
+import { GuardedFormModal, FormModalCancelButton } from '@/features/domains/ui/GuardedFormModal';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Button,
   Group,
-  Modal,
   NumberInput,
   Select,
   Stack,
@@ -83,10 +85,29 @@ export function AttributeFormModal({
   onSaved,
 }: AttributeFormModalProps) {
   const { t } = useTranslation();
-  const createAttribute = useCreateAttributeMutation();
-  const createCatalogAttribute = useCreateCatalogAttributeMutation();
-  const updateAttribute = useUpdateAttributeMutation();
-  const attachAttribute = useAttachAttributeMutation();
+  const { markComplete, canLeave } = useFormCompletion(opened);
+  const createAttribute = useCreateAttributeMutation(true);
+  const createCatalogAttribute = useCreateCatalogAttributeMutation(true);
+  const updateAttribute = useUpdateAttributeMutation(true);
+  const attachAttribute = useAttachAttributeMutation(true);
+  const resetCreateAttribute = createAttribute.reset;
+  const resetCreateCatalogAttribute = createCatalogAttribute.reset;
+  const resetUpdateAttribute = updateAttribute.reset;
+  const resetAttachAttribute = attachAttribute.reset;
+  useEffect(() => {
+    if (opened) {
+      resetCreateAttribute();
+      resetCreateCatalogAttribute();
+      resetUpdateAttribute();
+      resetAttachAttribute();
+    }
+  }, [
+    opened,
+    resetCreateAttribute,
+    resetCreateCatalogAttribute,
+    resetUpdateAttribute,
+    resetAttachAttribute,
+  ]);
   const isEditing = Boolean(attribute);
   const isPending =
     createAttribute.isPending ||
@@ -221,6 +242,7 @@ export function AttributeFormModal({
       showSuccessNotification(
         isEditing ? t('attributes.notifications.updated') : t('attributes.notifications.created'),
       );
+      markComplete();
       onSaved(savedAttribute);
       onClose();
     } catch (error) {
@@ -253,7 +275,10 @@ export function AttributeFormModal({
   }));
 
   return (
-    <Modal
+    <GuardedFormModal
+      canLeave={canLeave}
+      dirty={form.formState.isDirty}
+      pending={isPending}
       opened={opened}
       onClose={close}
       title={isEditing ? t('attributes.form.editTitle') : t('attributes.form.createTitle')}
@@ -270,6 +295,20 @@ export function AttributeFormModal({
         noValidate
       >
         <Stack gap="md">
+          {(createAttribute.error ??
+          createCatalogAttribute.error ??
+          updateAttribute.error ??
+          attachAttribute.error) ? (
+            <ErrorState
+              autoFocus
+              error={
+                createAttribute.error ??
+                createCatalogAttribute.error ??
+                updateAttribute.error ??
+                attachAttribute.error
+              }
+            />
+          ) : null}
           <TextInput
             label={t('attributes.form.label')}
             placeholder={t('attributes.form.labelPlaceholder')}
@@ -327,6 +366,7 @@ export function AttributeFormModal({
                 data={typeOptions}
                 value={field.value}
                 onChange={(value) => field.onChange(value ?? 'STRING')}
+                ref={field.ref}
                 onBlur={field.onBlur}
                 allowDeselect={false}
                 error={fieldState.error?.message}
@@ -344,6 +384,7 @@ export function AttributeFormModal({
                   placeholder={t('attributes.form.enumValuesPlaceholder')}
                   value={field.value}
                   onChange={field.onChange}
+                  ref={field.ref}
                   onBlur={field.onBlur}
                   splitChars={[',']}
                   error={fieldState.error?.message}
@@ -376,6 +417,7 @@ export function AttributeFormModal({
                     allowNegative={false}
                     clampBehavior="strict"
                     value={field.value}
+                    ref={field.ref}
                     onBlur={field.onBlur}
                     onChange={field.onChange}
                     error={fieldState.error?.message}
@@ -385,15 +427,15 @@ export function AttributeFormModal({
             </>
           ) : null}
           <Group justify="flex-end">
-            <Button variant="default" onClick={close} disabled={isPending}>
+            <FormModalCancelButton variant="default" disabled={isPending}>
               {t('common.cancel')}
-            </Button>
+            </FormModalCancelButton>
             <Button type="submit" loading={isPending}>
               {isEditing ? t('common.save') : t('common.create')}
             </Button>
           </Group>
         </Stack>
       </form>
-    </Modal>
+    </GuardedFormModal>
   );
 }

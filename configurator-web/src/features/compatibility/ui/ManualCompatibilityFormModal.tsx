@@ -1,5 +1,8 @@
+import { useFormCompletion } from '@/features/domains/model/use-form-completion';
+import { ErrorState } from '@/shared/ui';
+import { GuardedFormModal, FormModalCancelButton } from '@/features/domains/ui/GuardedFormModal';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Group, Modal, Select, Stack, Textarea } from '@mantine/core';
+import { Button, Group, Select, Stack, Textarea } from '@mantine/core';
 import { useEffect, useMemo } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -48,7 +51,14 @@ export function ManualCompatibilityFormModal({
   onClose,
 }: ManualCompatibilityFormModalProps) {
   const { t } = useTranslation();
-  const createLink = useCreateCompatibilityLinkMutation();
+  const { markComplete, canLeave } = useFormCompletion(opened);
+  const createLink = useCreateCompatibilityLinkMutation(true);
+  const resetCreateLink = createLink.reset;
+  useEffect(() => {
+    if (opened) {
+      resetCreateLink();
+    }
+  }, [opened, resetCreateLink]);
   const schema = useMemo(
     () =>
       z
@@ -130,6 +140,7 @@ export function ManualCompatibilityFormModal({
     try {
       await createLink.mutateAsync({ domainId, body: toRequest(values) });
       showSuccessNotification(t('manualCompatibility.notifications.created'));
+      markComplete();
       onClose();
     } catch (error) {
       const fieldErrors = getFieldErrors(error);
@@ -143,7 +154,10 @@ export function ManualCompatibilityFormModal({
   });
 
   return (
-    <Modal
+    <GuardedFormModal
+      canLeave={canLeave}
+      dirty={form.formState.isDirty}
+      pending={createLink.isPending}
       opened={opened}
       onClose={close}
       title={t('manualCompatibility.form.title')}
@@ -159,6 +173,7 @@ export function ManualCompatibilityFormModal({
         noValidate
       >
         <Stack gap="md">
+          {createLink.error ? <ErrorState autoFocus error={createLink.error} /> : null}
           <Controller
             name="componentAId"
             control={form.control}
@@ -169,6 +184,7 @@ export function ManualCompatibilityFormModal({
                 data={sourceOptions}
                 value={field.value || null}
                 onChange={(value) => field.onChange(value ?? '')}
+                ref={field.ref}
                 onBlur={field.onBlur}
                 searchable
                 clearable
@@ -198,6 +214,7 @@ export function ManualCompatibilityFormModal({
                 data={targetOptions}
                 value={field.value || null}
                 onChange={(value) => field.onChange(value ?? '')}
+                ref={field.ref}
                 onBlur={field.onBlur}
                 searchable
                 clearable
@@ -219,15 +236,15 @@ export function ManualCompatibilityFormModal({
             {...form.register('comment')}
           />
           <Group justify="flex-end">
-            <Button variant="default" onClick={close} disabled={createLink.isPending}>
+            <FormModalCancelButton variant="default" disabled={createLink.isPending}>
               {t('common.cancel')}
-            </Button>
+            </FormModalCancelButton>
             <Button type="submit" loading={createLink.isPending}>
               {t('manualCompatibility.actions.create')}
             </Button>
           </Group>
         </Stack>
       </form>
-    </Modal>
+    </GuardedFormModal>
   );
 }

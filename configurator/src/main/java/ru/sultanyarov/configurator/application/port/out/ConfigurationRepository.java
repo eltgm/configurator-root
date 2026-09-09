@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 import ru.sultanyarov.configurator.domain.model.Configuration;
+import ru.sultanyarov.configurator.domain.model.ConfigurationListFilter;
 import ru.sultanyarov.configurator.domain.model.Page;
 
 public interface ConfigurationRepository {
@@ -30,5 +31,10 @@ public interface ConfigurationRepository {
   Map<Long, Integer> findAllocatedQuantitiesByComponentIds(Collection<Long> componentIds);
 
   Page<Configuration> findPageByDomainIdAndUserId(
-      Long domainId, Long userId, Boolean trackInventory, int page, int size);
+      Long domainId,
+      Long userId,
+      Boolean trackInventory,
+      int page,
+      int size,
+      ConfigurationListFilter filter);
 }

@@ -91,7 +91,7 @@ for (const viewport of [
   });
 }
 
-test('switching replacement resets search and pagination without losing metadata', async ({
+test('switching replacement retains search and clamps pagination without losing metadata', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -113,7 +113,8 @@ test('switching replacement resets search and pagination without losing metadata
   const search = browser.getByRole('textbox', { name: 'Поиск компонентов' });
   await search.fill('Несуществующий компонент');
   await replaceButtons.first().click();
-  await expect(search).toHaveValue('');
+  await expect(search).toHaveValue('Несуществующий компонент');
+  await search.fill('');
   await expect(
     browser.getByRole('button', { name: 'Выбрать Замена 1.1', exact: true }),
   ).toBeVisible();

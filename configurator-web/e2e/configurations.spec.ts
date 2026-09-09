@@ -41,7 +41,11 @@ test('saves the current assembly and shows it in the configurations list', async
   const storedDraft = await page.evaluate<string | null>(
     "window.localStorage.getItem('configurator.assembly-draft.v1.101')",
   );
-  expect(JSON.parse(storedDraft ?? '{}') as unknown).toMatchObject({ version: 2, items: [] });
+  expect(JSON.parse(storedDraft ?? '{}') as unknown).toMatchObject({
+    version: 3,
+    items: [],
+    trackInventory: false,
+  });
 
   await card.getByRole('link', { name: 'Открыть конфигурацию' }).click();
   await expect(page).toHaveURL(/\/configurations\/901$/);
@@ -142,8 +146,9 @@ test('saves the current assembly and shows it in the configurations list', async
     "window.localStorage.getItem('configurator.assembly-draft.v1.101')",
   );
   expect(JSON.parse(draftAfterOperations ?? '{}') as unknown).toMatchObject({
-    version: 2,
+    version: 3,
     items: [],
+    trackInventory: false,
   });
 
   await page.goto('/components');

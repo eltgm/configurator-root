@@ -20,6 +20,7 @@ import ru.sultanyarov.configurator.application.mapper.ConfigurationMapper;
 import ru.sultanyarov.configurator.application.service.ConfigurationService;
 import ru.sultanyarov.configurator.domain.model.Configuration;
 import ru.sultanyarov.configurator.domain.model.ConfigurationDraft;
+import ru.sultanyarov.configurator.domain.model.ConfigurationListFilter;
 import ru.sultanyarov.configurator.domain.model.Page;
 
 @ExtendWith(MockitoExtension.class)
@@ -73,14 +74,17 @@ class ConfigurationFacadeImplTest {
     Configuration configuration = configuration(7L);
     Page<Configuration> page = new Page<>(List.of(configuration), 0, 10, 1);
     ConfigurationPage pageResponse = new ConfigurationPage(List.of(response(7L)), 0, 10, 1);
-    when(configurationService.getPage(1L, 0, 10, false)).thenReturn(page);
+    when(configurationService.getPage(
+            1L, 0, 10, false, ConfigurationListFilter.of(null, null, null)))
+        .thenReturn(page);
     when(configurationMapper.toDto(page)).thenReturn(pageResponse);
     when(configurationService.getById(7L)).thenReturn(configuration);
     when(configurationMapper.toDto(configuration)).thenReturn(response(7L));
 
-    assertThat(facade.getPage(1L, 0, 10, false)).isSameAs(pageResponse);
+    assertThat(facade.getPage(1L, 0, 10, false, null, null, null)).isSameAs(pageResponse);
     assertThat(facade.getById(7L).getId()).isEqualTo(7L);
-    verify(configurationService).getPage(1L, 0, 10, false);
+    verify(configurationService)
+        .getPage(1L, 0, 10, false, ConfigurationListFilter.of(null, null, null));
     verify(configurationService).getById(7L);
   }
 

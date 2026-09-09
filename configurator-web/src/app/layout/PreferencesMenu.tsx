@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { ActionIcon, Menu, type MantineColorScheme, useMantineColorScheme } from '@mantine/core';
 import {
   IconCheck,
@@ -46,6 +47,10 @@ export function PreferencesMenu() {
       </Menu.Target>
 
       <Menu.Dropdown>
+        <Menu.Item component={Link} to="/help">
+          {t('ux.help')}
+        </Menu.Item>
+        <Menu.Divider />
         <Menu.Label>{t('preferences.theme')}</Menu.Label>
         {colorSchemes.map(({ value, labelKey, icon: Icon }) => (
           <Menu.Item

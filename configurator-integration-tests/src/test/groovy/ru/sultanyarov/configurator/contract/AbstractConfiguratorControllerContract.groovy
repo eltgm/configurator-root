@@ -31,6 +31,10 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
         batchedBoard.primaryImage == board.primaryImage
         def assemblyBoard = candidates.candidatesByType.collectMany { it.components.toList() }.find { it.id.asLong() == 2L }
         assemblyBoard.primaryImage == board.primaryImage
+        !board.attributes.isEmpty()
+        board.attributes == objectMapper.readTree(get("/components/2").body).attributes
+        batchedBoard.attributes == board.attributes
+        assemblyBoard.attributes == board.attributes
         def intersected = intersection.compatibleByType.collectMany { it.components.toList() }
         !intersected.isEmpty()
         intersected.every { it.primaryImage.isNull() || it.primaryImage.thumbnailUrl.asText().endsWith('/thumbnail') }
@@ -39,6 +43,7 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
     def "should return union of direct manual and automatic compatibility grouped in type order"() {
         given:
         prepareConfiguratorData()
+        runSqlScripts("/sql/set-configurator-component-inventory.sql")
 
         when:
         def result = get("/domains/1/configurator/compatible", [componentId: 1L])
@@ -81,6 +86,7 @@ abstract class AbstractConfiguratorControllerContract extends Specification impl
         manualCooler.explanations*.source*.toString() == ["MANUAL"]
         manualCooler.explanations[0].linkId == 803L
         manualCooler.explanations[0].comment == "Manual cross-type compatibility"
+        manualCooler.availableQuantity == 2
 
         and: "automatic mismatch wins over manual link and unavailable candidates are absent"
         responseBody.compatibleByType*.components.flatten()*.id == [2L, 5L]

@@ -90,9 +90,10 @@ interface CreateComponentVariables {
   body: CreateComponentRequest;
 }
 
-export function useCreateComponentMutation() {
+export function useCreateComponentMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     mutationFn: ({ body }: CreateComponentVariables) =>
       apiData(postComponents({ client, body, throwOnError: true })),
     onSuccess: async (createdComponent, { domainId }) => {
@@ -111,9 +112,10 @@ interface UpdateComponentVariables {
   body: UpdateComponentRequest;
 }
 
-export function useUpdateComponentMutation() {
+export function useUpdateComponentMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     mutationFn: ({ id, body }: UpdateComponentVariables) =>
       apiData(putComponentsById({ client, path: { id }, body, throwOnError: true })),
     onSuccess: async (updatedComponent, { domainId }) => {
@@ -154,7 +156,8 @@ export function useComponentsQuery(
         ? Promise.resolve({ items: [], page: 0, size: normalizedFilters.size, totalItems: 0 })
         : fetchComponents(domainId, normalizedFilters),
     enabled: enabled && domainId !== null,
-    placeholderData: keepPreviousData,
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[1] === domainId ? keepPreviousData(previous) : undefined,
   });
 }
 
@@ -163,9 +166,10 @@ interface ComponentMutationVariables {
   id: number;
 }
 
-export function useArchiveComponentMutation() {
+export function useArchiveComponentMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     mutationFn: ({ id }: ComponentMutationVariables) =>
       apiData(deleteComponentsById({ client, path: { id }, throwOnError: true })),
     onSuccess: async (_response, { domainId, id }) => {

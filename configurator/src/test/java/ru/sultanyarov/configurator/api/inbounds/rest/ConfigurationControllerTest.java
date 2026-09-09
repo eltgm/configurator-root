@@ -45,9 +45,9 @@ class ConfigurationControllerTest {
   @Test
   void shouldGetConfigurationPage() {
     ConfigurationPage body = new ConfigurationPage(List.of(), 0, 10, 0);
-    when(configurationFacade.getPage(1L, 0, 10, true)).thenReturn(body);
+    when(configurationFacade.getPage(1L, 0, 10, true, null, null, null)).thenReturn(body);
 
-    var response = controller.getDomainsByIdConfigurations(1L, 0, 10, true);
+    var response = controller.getDomainsByIdConfigurations(1L, 0, 10, true, null, null, null);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isSameAs(body);

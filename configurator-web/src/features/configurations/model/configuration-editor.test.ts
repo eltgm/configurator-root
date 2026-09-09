@@ -21,6 +21,7 @@ const processor: ConfigurationEditorComponent = {
   componentTypeName: 'Processor',
   archived: false,
   quantity: 1,
+  availableQuantity: 4,
 };
 const board: ConfigurationEditorComponent = {
   id: 2,
@@ -29,6 +30,7 @@ const board: ConfigurationEditorComponent = {
   componentTypeName: 'Motherboard',
   archived: false,
   quantity: 1,
+  availableQuantity: 2,
 };
 const otherBoard: ConfigurationEditorComponent = { ...board, id: 3, name: 'Other board' };
 
@@ -95,6 +97,14 @@ describe('configuration editor model', () => {
     });
   });
 
+  it('blocks inventory shortages only when inventory validation is enabled by the caller', () => {
+    expect(getConfigurationEditorEligibility([processor], 'idle', false)).toEqual({
+      allowed: false,
+      reason: 'inventory',
+    });
+    expect(getConfigurationEditorEligibility([processor], 'idle', true)).toEqual({ allowed: true });
+  });
+
   it('blocks a composition above the server limit', () => {
     const components = Array.from({ length: 51 }, (_, index) => ({
       ...processor,
@@ -135,6 +145,15 @@ describe('configuration editor model', () => {
         { componentId: 2, quantity: 1 },
       ],
       trackInventory: true,
+    });
+
+    expect(
+      toUpdateConfigurationRequest({ name: 'Updated', description: '', trackInventory: false }, [
+        { ...processor, quantity: 4 },
+      ]),
+    ).toMatchObject({
+      components: [{ componentId: 1, quantity: 4 }],
+      trackInventory: false,
     });
   });
 });

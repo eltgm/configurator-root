@@ -51,7 +51,9 @@ class ConfiguratorMapperTest {
                             "Board",
                             "Brand",
                             20L,
+                            4,
                             null,
+                            List.of(),
                             List.of(
                                 CompatibilityExplanation.builder()
                                     .source(CompatibilityExplanationSource.MANUAL)
@@ -86,6 +88,7 @@ class ConfiguratorMapperTest {
                         assertThat(component.getName()).isEqualTo("Board");
                         assertThat(component.getBrand()).isEqualTo("Brand");
                         assertThat(component.getComponentTypeId()).isEqualTo(20L);
+                        assertThat(component.getAvailableQuantity()).isEqualTo(4);
                         assertThat(component.getExplanations()).hasSize(3);
                         assertThat(component.getExplanations().getFirst())
                             .satisfies(
@@ -156,7 +159,9 @@ class ConfiguratorMapperTest {
                             "Board",
                             "Brand",
                             20L,
+                            4,
                             null,
+                            List.of(),
                             List.of(
                                 new BaseComponentCompatibility(3L, List.of()),
                                 new BaseComponentCompatibility(1L, List.of())))))));
@@ -171,10 +176,12 @@ class ConfiguratorMapperTest {
                 assertThat(group.getComponents())
                     .singleElement()
                     .satisfies(
-                        component ->
-                            assertThat(component.getCompatibilityByBase())
-                                .extracting(base -> base.getBaseComponentId())
-                                .containsExactly(3L, 1L)));
+                        component -> {
+                          assertThat(component.getAvailableQuantity()).isEqualTo(4);
+                          assertThat(component.getCompatibilityByBase())
+                              .extracting(base -> base.getBaseComponentId())
+                              .containsExactly(3L, 1L);
+                        }));
   }
 
   @Test
@@ -192,7 +199,9 @@ class ConfiguratorMapperTest {
                             "Board",
                             "Brand",
                             20L,
+                            4,
                             null,
+                            List.of(),
                             ConfiguratorCandidateStatus.BLOCKED,
                             List.of(
                                 new ConfiguratorCandidateBaseDecision(
@@ -224,6 +233,7 @@ class ConfiguratorMapperTest {
                     .singleElement()
                     .satisfies(
                         candidate -> {
+                          assertThat(candidate.getAvailableQuantity()).isEqualTo(4);
                           assertThat(candidate.getStatus().getValue()).isEqualTo("BLOCKED");
                           assertThat(candidate.getCompatibilityByBase())
                               .singleElement()

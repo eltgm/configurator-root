@@ -10,7 +10,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { IconArrowDown, IconArrowUp, IconTrash } from '@tabler/icons-react';
-import { useMemo } from 'react';
+import { useMemo, type Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -24,6 +24,9 @@ import classes from './compatibility-rule-form.module.css';
 
 interface CompatibilityRuleConditionFieldsProps {
   index: number;
+  leftInputRef?: Ref<HTMLInputElement>;
+  operatorInputRef?: Ref<HTMLInputElement>;
+  rightInputRef?: Ref<HTMLInputElement>;
   value: CompatibilityRuleConditionFormValue;
   leftAttributes: AttributeDefinition[];
   rightAttributes: AttributeDefinition[];
@@ -60,6 +63,9 @@ function withStaleOption(
 
 export function CompatibilityRuleConditionFields({
   index,
+  leftInputRef,
+  operatorInputRef,
+  rightInputRef,
   value,
   leftAttributes,
   rightAttributes,
@@ -159,6 +165,7 @@ export function CompatibilityRuleConditionFields({
 
         <div className={classes['condition-fields']}>
           <Select
+            ref={leftInputRef}
             label={t('compatibilityRules.form.leftAttribute')}
             placeholder={t('compatibilityRules.form.leftAttributePlaceholder')}
             data={leftOptions}
@@ -186,6 +193,7 @@ export function CompatibilityRuleConditionFields({
             disabled={disabled || loading}
           />
           <Select
+            ref={operatorInputRef}
             label={t('compatibilityRules.form.operator')}
             placeholder={t('compatibilityRules.form.operatorPlaceholder')}
             data={operatorOptions}
@@ -196,6 +204,7 @@ export function CompatibilityRuleConditionFields({
             disabled={disabled || !selectedLeft}
           />
           <Select
+            ref={rightInputRef}
             label={t('compatibilityRules.form.rightAttribute')}
             placeholder={
               selectedLeft

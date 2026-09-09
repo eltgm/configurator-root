@@ -118,6 +118,7 @@ function AttributeField({
               ]}
               value={field.value || null}
               onChange={(value) => field.onChange(value ?? '')}
+              ref={field.ref}
               onBlur={field.onBlur}
               clearable={!attribute.isRequired}
               allowDeselect={!attribute.isRequired}
@@ -134,6 +135,7 @@ function AttributeField({
               data={(attribute.enumValues ?? []).map((value) => ({ value, label: value }))}
               value={field.value || null}
               onChange={(value) => field.onChange(value ?? '')}
+              ref={field.ref}
               onBlur={field.onBlur}
               searchable
               clearable={!attribute.isRequired}
@@ -189,8 +191,8 @@ export function ComponentForm({ domainId, componentTypes, component }: Component
   const componentTypeId = componentTypeIdValue ? Number(componentTypeIdValue) : null;
   const attributesQuery = useAttributesQuery(domainId, componentTypeId);
   const attributes = attributesQuery.data ?? [];
-  const createComponent = useCreateComponentMutation();
-  const updateComponent = useUpdateComponentMutation();
+  const createComponent = useCreateComponentMutation(true);
+  const updateComponent = useUpdateComponentMutation(true);
   const isPending = createComponent.isPending || updateComponent.isPending;
   const { blocker, allowNavigation } = useUnsavedChangesGuard(form.formState.isDirty);
   useRegisterDomainChangeGuard(form.formState.isDirty, allowNavigation);
@@ -251,6 +253,9 @@ export function ComponentForm({ domainId, componentTypes, component }: Component
     <>
       <form onSubmit={(event) => void submit(event)} noValidate>
         <Stack gap="lg">
+          {(createComponent.error ?? updateComponent.error) ? (
+            <ErrorState autoFocus error={createComponent.error ?? updateComponent.error} />
+          ) : null}
           <Paper p="lg" withBorder>
             <Stack gap="md">
               <Title order={2} size="h3">
@@ -272,6 +277,7 @@ export function ComponentForm({ domainId, componentTypes, component }: Component
                       field.onChange(value ?? '');
                       form.setValue('attributes', {}, { shouldDirty: true });
                     }}
+                    ref={field.ref}
                     onBlur={field.onBlur}
                     searchable
                     disabled={isEditing}
@@ -320,6 +326,7 @@ export function ComponentForm({ domainId, componentTypes, component }: Component
                     allowDecimal={false}
                     allowNegative={false}
                     value={field.value}
+                    ref={field.ref}
                     onBlur={field.onBlur}
                     onChange={(value) => {
                       if (typeof value === 'number' && Number.isInteger(value)) {
