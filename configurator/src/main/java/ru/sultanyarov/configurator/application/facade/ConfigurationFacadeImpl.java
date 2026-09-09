@@ -10,6 +10,7 @@ import ru.sultanyarov.configurator.api.inbounds.rest.dto.SavedConfiguration;
 import ru.sultanyarov.configurator.api.inbounds.rest.dto.UpdateConfigurationRequest;
 import ru.sultanyarov.configurator.application.mapper.ConfigurationMapper;
 import ru.sultanyarov.configurator.application.service.ConfigurationService;
+import ru.sultanyarov.configurator.domain.model.ConfigurationListFilter;
 
 @Slf4j
 @Service
@@ -40,10 +41,21 @@ public class ConfigurationFacadeImpl implements ConfigurationFacade {
 
   @Override
   public ConfigurationPage getPage(
-      Long domainId, Integer page, Integer size, Boolean trackInventory) {
+      Long domainId,
+      Integer page,
+      Integer size,
+      Boolean trackInventory,
+      String name,
+      String sortBy,
+      String sortDirection) {
     log.info("Getting configurations in domain {}, page {}, size {}", domainId, page, size);
     return configurationMapper.toDto(
-        configurationService.getPage(domainId, page, size, trackInventory));
+        configurationService.getPage(
+            domainId,
+            page,
+            size,
+            trackInventory,
+            ConfigurationListFilter.of(name, sortBy, sortDirection)));
   }
 
   @Override

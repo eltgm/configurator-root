@@ -11,6 +11,24 @@ describe('ErrorState', () => {
     await i18n.changeLanguage('ru');
   });
 
+  it('focuses a submitted error summary without stealing focus on later renders', () => {
+    const { rerender } = render(
+      <AppProviders>
+        <ErrorState autoFocus error={new TypeError('offline')} />
+        <button>Next field</button>
+      </AppProviders>,
+    );
+    expect(screen.getByRole('alert')).toHaveFocus();
+    screen.getByRole('button', { name: 'Next field' }).focus();
+    rerender(
+      <AppProviders>
+        <ErrorState autoFocus error={new TypeError('offline')} />
+        <button>Next field</button>
+      </AppProviders>,
+    );
+    expect(screen.getByRole('button', { name: 'Next field' })).toHaveFocus();
+  });
+
   it('renders an inventory conflict in English when the site language is English', async () => {
     await i18n.changeLanguage('en');
     const error: ErrorResponse = {

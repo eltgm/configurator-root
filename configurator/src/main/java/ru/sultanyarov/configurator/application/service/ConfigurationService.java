@@ -3,6 +3,7 @@ package ru.sultanyarov.configurator.application.service;
 import ru.sultanyarov.configurator.domain.model.Configuration;
 import ru.sultanyarov.configurator.domain.model.ConfigurationDraft;
 import ru.sultanyarov.configurator.domain.model.ConfigurationExport;
+import ru.sultanyarov.configurator.domain.model.ConfigurationListFilter;
 import ru.sultanyarov.configurator.domain.model.Page;
 
 public interface ConfigurationService {
@@ -12,7 +13,12 @@ public interface ConfigurationService {
 
   void delete(Long id);
 
-  Page<Configuration> getPage(Long domainId, Integer page, Integer size, Boolean trackInventory);
+  Page<Configuration> getPage(
+      Long domainId,
+      Integer page,
+      Integer size,
+      Boolean trackInventory,
+      ConfigurationListFilter filter);
 
   Configuration getById(Long id);
 

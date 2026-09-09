@@ -1,4 +1,5 @@
 import {
+  Accordion,
   Alert,
   Button,
   Checkbox,
@@ -198,24 +199,53 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
               );
             }}
           />
-          <Switch
-            checked={includeTransitive}
-            label={t('configurator.transitiveMode.label')}
-            description={t('configurator.transitiveMode.description')}
-            onChange={(event) => {
-              const enabled = event.currentTarget.checked;
-              setIncludeTransitive(enabled);
-              setMessage(
-                t(
-                  enabled
-                    ? 'configurator.transitiveMode.enabledAnnouncement'
-                    : 'configurator.transitiveMode.disabledAnnouncement',
-                ),
-              );
-            }}
-          />
+          <Accordion variant="default">
+            <Accordion.Item value="advanced">
+              <Accordion.Control>{t('ux.advanced')}</Accordion.Control>
+              <Accordion.Panel>
+                <Switch
+                  checked={includeTransitive}
+                  label={t('configurator.transitiveMode.label')}
+                  description={t('configurator.transitiveMode.description')}
+                  onChange={(event) => {
+                    const enabled = event.currentTarget.checked;
+                    setIncludeTransitive(enabled);
+                    setMessage(
+                      t(
+                        enabled
+                          ? 'configurator.transitiveMode.enabledAnnouncement'
+                          : 'configurator.transitiveMode.disabledAnnouncement',
+                      ),
+                    );
+                  }}
+                />
+              </Accordion.Panel>
+            </Accordion.Item>
+          </Accordion>
         </Stack>
       </Paper>
+      <Group hiddenFrom="lg">
+        <Button
+          variant="light"
+          onClick={() => {
+            const heading = document.getElementById('available-components-title');
+            heading?.scrollIntoView({ block: 'start' });
+            heading?.focus({ preventScroll: true });
+          }}
+        >
+          {t('ux.choose')}
+        </Button>
+        <Button
+          variant="default"
+          onClick={() => {
+            const heading = document.getElementById('current-assembly-title');
+            heading?.scrollIntoView({ block: 'start' });
+            heading?.focus({ preventScroll: true });
+          }}
+        >
+          {t('ux.assembly', { count: draft.items.length })}
+        </Button>
+      </Group>
       <div className={classes.workspace}>
         <CurrentAssembly
           domainId={domainId}
@@ -279,7 +309,7 @@ function ConfiguratorWorkspace({ domainId }: { domainId: number }) {
           }}
         />
         <AvailableComponentBrowser
-          key={`${domainId}:${includeTransitive}:${replacementTarget?.id ?? 'default'}:${componentIds.join(',')}`}
+          key={domainId}
           domainId={domainId}
           componentTypes={componentTypes}
           componentTypesLoading={componentTypesQuery.isPending}
@@ -358,7 +388,7 @@ export function ConfiguratorPage() {
         description={t('configurator.page.description', { domain: selectedDomain?.name ?? '' })}
       />
       <Alert color="blue" variant="light" icon={<IconInfoCircle aria-hidden="true" />}>
-        {t('configurator.page.scopeNotice')}
+        {t('ux.draft')}
       </Alert>
       {selectedDomainId === null ? null : (
         <ConfiguratorWorkspace key={selectedDomainId} domainId={selectedDomainId} />

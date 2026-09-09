@@ -37,7 +37,10 @@ function ComponentPreview({
   compact?: boolean;
 }) {
   return (
-    <Box className={compact ? classes['preview-compact'] : classes.preview}>
+    <Box
+      data-empty={!component.primaryImage || undefined}
+      className={compact ? classes['preview-compact'] : classes.preview}
+    >
       <ComponentThumbnail image={component.primaryImage} />
     </Box>
   );

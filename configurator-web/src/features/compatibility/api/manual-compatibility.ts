@@ -16,9 +16,10 @@ interface CreateCompatibilityLinkVariables {
   body: CreateCompatibilityLinkRequest;
 }
 
-export function useCreateCompatibilityLinkMutation() {
+export function useCreateCompatibilityLinkMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     mutationFn: ({ domainId, body }: CreateCompatibilityLinkVariables) =>
       apiData(
         postDomainsByIdCompatibility({
@@ -57,9 +58,10 @@ interface DeleteCompatibilityLinkVariables {
   linkId: number;
 }
 
-export function useDeleteCompatibilityLinkMutation() {
+export function useDeleteCompatibilityLinkMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     mutationFn: ({ domainId, linkId }: DeleteCompatibilityLinkVariables) =>
       apiData(
         deleteDomainsByIdCompatibilityByLinkId({

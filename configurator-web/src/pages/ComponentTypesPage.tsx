@@ -63,8 +63,8 @@ export function ComponentTypesPage() {
   const [editingAttribute, setEditingAttribute] = useState<AttributeDefinition>();
   const [deletingType, setDeletingType] = useState<ComponentType>();
   const [detachingAttribute, setDetachingAttribute] = useState<AttributeDefinition>();
-  const deleteType = useDeleteComponentTypeMutation();
-  const detachAttribute = useDetachAttributeMutation();
+  const deleteType = useDeleteComponentTypeMutation(true);
+  const detachAttribute = useDetachAttributeMutation(true);
   const title = t('componentTypes.page.title');
   useDocumentTitle(title, t('app.name'));
 
@@ -231,7 +231,10 @@ export function ComponentTypesPage() {
                       aria-label={t('componentTypes.actions.deleteNamed', {
                         name: selectedType.name,
                       })}
-                      onClick={() => setDeletingType(selectedType)}
+                      onClick={() => {
+                        deleteType.reset();
+                        setDeletingType(selectedType);
+                      }}
                     >
                       <IconTrash size={18} />
                     </ActionIcon>
@@ -351,7 +354,10 @@ export function ComponentTypesPage() {
                               aria-label={t('attributes.actions.detachNamed', {
                                 name: attribute.label,
                               })}
-                              onClick={() => setDetachingAttribute(attribute)}
+                              onClick={() => {
+                                detachAttribute.reset();
+                                setDetachingAttribute(attribute);
+                              }}
                             >
                               <IconUnlink size={18} />
                             </ActionIcon>
@@ -409,6 +415,7 @@ export function ComponentTypesPage() {
         closeOnEscape={!deleteType.isPending}
       >
         <Stack gap="md">
+          {deleteType.error ? <ErrorState error={deleteType.error} /> : null}
           <Text>{t('componentTypes.delete.description', { name: deletingType?.name ?? '' })}</Text>
           <Text size="sm" c="red">
             {t('componentTypes.delete.warning')}
@@ -437,6 +444,7 @@ export function ComponentTypesPage() {
         closeOnEscape={!detachAttribute.isPending}
       >
         <Stack gap="md">
+          {detachAttribute.error ? <ErrorState error={detachAttribute.error} /> : null}
           <Text>
             {t('attributes.detach.description', { name: detachingAttribute?.label ?? '' })}
           </Text>

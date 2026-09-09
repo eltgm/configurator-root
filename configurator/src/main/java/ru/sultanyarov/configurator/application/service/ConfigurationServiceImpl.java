@@ -30,6 +30,7 @@ import ru.sultanyarov.configurator.domain.model.ConfigurationComponent;
 import ru.sultanyarov.configurator.domain.model.ConfigurationComponentItem;
 import ru.sultanyarov.configurator.domain.model.ConfigurationDraft;
 import ru.sultanyarov.configurator.domain.model.ConfigurationExport;
+import ru.sultanyarov.configurator.domain.model.ConfigurationListFilter;
 import ru.sultanyarov.configurator.domain.model.Domain;
 import ru.sultanyarov.configurator.domain.model.Page;
 
@@ -118,7 +119,11 @@ public class ConfigurationServiceImpl implements ConfigurationService {
   @Override
   @Transactional(readOnly = true)
   public Page<Configuration> getPage(
-      Long domainId, Integer page, Integer size, Boolean trackInventory) {
+      Long domainId,
+      Integer page,
+      Integer size,
+      Boolean trackInventory,
+      ConfigurationListFilter filter) {
     int resolvedPage = page == null ? DEFAULT_PAGE : page;
     int resolvedSize = size == null ? DEFAULT_SIZE : size;
     validatePagination(resolvedPage, resolvedSize);
@@ -128,7 +133,8 @@ public class ConfigurationServiceImpl implements ConfigurationService {
         currentUserProvider.getCurrentUserId(),
         trackInventory,
         resolvedPage,
-        resolvedSize);
+        resolvedSize,
+        filter);
   }
 
   @Override

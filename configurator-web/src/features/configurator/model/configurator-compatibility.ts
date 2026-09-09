@@ -15,6 +15,7 @@ export interface ConfiguratorComponentSelection {
   componentTypeId: number;
   availableQuantity: number;
   primaryImage?: Component['primaryImage'];
+  attributes?: Component['attributes'];
 }
 
 export interface ConfiguratorCandidate extends ConfiguratorComponentSelection {
@@ -109,6 +110,7 @@ export function candidatesFromIntersectionResponse(response: ConfiguratorInterse
       );
       return {
         primaryImage: component.primaryImage,
+        attributes: component.attributes,
         id: component.id,
         name: component.name,
         ...(component.brand === undefined ? {} : { brand: component.brand }),
@@ -133,6 +135,7 @@ export function candidatesFromAssemblyResponse(response: ConfiguratorCandidatesR
           .map((entry) => toBaseEvidence(entry.baseComponentId, entry.explanations));
         return {
           primaryImage: component.primaryImage,
+          attributes: component.attributes,
           id: component.id,
           name: component.name,
           ...(component.brand === undefined ? {} : { brand: component.brand }),
@@ -153,6 +156,7 @@ export function blockedCandidatesFromAssemblyResponse(response: ConfiguratorCand
       .filter((component) => component.status === 'BLOCKED')
       .map<ConfiguratorBlockedCandidate>((component) => ({
         primaryImage: component.primaryImage,
+        attributes: component.attributes,
         id: component.id,
         name: component.name,
         ...(component.brand === undefined ? {} : { brand: component.brand }),

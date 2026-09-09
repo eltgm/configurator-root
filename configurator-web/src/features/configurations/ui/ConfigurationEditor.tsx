@@ -156,7 +156,7 @@ export function ConfigurationEditor({ configuration, componentTypes }: Configura
   );
   const compositionDirty = configurationComponentsChanged(baselineComponents, components);
   const isDirty = form.formState.isDirty || compositionDirty;
-  const updateMutation = useUpdateConfigurationMutation();
+  const updateMutation = useUpdateConfigurationMutation(true);
   const { blocker, allowNavigation } = useUnsavedChangesGuard(isDirty);
   useRegisterDomainChangeGuard(isDirty, allowNavigation);
   const replacementTarget = components.find((component) => component.id === replacementComponentId);
@@ -330,7 +330,6 @@ export function ConfigurationEditor({ configuration, componentTypes }: Configura
                 data-replacing={Boolean(replacementTarget) || undefined}
               >
                 <AvailableComponentBrowser
-                  key={replacementComponentId ?? 'add'}
                   headingRef={browserHeadingRef}
                   domainId={configuration.domainId}
                   componentTypes={componentTypes}

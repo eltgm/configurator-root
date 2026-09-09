@@ -1,3 +1,4 @@
+import { ComponentQuickView } from '@/features/components/ui/ComponentQuickView';
 import {
   Accordion,
   Alert,
@@ -14,9 +15,9 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import { useDebouncedValue } from '@mantine/hooks';
+import { useDebouncedValue, useMergedRef } from '@mantine/hooks';
 import { IconAlertTriangle, IconSearch, IconX } from '@tabler/icons-react';
-import { useMemo, useState, type Ref } from 'react';
+import { useMemo, useRef, useState, type Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
@@ -83,6 +84,10 @@ export function AvailableComponentBrowser({
   onSelect,
 }: AvailableComponentBrowserProps) {
   const { t } = useTranslation();
+  const localHeadingRef = useRef<HTMLHeadingElement>(null);
+  const mergedHeadingRef = useMergedRef(localHeadingRef, headingRef);
+  const [blockedLimit, setBlockedLimit] = useState(componentCatalogPageSize);
+  const [previewId, setPreviewId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 300);
   const [componentTypeId, setComponentTypeId] = useState<number>();
@@ -180,6 +185,9 @@ export function AvailableComponentBrowser({
   const isPending = catalogMode ? catalogQuery.isPending : contextQuery.isPending;
   const isRefreshing = catalogMode ? catalogQuery.isFetching : contextQuery.isFetching;
   const error = catalogMode ? catalogQuery.error : contextQuery.error;
+  if (!isRefreshing && !isPending && !error && page > Math.max(0, totalPages - 1)) {
+    setPage(Math.max(0, totalPages - 1));
+  }
   const totalItems = catalogMode
     ? (catalogQuery.data?.totalItems ?? 0)
     : filteredCompatibilityCandidates.length;
@@ -221,8 +229,8 @@ export function AvailableComponentBrowser({
           <Group justify="space-between" align="flex-start" wrap="wrap">
             <Stack gap={4} className={classes['browser-heading']}>
               <Title
-                ref={headingRef}
-                tabIndex={headingRef ? -1 : undefined}
+                ref={mergedHeadingRef}
+                tabIndex={-1}
                 id="available-components-title"
                 order={2}
                 size="h3"
@@ -369,8 +377,14 @@ export function AvailableComponentBrowser({
                       catalogMode={catalogMode}
                       replacementMode={Boolean(replacementTarget)}
                       trackInventory={trackInventory}
+                      onQuickView={setPreviewId}
                       onExplain={setExplanationCandidate}
-                      onSelect={onSelect}
+                      onSelect={(component) => {
+                        onSelect(component);
+                        if (!headingRef || !replacementTarget) {
+                          requestAnimationFrame(() => localHeadingRef.current?.focus());
+                        }
+                      }}
                     />
                   ))}
                 </SimpleGrid>
@@ -386,10 +400,26 @@ export function AvailableComponentBrowser({
                     </Accordion.Control>
                     <Accordion.Panel>
                       <Stack gap="sm">
+                        <Text size="sm" aria-live="polite">
+                          {t('ux.shown', {
+                            shown: Math.min(blockedLimit, blockedCandidates.length),
+                            total: blockedCandidates.length,
+                          })}
+                        </Text>
+                        {blockedLimit < blockedCandidates.length ? (
+                          <Button
+                            variant="default"
+                            onClick={() =>
+                              setBlockedLimit((value) => value + componentCatalogPageSize)
+                            }
+                          >
+                            {t('ux.more')}
+                          </Button>
+                        ) : null}
                         <Text size="sm" c="dimmed">
                           {t('configurator.browser.unavailableDescription')}
                         </Text>
-                        {blockedCandidates.slice(0, componentCatalogPageSize).map((candidate) => (
+                        {blockedCandidates.slice(0, blockedLimit).map((candidate) => (
                           <Paper key={candidate.id} p="sm" withBorder>
                             <Stack gap="xs">
                               <Group justify="space-between" align="flex-start">
@@ -451,6 +481,11 @@ export function AvailableComponentBrowser({
           )}
         </Stack>
       </Paper>
+      <ComponentQuickView
+        domainId={domainId}
+        componentId={previewId}
+        onClose={() => setPreviewId(null)}
+      />
       <CompatibilityExplanationDrawer
         opened={Boolean(explanationCandidate)}
         onClose={() => setExplanationCandidate(undefined)}

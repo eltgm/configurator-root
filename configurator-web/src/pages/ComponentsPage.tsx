@@ -13,9 +13,10 @@ import {
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { IconCards, IconList, IconPlus, IconSearch } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { rememberCatalogUrl } from '@/features/components/model/catalog-return';
 
 import { useComponentTypesQuery } from '@/features/component-types/api/component-types';
 import {
@@ -38,14 +39,38 @@ import { EmptyState, ErrorState, LoadingState, PageHeader } from '@/shared/ui';
 
 import classes from './components-page.module.css';
 
-export function ComponentsPage() {
+function ComponentsPageContent() {
   const { t } = useTranslation();
   const { selectedDomainId, selectedDomain } = useDomainContext();
-  const [search, setSearch] = useState('');
+  const [params, setParams] = useSearchParams();
+  const search = params.get('q') ?? '';
   const [debouncedSearch] = useDebouncedValue(search, 300);
-  const [requestedTypeId, setRequestedTypeId] = useState<number>();
-  const [archived, setArchived] = useState(false);
-  const [page, setPage] = useState(0);
+  const typeValue = Number(params.get('type'));
+  const requestedTypeId = Number.isSafeInteger(typeValue) && typeValue > 0 ? typeValue : undefined;
+  const archived = params.get('archived') === 'true';
+  const pageValue = Number(params.get('page'));
+  const page = Number.isSafeInteger(pageValue) && pageValue >= 0 ? pageValue : 0;
+  const updateParam = (key: string, value: string | undefined, replace = false) => {
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        if (value) next.set(key, value);
+        else next.delete(key);
+        if (key !== 'page') next.delete('page');
+        return next;
+      },
+      { replace, preventScrollReset: replace },
+    );
+  };
+  const setSearch = (value: string) => updateParam('q', value, true);
+  const setRequestedTypeId = (value: number | undefined) =>
+    updateParam('type', value === undefined ? undefined : String(value));
+  const setArchived = (value: boolean) => updateParam('archived', value ? 'true' : undefined);
+  const setPage = (value: number) => updateParam('page', value ? String(value) : undefined);
+  useEffect(
+    () => rememberCatalogUrl(selectedDomainId, params.toString()),
+    [selectedDomainId, params],
+  );
   const [view, setView] = useState<ComponentCatalogView>(readComponentCatalogView);
   const [componentToArchive, setComponentToArchive] = useState<Component>();
   const componentTypesQuery = useComponentTypesQuery(selectedDomainId);
@@ -60,7 +85,7 @@ export function ComponentsPage() {
     page,
     size: componentCatalogPageSize,
   });
-  const archiveComponent = useArchiveComponentMutation();
+  const archiveComponent = useArchiveComponentMutation(true);
   const restoreComponent = useRestoreComponentMutation();
   const title = t('components.page.title');
   useDocumentTitle(title, t('app.name'));
@@ -73,13 +98,14 @@ export function ComponentsPage() {
 
   const changeArchiveMode = (nextMode: string) => {
     setArchived(nextMode === 'archive');
-    setPage(0);
   };
 
   const resetFilters = () => {
-    setSearch('');
-    setRequestedTypeId(undefined);
-    setPage(0);
+    setParams((current) => {
+      const next = new URLSearchParams(current);
+      ['q', 'type', 'page'].forEach((key) => next.delete(key));
+      return next;
+    });
   };
 
   const confirmArchive = async () => {
@@ -167,7 +193,6 @@ export function ComponentsPage() {
               value={search}
               onChange={(event) => {
                 setSearch(event.currentTarget.value);
-                setPage(0);
               }}
             />
             <Select
@@ -177,7 +202,6 @@ export function ComponentsPage() {
               value={componentTypeId === undefined ? null : String(componentTypeId)}
               onChange={(value) => {
                 setRequestedTypeId(value === null ? undefined : Number(value));
-                setPage(0);
               }}
               clearable
               searchable
@@ -268,7 +292,10 @@ export function ComponentsPage() {
           pendingComponentId={
             restoreComponent.isPending ? restoreComponent.variables?.id : undefined
           }
-          onArchive={setComponentToArchive}
+          onArchive={(component) => {
+            archiveComponent.reset();
+            setComponentToArchive(component);
+          }}
           onRestore={(component) => void restore(component)}
         />
       ) : null}
@@ -296,6 +323,7 @@ export function ComponentsPage() {
         closeOnEscape={!archiveComponent.isPending}
       >
         <Stack gap="md">
+          {archiveComponent.error ? <ErrorState error={archiveComponent.error} /> : null}
           <Text>
             {t('components.archive.description', { name: componentToArchive?.name ?? '' })}
           </Text>
@@ -322,4 +350,9 @@ export function ComponentsPage() {
       </Modal>
     </Stack>
   );
+}
+
+export function ComponentsPage() {
+  const { selectedDomainId } = useDomainContext();
+  return <ComponentsPageContent key={selectedDomainId} />;
 }

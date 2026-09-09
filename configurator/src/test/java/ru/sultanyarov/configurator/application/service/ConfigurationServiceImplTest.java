@@ -32,6 +32,7 @@ import ru.sultanyarov.configurator.domain.model.Configuration;
 import ru.sultanyarov.configurator.domain.model.ConfigurationComponent;
 import ru.sultanyarov.configurator.domain.model.ConfigurationComponentItem;
 import ru.sultanyarov.configurator.domain.model.ConfigurationDraft;
+import ru.sultanyarov.configurator.domain.model.ConfigurationListFilter;
 import ru.sultanyarov.configurator.domain.model.Domain;
 import ru.sultanyarov.configurator.domain.model.Page;
 
@@ -326,18 +327,24 @@ class ConfigurationServiceImplTest {
     Page<Configuration> page = new Page<>(List.of(), 0, 10, 0);
     when(domainService.getById(1L)).thenReturn(domain());
     when(currentUserProvider.getCurrentUserId()).thenReturn(42L);
-    when(configurationRepository.findPageByDomainIdAndUserId(1L, 42L, null, 0, 10))
+    when(configurationRepository.findPageByDomainIdAndUserId(
+            1L, 42L, null, 0, 10, ConfigurationListFilter.of(null, null, null)))
         .thenReturn(page);
 
-    assertThat(service.getPage(1L, null, null, null)).isSameAs(page);
-    verify(configurationRepository).findPageByDomainIdAndUserId(1L, 42L, null, 0, 10);
+    assertThat(service.getPage(1L, null, null, null, ConfigurationListFilter.of(null, null, null)))
+        .isSameAs(page);
+    verify(configurationRepository)
+        .findPageByDomainIdAndUserId(
+            1L, 42L, null, 0, 10, ConfigurationListFilter.of(null, null, null));
   }
 
   @Test
   void shouldRejectInvalidPagination() {
-    assertThatThrownBy(() -> service.getPage(1L, -1, 10, null))
+    assertThatThrownBy(
+            () -> service.getPage(1L, -1, 10, null, ConfigurationListFilter.of(null, null, null)))
         .isInstanceOf(ValidationException.class);
-    assertThatThrownBy(() -> service.getPage(1L, 0, 101, null))
+    assertThatThrownBy(
+            () -> service.getPage(1L, 0, 101, null, ConfigurationListFilter.of(null, null, null)))
         .isInstanceOf(ValidationException.class);
   }
 

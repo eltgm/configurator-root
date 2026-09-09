@@ -187,7 +187,10 @@ test('explains a transitive candidate and returns the draft to strict validation
 
   await page.goto('/configurator');
 
-  const mode = page.getByRole('switch', { name: /Учитывать транзитивную совместимость/ });
+  await page.getByRole('button', { name: 'Дополнительные параметры' }).click();
+  const mode = page.getByRole('switch', {
+    name: /Показать варианты через промежуточные компоненты/,
+  });
   await expect(mode).not.toBeChecked();
   await mode.check();
   const browser = page.getByRole('region', { name: 'Доступные компоненты' });

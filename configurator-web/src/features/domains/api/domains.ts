@@ -47,9 +47,10 @@ export function useDomainsQuery() {
   });
 }
 
-export function useCreateDomainMutation() {
+export function useCreateDomainMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     mutationFn: (body: CreateDomainRequest) =>
       apiData(postDomains({ client, body, throwOnError: true })),
     onSuccess: async (createdDomain) => {
@@ -81,9 +82,10 @@ export interface UpdateDomainVariables {
   body: UpdateDomainRequest;
 }
 
-export function useUpdateDomainMutation() {
+export function useUpdateDomainMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     mutationFn: ({ id, body }: UpdateDomainVariables) =>
       apiData(putDomainsById({ client, path: { id }, body, throwOnError: true })),
     onSuccess: async (updatedDomain) => {
@@ -95,9 +97,10 @@ export function useUpdateDomainMutation() {
   });
 }
 
-export function useDeleteDomainMutation() {
+export function useDeleteDomainMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     mutationFn: (id: number) =>
       apiData(deleteDomainsById({ client, path: { id }, throwOnError: true })),
     onSuccess: async (_data, deletedDomainId) => {

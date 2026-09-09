@@ -4,6 +4,17 @@ import { AppError } from '@/shared/api/errors';
 import { createAppQueryClient, shouldRetryQuery } from '@/shared/query/query-client';
 
 describe('application QueryClient', () => {
+  it('keeps locally handled mutation errors out of global notifications', async () => {
+    const notify = vi.fn();
+    const queryClient = createAppQueryClient(notify);
+    const mutation = queryClient.getMutationCache().build(queryClient, {
+      mutationFn: () => Promise.reject(new Error('Conflict')),
+      meta: { errorHandledLocally: true },
+    });
+    await expect(mutation.execute(undefined)).rejects.toThrow('Conflict');
+    expect(notify).not.toHaveBeenCalled();
+  });
+
   it('retries only the first network or server failure', () => {
     const serverError = new AppError({
       kind: 'api',

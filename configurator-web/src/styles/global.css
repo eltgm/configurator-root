@@ -63,3 +63,11 @@ svg {
     transition-duration: 0.01ms !important;
   }
 }
+
+@media (pointer: coarse) {
+  [class~='mantine-ActionIcon-root'],
+  [class~='mantine-Button-root'] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

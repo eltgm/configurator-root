@@ -825,12 +825,29 @@ async function installMockApi(page: Page) {
     const url = new URL(request.url());
     const pageNumber = Number(url.searchParams.get('page') ?? 0);
     const size = Number(url.searchParams.get('size') ?? 10);
+    const name = (url.searchParams.get('name') ?? '').trim().toLocaleLowerCase();
+    const domainId = Number(url.pathname.split('/domains/')[1]?.split('/')[0]);
+    const inventory = url.searchParams.get('trackInventory');
+    const filtered = configurations.filter(
+      (item) =>
+        item.domainId === domainId &&
+        item.name.toLocaleLowerCase().includes(name) &&
+        (inventory === null || item.trackInventory === (inventory === 'true')),
+    );
+    const direction = url.searchParams.get('sortDirection') === 'asc' ? 1 : -1;
+    filtered.sort(
+      (a, b) =>
+        direction *
+          (url.searchParams.get('sortBy') === 'name'
+            ? a.name.toLocaleLowerCase().localeCompare(b.name.toLocaleLowerCase())
+            : a.createdAt.localeCompare(b.createdAt)) || b.id - a.id,
+    );
     await route.fulfill({
       json: {
-        items: configurations.slice(pageNumber * size, pageNumber * size + size),
+        items: filtered.slice(pageNumber * size, pageNumber * size + size),
         page: pageNumber,
         size,
-        totalItems: configurations.length,
+        totalItems: filtered.length,
       },
     });
   });

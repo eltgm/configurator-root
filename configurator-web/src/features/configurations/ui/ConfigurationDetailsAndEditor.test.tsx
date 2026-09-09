@@ -515,7 +515,7 @@ describe('configuration details and editor', () => {
     const candidateCard = candidateName.closest('[data-with-border="true"]');
     expect(candidateCard).not.toBeNull();
     await user.click(
-      within(candidateCard as HTMLElement).getByRole('button', { name: 'Добавить' }),
+      within(candidateCard as HTMLElement).getByRole('button', { name: /^Добавить .+ в сборку$/ }),
     );
 
     expect(

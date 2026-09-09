@@ -257,6 +257,44 @@ function renderPage() {
 afterEach(() => window.localStorage.clear());
 
 describe('configurator workspace', () => {
+  it('opens complete attributes in quick view without losing candidate search', async () => {
+    const user = userEvent.setup();
+    useHandlers();
+    server.use(
+      http.get(`${testApiBaseUrl}/components/101`, () =>
+        HttpResponse.json({
+          ...ryzen,
+          description: 'Quiet processor',
+          attributes: [
+            {
+              attributeDefinitionId: 1,
+              name: 'cores',
+              label: 'Ядра',
+              dataType: 'NUMBER',
+              value: '8',
+            },
+          ],
+        }),
+      ),
+    );
+    renderPage();
+    const browser = await screen.findByRole('region', { name: 'Доступные компоненты' });
+    await user.type(within(browser).getByRole('textbox'), 'Ryzen');
+    await user.click(
+      await within(browser).findByRole('button', { name: 'Быстрый просмотр: Ryzen 7 7800X3D' }),
+    );
+    const drawer = await screen.findByRole('dialog', { name: 'Ryzen 7 7800X3D' });
+    expect(await within(drawer).findByRole('rowheader', { name: 'Ядра' })).toBeInTheDocument();
+    expect(within(drawer).getByText('Quiet processor')).toBeInTheDocument();
+    expect(within(drawer).getByRole('link', { name: 'Открыть полную карточку' })).toHaveAttribute(
+      'href',
+      '/components/101',
+    );
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(drawer).not.toBeInTheDocument());
+    expect(within(browser).getByRole('textbox')).toHaveValue('Ryzen');
+  });
+
   it('saves a single-component assembly, clears its draft and opens the list', async () => {
     const user = userEvent.setup();
     let requestBody: unknown;
@@ -311,7 +349,13 @@ describe('configurator workspace', () => {
       { timeout: 5000 },
     );
     await user.click(
-      (await within(browser).findAllByRole('button', { name: 'Добавить' }, { timeout: 5000 }))[0]!,
+      (
+        await within(browser).findAllByRole(
+          'button',
+          { name: /^Добавить .+ в сборку$/ },
+          { timeout: 5000 },
+        )
+      )[0]!,
     );
     const assembly = screen.getByRole('region', { name: 'Текущая сборка' });
     await within(assembly).findByText('Сборка корректна', {}, { timeout: 5000 });
@@ -349,7 +393,9 @@ describe('configurator workspace', () => {
       within(assembly).getByRole('heading', { name: 'Сборка пока пуста' }),
     ).toBeInTheDocument();
 
-    const addButtons = await within(browser).findAllByRole('button', { name: 'Добавить' });
+    const addButtons = await within(browser).findAllByRole('button', {
+      name: /^Добавить .+ в сборку$/,
+    });
     await user.click(addButtons[0]!);
     expect(await within(assembly).findByText(ryzen.name)).toBeInTheDocument();
     expect(
@@ -363,7 +409,9 @@ describe('configurator workspace', () => {
     expect(await within(assembly).findByText('Сборка корректна')).toBeInTheDocument();
     browser = screen.getByRole('region', { name: 'Доступные компоненты' });
     expect(await within(browser).findByText(radeon.name)).toBeInTheDocument();
-    await user.click(within(browser).getAllByRole('button', { name: 'Добавить' })[0]!);
+    await user.click(
+      within(browser).getAllByRole('button', { name: /^Добавить .+ в сборку$/ })[0]!,
+    );
     expect(await within(assembly).findByText(radeon.name)).toBeInTheDocument();
     browser = screen.getByRole('region', { name: 'Доступные компоненты' });
     expect(await within(browser).findByText(motherboard.name)).toBeInTheDocument();
@@ -372,7 +420,9 @@ describe('configurator workspace', () => {
     );
     expect(motherboardCard).not.toBeNull();
     await user.click(
-      within(motherboardCard as HTMLElement).getByRole('button', { name: 'Добавить' }),
+      within(motherboardCard as HTMLElement).getByRole('button', {
+        name: /^Добавить .+ в сборку$/,
+      }),
     );
     expect(await within(assembly).findByText(motherboard.name)).toBeInTheDocument();
 
@@ -422,7 +472,7 @@ describe('configurator workspace', () => {
 
     expect(within(motherboardCard as HTMLElement).getByText('Нет в наличии')).toBeInTheDocument();
     expect(
-      within(motherboardCard as HTMLElement).getByRole('button', { name: 'Недоступно' }),
+      within(motherboardCard as HTMLElement).getByRole('button', { name: /^Недоступно:/ }),
     ).toBeDisabled();
     expect(
       JSON.parse(window.localStorage.getItem(configuratorDraftStorageKey(domainId)) ?? ''),
@@ -431,7 +481,9 @@ describe('configurator workspace', () => {
     const ryzenCard = (await within(browser).findByText(ryzen.name)).closest(
       '[data-with-border="true"]',
     );
-    await user.click(within(ryzenCard as HTMLElement).getByRole('button', { name: 'Добавить' }));
+    await user.click(
+      within(ryzenCard as HTMLElement).getByRole('button', { name: /^Добавить .+ в сборку$/ }),
+    );
     const assembly = screen.getByRole('region', { name: 'Текущая сборка' });
     expect(await within(assembly).findByText('Доступно: 8 · выбрано: 1')).toBeInTheDocument();
     expect(within(assembly).getByLabelText(`Количество «${ryzen.name}»`)).toBeInTheDocument();
@@ -469,7 +521,9 @@ describe('configurator workspace', () => {
     renderPage();
 
     let browser = await screen.findByRole('region', { name: 'Доступные компоненты' });
-    await user.click((await within(browser).findAllByRole('button', { name: 'Добавить' }))[0]!);
+    await user.click(
+      (await within(browser).findAllByRole('button', { name: /^Добавить .+ в сборку$/ }))[0]!,
+    );
     browser = screen.getByRole('region', { name: 'Доступные компоненты' });
     const unavailableControl = await within(browser).findByRole('button', {
       name: 'Недоступные варианты: 1',
@@ -482,7 +536,7 @@ describe('configurator workspace', () => {
     const blockedCard = blockedCandidate.closest('[data-with-border="true"]');
     expect(blockedCard).not.toBeNull();
     expect(
-      within(blockedCard as HTMLElement).queryByRole('button', { name: 'Добавить' }),
+      within(blockedCard as HTMLElement).queryByRole('button', { name: /^Добавить .+ в сборку$/ }),
     ).not.toBeInTheDocument();
     expect(within(browser).getByText(/Недостаточная мощность/)).toBeInTheDocument();
     expect(within(browser).getByText('Заблокирован')).toBeInTheDocument();
@@ -617,7 +671,9 @@ describe('configurator workspace', () => {
       useHandlers();
       renderPage();
       const browser = await screen.findByRole('region', { name: 'Доступные компоненты' });
-      const addButtons = await within(browser).findAllByRole('button', { name: 'Добавить' });
+      const addButtons = await within(browser).findAllByRole('button', {
+        name: /^Добавить .+ в сборку$/,
+      });
       await user.click(addButtons[0]!);
 
       expect(await screen.findByText('Черновик не сохраняется')).toBeInTheDocument();
@@ -749,7 +805,9 @@ describe('configurator workspace', () => {
     renderPage();
 
     let browser = await screen.findByRole('region', { name: 'Доступные компоненты' });
-    await user.click((await within(browser).findAllByRole('button', { name: 'Добавить' }))[0]!);
+    await user.click(
+      (await within(browser).findAllByRole('button', { name: /^Добавить .+ в сборку$/ }))[0]!,
+    );
     browser = screen.getByRole('region', { name: 'Доступные компоненты' });
 
     await user.click(
@@ -762,7 +820,12 @@ describe('configurator workspace', () => {
     await user.keyboard('{Escape}');
     await waitFor(() => expect(drawer).not.toBeInTheDocument());
 
-    await user.click(screen.getByRole('switch', { name: /^Учитывать транзитивную совместимость/ }));
+    await user.click(screen.getByRole('button', { name: 'Дополнительные параметры' }));
+    await user.click(
+      await screen.findByRole('switch', {
+        name: /^Показать варианты через промежуточные компоненты/,
+      }),
+    );
     browser = screen.getByRole('region', { name: 'Доступные компоненты' });
     expect(await within(browser).findByText(motherboard.name)).toBeInTheDocument();
     expect(within(browser).getByText('Транзитивная совместимость')).toBeInTheDocument();
@@ -775,7 +838,11 @@ describe('configurator workspace', () => {
     await user.keyboard('{Escape}');
 
     browser = screen.getByRole('region', { name: 'Доступные компоненты' });
-    await user.click(within(browser).getAllByRole('button', { name: 'Добавить' }).at(-1)!);
+    await user.click(
+      within(browser)
+        .getAllByRole('button', { name: /^Добавить .+ в сборку$/ })
+        .at(-1)!,
+    );
     const assembly = screen.getByRole('region', { name: 'Текущая сборка' });
     expect(await within(assembly).findByText('Сборка не связана')).toBeInTheDocument();
 
@@ -785,7 +852,11 @@ describe('configurator workspace', () => {
     ).toBeInTheDocument();
     await user.keyboard('{Escape}');
 
-    await user.click(screen.getByRole('switch', { name: /^Учитывать транзитивную совместимость/ }));
+    await user.click(
+      await screen.findByRole('switch', {
+        name: /^Показать варианты через промежуточные компоненты/,
+      }),
+    );
     expect(await within(assembly).findByText('Сборка не связана')).toBeInTheDocument();
   });
 });

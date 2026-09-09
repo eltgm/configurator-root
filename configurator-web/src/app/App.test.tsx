@@ -22,6 +22,24 @@ afterEach(async () => {
 });
 
 describe('application shell', () => {
+  it('opens the complete mobile settings panel and offers consistent help', async () => {
+    const user = userEvent.setup();
+    renderRoute('/help');
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Как собрать конфигурацию' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '5. Подберите и сохраните сборку' })).toHaveAttribute(
+      'href',
+      '/configurator',
+    );
+    await user.click(screen.getByRole('button', { name: 'Настройка' }));
+    const panel = await screen.findByRole('dialog', { name: 'Разделы настроек' });
+    expect(within(panel).getAllByRole('link')).toHaveLength(7);
+    await user.click(within(panel).getByRole('link', { name: 'Атрибуты' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Атрибуты' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
   it('redirects the root route and renders accessible desktop and mobile navigation', async () => {
     const { router } = renderRoute('/');
 
@@ -97,6 +115,7 @@ describe('application shell', () => {
   it('persists the selected color scheme', async () => {
     const user = userEvent.setup();
     renderRoute('/missing-page');
+    await screen.findByRole('button', { name: 'Предметная область: Сборка ПК' });
 
     await user.click(screen.getByRole('button', { name: 'Настройки интерфейса' }));
     await user.click(await screen.findByRole('menuitem', { name: 'Тёмная' }));

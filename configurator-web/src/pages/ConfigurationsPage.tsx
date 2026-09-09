@@ -1,4 +1,15 @@
-import { Button, Group, Pagination, Progress, Stack, Tabs, Text } from '@mantine/core';
+import { useDebouncedValue } from '@mantine/hooks';
+import {
+  Button,
+  Group,
+  TextInput,
+  Select,
+  Pagination,
+  Progress,
+  Stack,
+  Tabs,
+  Text,
+} from '@mantine/core';
 import { IconAssembly } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,7 +34,22 @@ function ConfigurationPageContent({ domainId }: { domainId: number }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [page, setPage] = useState(0);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch] = useDebouncedValue(search, 300);
+  const [sort, setSort] = useState('createdAt:desc');
+  const searchOptions = {
+    name: debouncedSearch.trim(),
+    sortBy: sort.startsWith('name:') ? ('name' as const) : ('createdAt' as const),
+    sortDirection: sort.endsWith(':asc') ? ('asc' as const) : ('desc' as const),
+  };
+  const resetFilters = () => {
+    setSearch('');
+    setInventoryFilter('all');
+    setSort('createdAt:desc');
+    setPage(0);
+  };
   const [inventoryFilter, setInventoryFilter] = useState<ConfigurationInventoryFilter>('all');
+  const hasFilters = Boolean(search.trim()) || inventoryFilter !== 'all';
   const [copyingConfiguration, setCopyingConfiguration] = useState<Configuration>();
   const [deletingConfiguration, setDeletingConfiguration] = useState<Configuration>();
   const { exportConfiguration, exportingConfigurationId } = useConfigurationExport();
@@ -32,6 +58,7 @@ function ConfigurationPageContent({ domainId }: { domainId: number }) {
     page,
     configurationListPageSize,
     inventoryFilter,
+    searchOptions,
   );
   const totalPages = Math.ceil(
     (configurationsQuery.data?.totalItems ?? 0) / configurationListPageSize,
@@ -46,6 +73,40 @@ function ConfigurationPageContent({ domainId }: { domainId: number }) {
 
   return (
     <Stack gap="lg">
+      <Group align="flex-end">
+        <TextInput
+          flex={1}
+          miw={200}
+          label={t('ux.searchConfigurations')}
+          placeholder={t('ux.searchPlaceholder')}
+          value={search}
+          maxLength={255}
+          onChange={(event) => {
+            setSearch(event.currentTarget.value);
+            setPage(0);
+          }}
+        />
+        <Select
+          label={t('ux.sort')}
+          value={sort}
+          onChange={(value) => {
+            if (value) setSort(value);
+            setPage(0);
+          }}
+          allowDeselect={false}
+          data={[
+            { value: 'createdAt:desc', label: t('ux.newest') },
+            { value: 'createdAt:asc', label: t('ux.oldest') },
+            { value: 'name:asc', label: t('ux.nameAsc') },
+            { value: 'name:desc', label: t('ux.nameDesc') },
+          ]}
+        />
+        {hasFilters ? (
+          <Button variant="subtle" onClick={resetFilters}>
+            {t('components.filters.reset')}
+          </Button>
+        ) : null}
+      </Group>
       <Tabs
         value={inventoryFilter}
         onChange={(value) => {
@@ -82,12 +143,18 @@ function ConfigurationPageContent({ domainId }: { domainId: number }) {
       !configurationsQuery.error &&
       configurationsQuery.data?.items.length === 0 ? (
         <EmptyState
-          title={t('configurations.states.emptyTitle')}
-          description={t('configurations.states.emptyDescription')}
+          title={t(hasFilters ? 'ux.noResults' : 'configurations.states.emptyTitle')}
+          description={t(
+            hasFilters ? 'ux.noResultsDescription' : 'configurations.states.emptyDescription',
+          )}
           action={
-            <Button component={Link} to="/configurator">
-              {t('configurations.actions.openConfigurator')}
-            </Button>
+            hasFilters ? (
+              <Button onClick={resetFilters}>{t('components.filters.reset')}</Button>
+            ) : (
+              <Button component={Link} to="/configurator">
+                {t('configurations.actions.openConfigurator')}
+              </Button>
+            )
           }
         />
       ) : null}

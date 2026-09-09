@@ -12,6 +12,38 @@ import java.util.concurrent.TimeUnit
 
 abstract class AbstractConfigurationControllerContract extends Specification implements ApiTestSupport {
 
+    def "should search and sort configurations on the server before pagination"() {
+        given:
+        prepareData()
+        createConfiguration("Zulu", [1L])
+        def alpha = createConfiguration("Alpha", [1L])
+        def beta = createConfiguration("Beta", [1L])
+        createConfiguration("Literal 100%_ready", [1L])
+
+        when:
+        def result = get("/domains/1/configurations", [name: " A ", sortBy: "name", sortDirection: "asc", page: 1, size: 1])
+        def literal = get("/domains/1/configurations", [name: "%_"])
+        def descending = get("/domains/1/configurations", [name: "a", sortBy: "name", sortDirection: "desc"])
+
+        then:
+        result.status == 200
+        def page = objectMapper.readValue(result.body, ConfigurationPage)
+        page.totalItems == 3
+        page.items*.id == [beta.id]
+        objectMapper.readValue(literal.body, ConfigurationPage).items*.name == ["Literal 100%_ready"]
+        objectMapper.readValue(descending.body, ConfigurationPage).items*.id.last() == alpha.id
+        objectMapper.readValue(get("/domains/2/configurations", [name: "Alpha"]).body, ConfigurationPage).totalItems == 0
+    }
+
+    def "should reject invalid configuration search and sort parameters"() {
+        given:
+        prepareData()
+        expect:
+        get("/domains/1/configurations", [sortBy: "id"]).status == 400
+        get("/domains/1/configurations", [sortDirection: "invalid"]).status == 400
+        get("/domains/1/configurations", [name: "x" * 256]).status == 400
+    }
+
     def "should create configuration with direct manual compatibility"() {
         given:
         prepareData()

@@ -50,7 +50,7 @@ function CompatibilityRulesContent({ domainId, domainName }: CompatibilityRulesC
   const [togglingRuleId, setTogglingRuleId] = useState<number>();
   const [deletingRule, setDeletingRule] = useState<CompatibilityRuleSet>();
   const updateRule = useUpdateCompatibilityRuleMutation();
-  const deleteRule = useDeleteCompatibilityRuleMutation();
+  const deleteRule = useDeleteCompatibilityRuleMutation(true);
   const filteredRules = useMemo(
     () => filterCompatibilityRules(rules, componentTypes, search, status),
     [componentTypes, rules, search, status],
@@ -184,7 +184,10 @@ function CompatibilityRulesContent({ domainId, domainName }: CompatibilityRulesC
               componentTypes={componentTypes}
               togglingRuleId={togglingRuleId}
               onToggle={(rule, enabled) => void toggleRule(rule, enabled)}
-              onDelete={setDeletingRule}
+              onDelete={(value) => {
+                deleteRule.reset();
+                setDeletingRule(value);
+              }}
             />
           ) : (
             <EmptyState
@@ -219,6 +222,7 @@ function CompatibilityRulesContent({ domainId, domainName }: CompatibilityRulesC
         closeOnEscape={!deleteRule.isPending}
       >
         <Stack gap="md">
+          {deleteRule.error ? <ErrorState error={deleteRule.error} /> : null}
           <Text>
             {t('compatibilityRules.delete.description', { name: deletingRule?.name ?? '' })}
           </Text>

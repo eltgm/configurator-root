@@ -118,9 +118,10 @@ async function invalidateDomainAttributes(
   await queryClient.invalidateQueries({ queryKey: attributeKeys.domain(domainId) });
 }
 
-export function useCreateAttributeMutation() {
+export function useCreateAttributeMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     retry: false,
     mutationFn: ({ componentTypeId, body }: CreateAttributeVariables) =>
       apiData(
@@ -136,9 +137,10 @@ export function useCreateAttributeMutation() {
   });
 }
 
-export function useCreateCatalogAttributeMutation() {
+export function useCreateCatalogAttributeMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     retry: false,
     mutationFn: ({ domainId, body }: CatalogAttributeVariables) =>
       apiData(
@@ -154,9 +156,10 @@ export function useCreateCatalogAttributeMutation() {
   });
 }
 
-export function useUpdateAttributeMutation() {
+export function useUpdateAttributeMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     retry: false,
     mutationFn: ({ id, body }: UpdateAttributeVariables) =>
       apiData(putAttributesById({ client, path: { id }, body, throwOnError: true })),
@@ -165,9 +168,10 @@ export function useUpdateAttributeMutation() {
   });
 }
 
-export function useAttachAttributeMutation() {
+export function useAttachAttributeMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     retry: false,
     mutationFn: ({ componentTypeId, attributeId, body }: LinkAttributeVariables) =>
       apiData(
@@ -183,9 +187,10 @@ export function useAttachAttributeMutation() {
   });
 }
 
-export function useDetachAttributeMutation() {
+export function useDetachAttributeMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     retry: false,
     mutationFn: ({ componentTypeId, attributeId }: RemoveAttributeVariables) =>
       apiData(
@@ -199,9 +204,10 @@ export function useDetachAttributeMutation() {
   });
 }
 
-export function useDeleteAttributeMutation() {
+export function useDeleteAttributeMutation(errorHandledLocally = false) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { errorHandledLocally },
     retry: false,
     mutationFn: ({ attributeId }: Omit<RemoveAttributeVariables, 'componentTypeId'>) =>
       apiData(deleteAttributesById({ client, path: { id: attributeId }, throwOnError: true })),
