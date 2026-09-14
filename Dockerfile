@@ -2,7 +2,7 @@
 # Перед сборкой образа нужно собрать JAR:
 #   ./gradlew :configurator:bootJar
 
-FROM eclipse-temurin:21-jre@sha256:7a65df4b22d2de92d4e04056e884f3b9122d70b21e2847fd66084278bd0ce037
+FROM eclipse-temurin:21-jre@sha256:a80c51f2d09a3e7e00d521f1c817bbceb6b3be94109b4a784d46078099882dda
 
 ARG OCI_CREATED=""
 ARG OCI_REVISION="unknown"
