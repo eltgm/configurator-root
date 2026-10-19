@@ -8,7 +8,7 @@ RUN npm ci
 COPY . ./
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.31.3-alpine3.24@sha256:f972e5322b9797dc2a6b830030094426437b1ae7032e4644496395336ac6fdac
+FROM nginxinc/nginx-unprivileged:1.31.6-alpine3.24@sha256:884e0b7f42f303641b0f4e78755aea647521dca0b89ca3be7992ad78b5c07434
 
 ARG OCI_CREATED=""
 ARG OCI_REVISION="unknown"
